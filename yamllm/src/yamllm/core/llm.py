@@ -34,6 +34,26 @@ class LLM(object):  # Explicitly inherit from object
             base_url=self.config.provider.base_url
         )
 
+    def create_embedding(self, text: str) -> bytes:
+        """Create an embedding for the given text using OpenAI's API
+        
+        Args:
+            text: The text to create an embedding for
+            
+        Returns:
+            bytes: The embedding as bytes
+        """
+        try:
+            response = self.client.embeddings.create(
+                input=text,
+                model="text-embedding-3-small"
+            )
+
+            return response.data[0].embedding
+
+        except Exception as e:
+            raise Exception(f"Error creating embedding: {str(e)}")       
+
     def load_config(self) -> YamlLMConfig:
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Config file not found at path: {self.config_path}")
@@ -82,14 +102,27 @@ class LLM(object):  # Explicitly inherit from object
                 presence_penalty=self.presence_penalty,
                 stop=self.stop_sequences or None
             )         
-            response = response.choices[0].message.content.strip()
+            response_text = response.choices[0].message.content.strip()
 
-            # add user prompt to the database
+            # Create embeddings and store messages if memory is enabled
             if self.memory:
-                self.memory.add_message(session_id="session1", role="user", content=prompt)
-                self.memory.add_message(session_id="session1", role="assistant", content=response)
+                prompt_embedding = self.create_embedding(prompt)
+                response_embedding = self.create_embedding(response_text)
+                
+                self.memory.add_message(
+                    session_id="session1", 
+                    role="user", 
+                    content=prompt,
+                    embedding=prompt_embedding
+                )
+                self.memory.add_message(
+                    session_id="session1", 
+                    role="assistant", 
+                    content=response_text,
+                    embedding=response_embedding
+                )
 
-            return response
+            return response_text
 
         except Exception as e:
             raise Exception(f"Error getting response from OpenAI: {str(e)}")
