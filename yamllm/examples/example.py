@@ -1,7 +1,7 @@
 import os
 import logging
 import dotenv
-from yamllm import LLM
+from yamllm.src.yamllm.core.llm import LLM
 
 
 dotenv.load_dotenv()

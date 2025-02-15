@@ -7,7 +7,9 @@ The yamllm package provides an easy way to set up a Large Language Model (LLM) u
 """
 
 from yamllm.src.yamllm.core.llm import LLM
-from yamllm.src.yamllm.core.parser import parse_yaml
-from yamllm.src.yamllm.core.utils import log_error, handle_exception
+from yamllm.src.yamllm.core.parser import parse_yaml_config
+from yamllm.src.yamllm.core.utils import log_message, handle_error
+from yamllm.src.yamllm.memory.conversation_store import ConversationStore
 
-__all__ = ['LLM', 'parse_yaml', 'log_error', 'handle_exception']
+
+__all__ = ['LLM', 'parse_yaml_config', 'log_message', 'handle_error']

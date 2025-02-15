@@ -16,12 +16,8 @@ from yamllm.src.yamllm.tools import (
     UnitConverter
 )
 
-from yamllm import (
-    LLM,
-    parse_yaml_config,
-    YamlLMConfig
-)
-
+from yamllm.src.yamllm.core.llm import LLM
+from yamllm.src.yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.src.yamllm.memory import ConversationStore
 
 __all__ = [

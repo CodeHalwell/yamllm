@@ -1,10 +1,5 @@
-# Import core components from src
-from yamllm.src.yamllm.core import (
-    LLM,
-    parse_yaml_config,
-    YamlLMConfig
-)
-
+from yamllm.src.yamllm.core.llm import LLM
+from yamllm.src.yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.src.yamllm.tools import (
     ToolRegistry,
     Tool,
@@ -22,7 +17,6 @@ from yamllm.src.yamllm.tools import (
     TimezoneTool,
     UnitConverter
 )
-
 from yamllm.src.yamllm.memory import ConversationStore
 
 # Package metadata
