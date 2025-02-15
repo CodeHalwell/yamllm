@@ -8,6 +8,14 @@ import logging
 
 
 def setup_logging(config):
+    # Set logging level for httpx and urllib3 to WARNING to suppress INFO messages
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    
+    # Disable propagation to root logger
+    logging.getLogger('yamllm').propagate = False
+    
+    # Get or create yamllm logger
     logger = logging.getLogger('yamllm')
     logger.setLevel(getattr(logging, config.logging.level))
     
