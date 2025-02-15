@@ -1,7 +1,7 @@
 [project]
 name = "yamllm"
 version = "0.1.0"
-description = "Add your description here"
+description = "YAML-based LLM configuration and execution"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -16,3 +16,15 @@ dependencies = [
     "scikit-learn>=1.6.1",
     "seaborn>=0.13.2",
 ]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "black>=24.1.1",
+    "isort>=5.13.2",
+    "mypy>=1.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
