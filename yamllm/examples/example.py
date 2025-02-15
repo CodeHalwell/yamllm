@@ -12,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 def main():
     # Get the absolute path to the config file
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    config_path = os.path.join(current_dir, "..", "..", "examples", "basic_config.yaml")
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    config_path = os.path.join(root_dir, ".config", "basic_config.yaml")
 
     llm = LLM(config_path=config_path)
 

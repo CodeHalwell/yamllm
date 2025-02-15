@@ -18,7 +18,7 @@ from yamllm.src.yamllm.tools import (
 
 from yamllm.src.yamllm.core.llm import LLM
 from yamllm.src.yamllm.core.parser import parse_yaml_config, YamlLMConfig
-from yamllm.src.yamllm.memory import ConversationStore
+from yamllm.src.yamllm.memory.conversation_store import ConversationStore
 
 __all__ = [
     # Core
