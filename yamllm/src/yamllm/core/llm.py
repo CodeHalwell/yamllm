@@ -1,4 +1,4 @@
-from parser import parse_yaml_config, YamlLMConfig
+from yamllm.src.yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from openai import OpenAI, OpenAIError
 from typing import Optional, Dict, Any
 import os

@@ -1,5 +1,5 @@
 import os
-from llm import LLM  # Update the import path
+from yamllm.src.yamllm.core.llm import LLM  # Update the import path
 import logging
 import dotenv
 

@@ -1,5 +1,5 @@
 # Import core components from src
-from src.yamllm import (
+from yamllm.src.yamllm.core import (
     LLM,
     parse_yaml_config,
     YamlLMConfig
