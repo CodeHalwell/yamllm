@@ -1,3 +1,3 @@
-from .conversation_store import ConversationStore
+from .conversation_store import ConversationStore, VectorStore
 
-__all__ = ['ConversationStore']
+__all__ = ['ConversationStore', 'VectorStore']

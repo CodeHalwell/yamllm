@@ -17,7 +17,7 @@ from yamllm.src.yamllm.tools import (
     TimezoneTool,
     UnitConverter
 )
-from yamllm.src.yamllm.memory import ConversationStore
+from yamllm.src.yamllm.memory import ConversationStore, VectorStore
 
 # Package metadata
 __version__ = "0.1.0"
@@ -52,5 +52,6 @@ __all__ = [
     'UnitConverter',
     
     # Memory
-    'ConversationStore'
+    'ConversationStore',
+    'VectorStore'
 ]

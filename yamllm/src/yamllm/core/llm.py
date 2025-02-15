@@ -1,8 +1,10 @@
 from yamllm.src.yamllm.core.parser import parse_yaml_config, YamlLMConfig
-from yamllm.src.yamllm.memory import ConversationStore
+from yamllm.src.yamllm.memory import ConversationStore, VectorStore
 from openai import OpenAI, OpenAIError
 from typing import Optional, Dict, Any
 import os
+from typing import List, Dict
+
 
 class LLM(object):  # Explicitly inherit from object
     def __init__(self, config_path: str) -> None:
@@ -48,11 +50,24 @@ class LLM(object):  # Explicitly inherit from object
                 input=text,
                 model="text-embedding-3-small"
             )
-
             return response.data[0].embedding
 
         except Exception as e:
             raise Exception(f"Error creating embedding: {str(e)}")       
+        
+    def find_similar_messages(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+        """Find messages similar to the query
+        
+        Args:
+            query: The text to find similar messages for
+            k: Number of similar messages to return
+            
+        Returns:
+            List of similar messages with their metadata and similarity scores
+        """
+        query_embedding = self.create_embedding(query)
+        similar_messages = self.vector_store.search(query_embedding, k)
+        return similar_messages
 
     def load_config(self) -> YamlLMConfig:
         if not os.path.exists(self.config_path):
@@ -73,20 +88,49 @@ class LLM(object):  # Explicitly inherit from object
         # Initialize memory if enabled
         if self.memory_enabled:
             self.memory = ConversationStore()
+            self.vector_store = VectorStore()
             # check if a database is present and create it if not there
             if not self.memory.db_exists():
                 self.memory.create_db()
-            messages = self.memory.get_messages(session_id="session1", limit=self.memory_max_messages)
+                
+            # First, find similar messages if we have previous conversations
+            similar_messages = []
+            try:
+                similar_results = self.find_similar_messages(prompt, k=3)
+                for result in similar_results:
+                    similar_messages.append({
+                        "role": result["role"],
+                        "content": result["content"]
+                    })
+            except Exception:
+                # If this is the first message, there won't be any similar messages
+                pass
+                
+            # Get recent conversation history
+            messages = self.memory.get_messages(
+                session_id="session1", 
+                limit=self.memory_max_messages
+            )
         else:
             self.memory = None
             messages = []
-            
+            similar_messages = []
+        
         # Add system prompt if provided
         if system_prompt or self.config.context.system_prompt:
             messages.append({
                 "role": "system",
                 "content": system_prompt or self.config.context.system_prompt
             })
+        
+        # Add context from similar messages if any exist
+        if similar_messages:
+            context_prompt = {
+                "role": "system",
+                "content": "Here are some relevant previous conversations:\n" + 
+                        "\n".join([f"{m['role']}: {m['content']}" for m in similar_messages])
+            }
+            messages.append(context_prompt)
         
         # Add user message
         messages.append({"role": "user", "content": prompt})
@@ -106,20 +150,32 @@ class LLM(object):  # Explicitly inherit from object
 
             # Create embeddings and store messages if memory is enabled
             if self.memory:
-                prompt_embedding = self.create_embedding(prompt)
-                response_embedding = self.create_embedding(response_text)
-                
-                self.memory.add_message(
+                # Store user message
+                message_id = self.memory.add_message(
                     session_id="session1", 
                     role="user", 
-                    content=prompt,
-                    embedding=prompt_embedding
+                    content=prompt
                 )
-                self.memory.add_message(
+                prompt_embedding = self.create_embedding(prompt)
+                self.vector_store.add_vector(
+                    vector=prompt_embedding,
+                    message_id=message_id,
+                    content=prompt,
+                    role="user"
+                )
+                
+                # Store assistant response
+                response_id = self.memory.add_message(
                     session_id="session1", 
                     role="assistant", 
+                    content=response_text
+                )
+                response_embedding = self.create_embedding(response_text)
+                self.vector_store.add_vector(
+                    vector=response_embedding,
+                    message_id=response_id,
                     content=response_text,
-                    embedding=response_embedding
+                    role="assistant"
                 )
 
             return response_text
