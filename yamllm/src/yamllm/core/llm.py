@@ -8,8 +8,7 @@ class LLM(object):  # Explicitly inherit from object
     def __init__(self, config_path: str) -> None:
         self.config_path = config_path
         self.config: YamlLMConfig = self.load_config()
-        
-        # Handle environment variable if api_key starts with $
+
         self.api_key = self.config.provider.api_key       
         self.model = self.config.provider.model
         self.temperature = self.config.model_settings.temperature
