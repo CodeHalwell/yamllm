@@ -2,7 +2,7 @@ import os
 import logging
 import dotenv
 import pprint
-from yamllm.src.yamllm.core.llm import LLM
+from yamllm.core.llm import LLM
 
 # Initialize pretty printer
 pp = pprint.PrettyPrinter(indent=2, width=80)

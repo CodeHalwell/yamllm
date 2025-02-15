@@ -1,5 +1,5 @@
-from yamllm.src.yamllm.core.parser import parse_yaml_config, YamlLMConfig
-from yamllm.src.yamllm.memory import ConversationStore, VectorStore
+from yamllm.core.parser import parse_yaml_config, YamlLMConfig
+from yamllm.memory import ConversationStore, VectorStore
 from openai import OpenAI, OpenAIError
 from typing import Optional, Dict, Any
 import os
