@@ -8,6 +8,21 @@ import logging
 
 
 def setup_logging(config):
+    """
+    Set up logging configuration for the yamllm application.
+    This function configures the logging settings based on the provided configuration.
+    It sets the logging level for the 'httpx' and 'urllib3' libraries to WARNING to suppress
+    INFO messages, disables propagation to the root logger, and configures the 'yamllm' logger
+    with the specified logging level, file handler, and formatter.
+    Args:
+        config (object): A configuration object that contains logging settings. It should have
+                         the following attributes:
+                         - logging.level (str): The logging level (e.g., 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL').
+                         - logging.file (str): The file path where log messages should be written.
+                         - logging.format (str): The format string for log messages.
+    Returns:
+        logging.Logger: The configured logger for the 'yamllm' application.
+    """
     # Set logging level for httpx and urllib3 to WARNING to suppress INFO messages
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -31,8 +46,29 @@ def setup_logging(config):
     
     return logger
 
-class LLM(object):  # Explicitly inherit from object
+class LLM(object):
+    """
+    Main LLM interface class for YAMLLM.
+
+    This class handles configuration loading and API interactions
+    with language models.
+
+    Args:
+        config_path (str): Path to YAML configuration file
+        api_key (str, optional): API key for the LLM service
+
+    Examples:
+        >>> llm = LLM("config.yaml")
+        >>> llm.api_key = "your-api-key"
+        >>> response = llm.query("Hello, world!")
+    """
     def __init__(self, config_path: str) -> None:
+        """
+        Initialize the LLM instance with the given configuration path.
+
+        Args:
+            config_path (str): Path to the YAML configuration file.
+        """
         self.config_path = config_path
         self.config: YamlLMConfig = self.load_config()
         self.logger = setup_logging(self.config)
@@ -55,7 +91,6 @@ class LLM(object):  # Explicitly inherit from object
         self.tools = self.config.tools.tools
         self.tools_timeout = self.config.tools.tool_timeout
 
-        
         # Initialize OpenAI client
         self.client = OpenAI(
             api_key=self.api_key,
@@ -63,13 +98,17 @@ class LLM(object):  # Explicitly inherit from object
         )
 
     def create_embedding(self, text: str) -> bytes:
-        """Create an embedding for the given text using OpenAI's API
-        
+        """
+        Create an embedding for the given text using OpenAI's API.
+
         Args:
-            text: The text to create an embedding for
-            
+            text (str): The text to create an embedding for.
+
         Returns:
-            bytes: The embedding as bytes
+            bytes: The embedding as bytes.
+
+        Raises:
+            Exception: If there is an error creating the embedding.
         """
         try:
             response = self.client.embeddings.create(
@@ -82,25 +121,51 @@ class LLM(object):  # Explicitly inherit from object
             raise Exception(f"Error creating embedding: {str(e)}")       
         
     def find_similar_messages(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
-        """Find messages similar to the query
-        
+        """
+        Find messages similar to the query.
+
         Args:
-            query: The text to find similar messages for
-            k: Number of similar messages to return
-            
+            query (str): The text to find similar messages for.
+            k (int): Number of similar messages to return. Default is 5.
+
         Returns:
-            List of similar messages with their metadata and similarity scores
+            List[Dict[str, Any]]: List of similar messages with their metadata and similarity scores.
         """
         query_embedding = self.create_embedding(query)
         similar_messages = self.vector_store.search(query_embedding, k)
         return similar_messages
 
     def load_config(self) -> YamlLMConfig:
+        """
+        Load configuration from YAML file.
+
+        Returns:
+            YamlLMConfig: Parsed configuration.
+
+        Raises:
+            FileNotFoundError: If config file is not found.
+            ValueError: If config file is empty or could not be parsed.
+            Exception: For any other unexpected errors.
+        """
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Config file not found at path: {self.config_path}")
         return parse_yaml_config(self.config_path)
 
     def query(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Send a query to the language model.
+
+        Args:
+            prompt (str): The prompt to send to the model.
+            system_prompt (Optional[str]): An optional system prompt to provide context.
+
+        Returns:
+            str: The response from the language model.
+
+        Raises:
+            ValueError: If API key is not initialized or invalid.
+            Exception: If there is an error during the query.
+        """
         if not self.api_key:
             raise ValueError("API key is not initialized or invalid.")
         try:
@@ -111,11 +176,24 @@ class LLM(object):  # Explicitly inherit from object
             raise Exception(f"Unexpected error during query: {str(e)}")
 
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Send a query to the language model and get the response.
+
+        Args:
+            prompt (str): The prompt to send to the model.
+            system_prompt (Optional[str]): An optional system prompt to provide context.
+
+        Returns:
+            str: The response from the language model.
+
+        Raises:
+            Exception: If there is an error getting the response from OpenAI.
+        """        
         # Initialize memory if enabled
         if self.memory_enabled:
             self.memory = ConversationStore()
             self.vector_store = VectorStore()
-            # check if a database is present and create it if not there
+            # Check if a database is present and create it if not there
             if not self.memory.db_exists():
                 self.memory.create_db()
                 
@@ -210,12 +288,42 @@ class LLM(object):  # Explicitly inherit from object
             raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
+        """
+        Update the settings of the instance with the provided keyword arguments.
+
+        This method iterates over the provided keyword arguments and updates the 
+        instance attributes if they exist.
+
+        Args:
+            **kwargs (Dict[str, Any]): Keyword arguments where the key is the 
+            attribute name and the value is the new value for that attribute.
+        """
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
 
-
     def print_settings(self) -> None:
+        """
+        Print the current settings of the LLM (Language Model).
+
+        This method outputs the following settings:
+        - Model: The model being used.
+        - Temperature: The temperature setting for the model.
+        - Max Tokens: The maximum number of tokens.
+        - Top P: The top-p sampling parameter.
+        - Frequency Penalty: The frequency penalty parameter.
+        - Presence Penalty: The presence penalty parameter.
+        - Stop Sequences: The stop sequences used by the model.
+        - System Prompt: The system prompt from the configuration context.
+        - Max Context Length: The maximum context length.
+        - Memory Enabled: Whether memory is enabled.
+        - Memory Max Messages: The maximum number of messages in memory.
+        - Output Format: The format of the output.
+        - Output Stream: The output stream.
+        - Tools Enabled: Whether tools are enabled.
+        - Tools: The tools available.
+        - Tools Timeout: The timeout setting for tools.
+        """
         print("LLM Settings:")
         print(f"Model: {self.model}")
         print(f"Temperature: {self.temperature}")
@@ -233,6 +341,3 @@ class LLM(object):  # Explicitly inherit from object
         print(f"Tools Enabled: {self.tools_enabled}")
         print(f"Tools: {self.tools}")
         print(f"Tools Timeout: {self.tools_timeout}")
-
-
-

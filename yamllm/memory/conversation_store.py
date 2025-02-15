@@ -6,6 +6,20 @@ import numpy as np
 import pickle
 
 class ConversationStore:
+    """
+    A class to manage conversation history stored in a SQLite database.
+    Attributes:
+        db_path (str): The path to the SQLite database file.
+    Methods:
+        db_exists() -> bool:
+            Check if the database file exists.
+        create_db() -> None:
+            Create the database and messages table if they don't exist.
+        add_message(session_id: str, role: str, content: str) -> int:
+            Add a message to the database and return its ID.
+        get_messages(session_id: str = None, limit: int = None) -> List[Dict[str, str]]:
+            Retrieve messages from the database.
+    """
     def __init__(self, db_path: str = "yamllm/memory/conversation_history.db"):
         self.db_path = db_path
 
@@ -14,7 +28,20 @@ class ConversationStore:
         return os.path.exists(self.db_path)
 
     def create_db(self) -> None:
-        """Create the database and messages table if they don't exist"""
+        """
+        Create the database and messages table if they don't exist.
+
+        This method establishes a connection to the SQLite database specified by
+        `self.db_path`. It then creates a table named `messages` with the following
+        columns if it does not already exist:
+            - id: An integer primary key that auto-increments.
+            - session_id: A text field that is not null.
+            - role: A text field that is not null.
+            - content: A text field that is not null.
+            - timestamp: A datetime field that defaults to the current timestamp.
+
+        The connection to the database is closed after the table is created.
+        """
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
@@ -32,7 +59,17 @@ class ConversationStore:
             conn.close()
 
     def add_message(self, session_id: str, role: str, content: str) -> int:
-        """Add a message to the database and return its ID"""
+        """
+        Add a message to the database and return its ID.
+
+        Args:
+            session_id (str): The ID of the session to which the message belongs.
+            role (str): The role of the sender (e.g., 'user', 'assistant').
+            content (str): The content of the message.
+
+        Returns:
+            int: The ID of the newly added message in the database.
+        """
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
@@ -47,7 +84,15 @@ class ConversationStore:
             conn.close()
 
     def get_messages(self, session_id: str = None, limit: int = None) -> List[Dict[str, str]]:
-        """Retrieve messages from the database"""
+        """
+        Retrieve messages from the database.
+        Args:
+            session_id (str, optional): The session ID to filter messages by. Defaults to None.
+            limit (int, optional): The maximum number of messages to retrieve. Defaults to None.
+        Returns:
+            List[Dict[str, str]]: A list of messages, where each message is represented as a dictionary
+                                  with 'role' and 'content' keys.
+        """
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
@@ -77,6 +122,20 @@ class ConversationStore:
 
 class VectorStore:
     def __init__(self, vector_dim: int = 1536, store_path: str = "yamllm/memory/vector_store"):
+        """
+        Initializes the ConversationStore object.
+        Args:
+            vector_dim (int): The dimensionality of the vectors to be stored. Default is 1536.
+            store_path (str): The path to the directory where the vector store and metadata will be saved. Default is "yamllm/memory/vector_store".
+        Attributes:
+            vector_dim (int): The dimensionality of the vectors to be stored.
+            store_path (str): The path to the directory where the vector store and metadata will be saved.
+            index_path (str): The path to the FAISS index file.
+            metadata_path (str): The path to the metadata file.
+            index (faiss.Index): The FAISS index for storing vectors.
+            metadata (list): A list to store message metadata.
+        The constructor creates the directory if it doesn't exist, and initializes or loads the FAISS index and metadata.
+        """
         self.vector_dim = vector_dim
         self.store_path = store_path
         self.index_path = os.path.join(store_path, "faiss_index.idx")
@@ -95,13 +154,15 @@ class VectorStore:
             self.metadata = []  # List to store message metadata
 
     def add_vector(self, vector: List[float], message_id: int, content: str, role: str) -> None:
-        """Add a vector to the index with associated message content
-        
+        """
+        Adds a vector to the index and stores associated metadata.
         Args:
-            vector: The embedding vector
-            message_id: The ID of the message
-            content: The actual message content
-            role: The role of the message sender
+            vector (List[float]): The vector to be added.
+            message_id (int): The unique identifier for the message.
+            content (str): The content of the message.
+            role (str): The role associated with the message.
+        Returns:
+            None
         """
         vector_np = np.array([vector]).astype('float32')
         faiss.normalize_L2(vector_np)
@@ -115,20 +176,28 @@ class VectorStore:
         self._save_store()
 
     def _save_store(self) -> None:
-        """Save the FAISS index and metadata to disk"""
+        """
+        Saves the current state of the conversation store to disk.
+
+        This method writes the FAISS index to the specified index path and 
+        serializes the metadata to a file at the specified metadata path.
+
+        Raises:
+            IOError: If there is an error writing the index or metadata to disk.
+        """
         faiss.write_index(self.index, self.index_path)
         with open(self.metadata_path, 'wb') as f:
             pickle.dump(self.metadata, f)
 
     def search(self, query_vector: List[float], k: int = 5) -> List[Dict[str, Any]]:
-        """Search for similar vectors and return their metadata
-        
+        """
+        Search for the most similar items in the index based on the provided query vector.
         Args:
-            query_vector: The query embedding vector
-            k: Number of results to return
-            
+            query_vector (List[float]): The query vector to search for similar items.
+            k (int, optional): The number of top similar items to return. Defaults to 5.
         Returns:
-            List of dicts containing message metadata and similarity scores
+            List[Dict[str, Any]]: A list of dictionaries containing the metadata of the 
+            most similar items and their similarity scores.
         """
         query_np = np.array([query_vector]).astype('float32')
         faiss.normalize_L2(query_np)

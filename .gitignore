@@ -32,3 +32,4 @@ conversation_history.db
 conversations.db
 faiss_index.idx
 metadata.pkl
+.ruff_cache

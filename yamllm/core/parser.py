@@ -67,8 +67,19 @@ class YamlLMConfig(BaseModel):
 def parse_yaml_config(yaml_file_path: str) -> YamlLMConfig:
     """
     Parses a YAML file into a YamlLMConfig Pydantic model.
-    """
 
+            Args:
+        yaml_file_path (str): The path to the YAML file to be parsed.
+
+    Returns:
+        YamlLMConfig: An instance of YamlLMConfig populated with the data from the YAML file.
+
+    Raises:
+        FileNotFoundError: If the YAML file is not found at the specified path.
+        yaml.YAMLError: If there is an error parsing the YAML file.
+        ValueError: If the YAML file is empty or could not be parsed into a dictionary.
+        Exception: For any other unexpected errors that occur during parsing.
+    """
     try: # Added try-except block for file opening
         with open(yaml_file_path, 'r') as file:
             yaml_content = file.read() # Read the file content into a string
@@ -92,4 +103,3 @@ def parse_yaml_config(yaml_file_path: str) -> YamlLMConfig:
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
         raise # Re-raise the exception
-
