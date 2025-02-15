@@ -1,0 +1,761 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Reference &mdash; YAMLLM 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=e59714d7" />
+
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=01f34227"></script>
+      <script src="_static/doctools.js?v=9bcbadda"></script>
+      <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Configuration Guide" href="configuration.html" />
+    <link rel="prev" title="Usage Guide" href="usage.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            YAMLLM
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="usage.html">Usage Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">API Reference</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#core-components">Core Components</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#llm">LLM</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.core.llm.LLM"><code class="docutils literal notranslate"><span class="pre">LLM</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#configuration">Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#memory-management">Memory Management</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#yamllm.memory.conversation_store.ConversationStore"><code class="docutils literal notranslate"><span class="pre">ConversationStore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.memory.conversation_store.ConversationStore.db_exists"><code class="docutils literal notranslate"><span class="pre">ConversationStore.db_exists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.memory.conversation_store.ConversationStore.create_db"><code class="docutils literal notranslate"><span class="pre">ConversationStore.create_db()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.memory.conversation_store.ConversationStore.add_message"><code class="docutils literal notranslate"><span class="pre">ConversationStore.add_message()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">ConversationStore.create_db()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#id1"><code class="docutils literal notranslate"><span class="pre">ConversationStore.db_exists()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.memory.conversation_store.ConversationStore.get_messages"><code class="docutils literal notranslate"><span class="pre">ConversationStore.get_messages()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#yamllm.memory.conversation_store.VectorStore"><code class="docutils literal notranslate"><span class="pre">VectorStore</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.memory.conversation_store.VectorStore.__init__"><code class="docutils literal notranslate"><span class="pre">VectorStore.__init__()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.memory.conversation_store.VectorStore.add_vector"><code class="docutils literal notranslate"><span class="pre">VectorStore.add_vector()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yamllm.memory.conversation_store.VectorStore.search"><code class="docutils literal notranslate"><span class="pre">VectorStore.search()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration.html">Configuration Guide</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">YAMLLM</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">API Reference</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/api.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="api-reference">
+<h1>API Reference<a class="headerlink" href="#api-reference" title="Link to this heading"></a></h1>
+<section id="core-components">
+<h2>Core Components<a class="headerlink" href="#core-components" title="Link to this heading"></a></h2>
+<section id="llm">
+<h3>LLM<a class="headerlink" href="#llm" title="Link to this heading"></a></h3>
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.llm.</span></span><span class="sig-name descname"><span class="pre">LLM</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM" title="Link to this definition"></a></dt>
+<dd><p>Main LLM interface class for YAMLLM.</p>
+<p>This class handles configuration loading and API interactions
+with language models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to YAML configuration file</p></li>
+<li><p><strong>api_key</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>optional</em>) – API key for the LLM service</p></li>
+</ul>
+</dd>
+</dl>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">llm</span> <span class="o">=</span> <span class="n">LLM</span><span class="p">(</span><span class="s2">&quot;config.yaml&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">llm</span><span class="o">.</span><span class="n">api_key</span> <span class="o">=</span> <span class="s2">&quot;your-api-key&quot;</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;Hello, world!&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initialize the LLM instance with the given configuration path.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config_path</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – Path to the YAML configuration file.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.create_embedding">
+<span class="sig-name descname"><span class="pre">create_embedding</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.create_embedding"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.create_embedding" title="Link to this definition"></a></dt>
+<dd><p>Create an embedding for the given text using OpenAI’s API.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>text</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The text to create an embedding for.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The embedding as bytes.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#bytes" title="(in Python v3.13)">bytes</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><strong>Exception</strong></a> – If there is an error creating the embedding.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.find_similar_messages">
+<span class="sig-name descname"><span class="pre">find_similar_messages</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.find_similar_messages"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.find_similar_messages" title="Link to this definition"></a></dt>
+<dd><p>Find messages similar to the query.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The text to find similar messages for.</p></li>
+<li><p><strong>k</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><em>int</em></a>) – Number of similar messages to return. Default is 5.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>List of similar messages with their metadata and similarity scores.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>List[Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.get_response">
+<span class="sig-name descname"><span class="pre">get_response</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system_prompt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.get_response"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.get_response" title="Link to this definition"></a></dt>
+<dd><p>Send a query to the language model and get the response.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prompt</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The prompt to send to the model.</p></li>
+<li><p><strong>system_prompt</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – An optional system prompt to provide context.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The response from the language model.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><strong>Exception</strong></a> – If there is an error getting the response from OpenAI.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.load_config">
+<span class="sig-name descname"><span class="pre">load_config</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.load_config"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.load_config" title="Link to this definition"></a></dt>
+<dd><p>Load configuration from YAML file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Parsed configuration.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>YamlLMConfig</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.13)"><strong>FileNotFoundError</strong></a> – If config file is not found.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If config file is empty or could not be parsed.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><strong>Exception</strong></a> – For any other unexpected errors.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.print_settings">
+<span class="sig-name descname"><span class="pre">print_settings</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.print_settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.print_settings" title="Link to this definition"></a></dt>
+<dd><p>Print the current settings of the LLM (Language Model).</p>
+<p>This method outputs the following settings:
+- Model: The model being used.
+- Temperature: The temperature setting for the model.
+- Max Tokens: The maximum number of tokens.
+- Top P: The top-p sampling parameter.
+- Frequency Penalty: The frequency penalty parameter.
+- Presence Penalty: The presence penalty parameter.
+- Stop Sequences: The stop sequences used by the model.
+- System Prompt: The system prompt from the configuration context.
+- Max Context Length: The maximum context length.
+- Memory Enabled: Whether memory is enabled.
+- Memory Max Messages: The maximum number of messages in memory.
+- Output Format: The format of the output.
+- Output Stream: The output stream.
+- Tools Enabled: Whether tools are enabled.
+- Tools: The tools available.
+- Tools Timeout: The timeout setting for tools.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.query">
+<span class="sig-name descname"><span class="pre">query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">prompt</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">system_prompt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.query"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.query" title="Link to this definition"></a></dt>
+<dd><p>Send a query to the language model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>prompt</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The prompt to send to the model.</p></li>
+<li><p><strong>system_prompt</strong> (<em>Optional</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>]</em>) – An optional system prompt to provide context.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The response from the language model.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If API key is not initialized or invalid.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><strong>Exception</strong></a> – If there is an error during the query.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.core.llm.LLM.update_settings">
+<span class="sig-name descname"><span class="pre">update_settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/llm.html#LLM.update_settings"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.core.llm.LLM.update_settings" title="Link to this definition"></a></dt>
+<dd><p>Update the settings of the instance with the provided keyword arguments.</p>
+<p>This method iterates over the provided keyword arguments and updates the
+instance attributes if they exist.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>**kwargs</strong> (<em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>Any</em><em>]</em>) – Keyword arguments where the key is the</p></li>
+<li><p><strong>attribute.</strong> (<em>attribute name and the value is the new value for that</em>)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+<section id="configuration">
+<h2>Configuration<a class="headerlink" href="#configuration" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.config.</span></span><span class="sig-name descname"><span class="pre">Config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">data</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/config.html#Config"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Configuration class for YAMLLM.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">model</span></span></dt>
+<dd><p>The name of the LLM model to use</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">temperature</span></span></dt>
+<dd><p>Sampling temperature for text generation</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)">float</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">max_tokens</span></span></dt>
+<dd><p>Maximum number of tokens to generate</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">system_prompt</span></span></dt>
+<dd><p>The system prompt to use</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">retry_attempts</span></span></dt>
+<dd><p>Number of retry attempts for API calls</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">timeout</span></span></dt>
+<dd><p>Timeout in seconds for API calls</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">api_key</span></span></dt>
+<dd><p>API key for the LLM service</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Optional[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">additional_params</span></span></dt>
+<dd><p>Additional model parameters</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">additional_params</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Dict" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dict</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">,</span> <a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Any" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Any</span></code></a><span class="pre">]</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">api_key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.13)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a><span class="pre">[</span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a><span class="pre">]</span></em></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_dict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_dict</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/config.html#Config.from_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Create configuration from dictionary.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>config_dict</strong> (<em>Dict</em><em>[</em><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a><em>, </em><em>Any</em><em>]</em>) – Configuration dictionary</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>New configuration instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Config</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">max_tokens</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">model_config</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">ClassVar[ConfigDict]</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em></dt>
+<dd><p>Configuration for the model, should be a dictionary conforming to [<cite>ConfigDict</cite>][pydantic.config.ConfigDict].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">retry_attempts</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">system_prompt</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">timeout</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></em></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">to_dict</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/core/config.html#Config.to_dict"><span class="viewcode-link"><span class="pre">[source]</span></span></a></dt>
+<dd><p>Convert configuration to dictionary format.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Configuration as a dictionary</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="memory-management">
+<h2>Memory Management<a class="headerlink" href="#memory-management" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.ConversationStore">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.memory.conversation_store.</span></span><span class="sig-name descname"><span class="pre">ConversationStore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">db_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yamllm/memory/conversation_history.db'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#ConversationStore"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.ConversationStore" title="Link to this definition"></a></dt>
+<dd><p>A class to manage conversation history stored in a SQLite database.
+.. attribute:: db_path</p>
+<blockquote>
+<div><p>The path to the SQLite database file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.ConversationStore.db_exists">
+<span class="sig-name descname"><span class="pre">db_exists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></span></span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#ConversationStore.db_exists"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.ConversationStore.db_exists" title="Link to this definition"></a></dt>
+<dd><p>Check if the database file exists.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.ConversationStore.create_db">
+<span class="sig-name descname"><span class="pre">create_db</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></span></span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#ConversationStore.create_db"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.ConversationStore.create_db" title="Link to this definition"></a></dt>
+<dd><p>Create the database and messages table if they don’t exist.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">add_message(session_id</span></span></dt>
+<dd><p>str, role: str, content: str) -&gt; int:
+Add a message to the database and return its ID.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_messages(session_id</span></span></dt>
+<dd><p>str = None, limit: int = None) -&gt; List[Dict[str, str]]:
+Retrieve messages from the database.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.ConversationStore.add_message">
+<span class="sig-name descname"><span class="pre">add_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#ConversationStore.add_message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.ConversationStore.add_message" title="Link to this definition"></a></dt>
+<dd><p>Add a message to the database and return its ID.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>session_id</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The ID of the session to which the message belongs.</p></li>
+<li><p><strong>role</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The role of the sender (e.g., ‘user’, ‘assistant’).</p></li>
+<li><p><strong>content</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><em>str</em></a>) – The content of the message.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The ID of the newly added message in the database.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id0">
+<span class="sig-name descname"><span class="pre">create_db</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#ConversationStore.create_db"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id0" title="Link to this definition"></a></dt>
+<dd><p>Create the database and messages table if they don’t exist.</p>
+<p>This method establishes a connection to the SQLite database specified by
+:rtype: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+<p><cite>self.db_path</cite>. It then creates a table named <cite>messages</cite> with the following
+columns if it does not already exist:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>id: An integer primary key that auto-increments.</p></li>
+<li><p>session_id: A text field that is not null.</p></li>
+<li><p>role: A text field that is not null.</p></li>
+<li><p>content: A text field that is not null.</p></li>
+<li><p>timestamp: A datetime field that defaults to the current timestamp.</p></li>
+</ul>
+</div></blockquote>
+<p>The connection to the database is closed after the table is created.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="id1">
+<span class="sig-name descname"><span class="pre">db_exists</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#ConversationStore.db_exists"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#id1" title="Link to this definition"></a></dt>
+<dd><p>Check if the database file exists</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a></span></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.ConversationStore.get_messages">
+<span class="sig-name descname"><span class="pre">get_messages</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">session_id</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">limit</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#ConversationStore.get_messages"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.ConversationStore.get_messages" title="Link to this definition"></a></dt>
+<dd><p>Retrieve messages from the database.
+:type session_id: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>
+:param session_id: The session ID to filter messages by. Defaults to None.
+:type session_id: str, optional
+:type limit: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></span>
+:param limit: The maximum number of messages to retrieve. Defaults to None.
+:type limit: int, optional</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>A list of messages, where each message is represented as a dictionary</dt><dd><p>with ‘role’ and ‘content’ keys.</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.memory.conversation_store.</span></span><span class="sig-name descname"><span class="pre">VectorStore</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vector_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1536</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">store_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yamllm/memory/vector_store'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#VectorStore"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore" title="Link to this definition"></a></dt>
+<dd><dl class="py method">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vector_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1536</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">store_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'yamllm/memory/vector_store'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#VectorStore.__init__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.__init__" title="Link to this definition"></a></dt>
+<dd><p>Initializes the ConversationStore object.
+:type vector_dim: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></span>
+:param vector_dim: The dimensionality of the vectors to be stored. Default is 1536.
+:type vector_dim: int
+:type store_path: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>
+:param store_path: The path to the directory where the vector store and metadata will be saved. Default is “yamllm/memory/vector_store”.
+:type store_path: str</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.vector_dim">
+<span class="sig-name descname"><span class="pre">vector_dim</span></span><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.vector_dim" title="Link to this definition"></a></dt>
+<dd><p>The dimensionality of the vectors to be stored.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)">int</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.store_path">
+<span class="sig-name descname"><span class="pre">store_path</span></span><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.store_path" title="Link to this definition"></a></dt>
+<dd><p>The path to the directory where the vector store and metadata will be saved.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.index_path">
+<span class="sig-name descname"><span class="pre">index_path</span></span><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.index_path" title="Link to this definition"></a></dt>
+<dd><p>The path to the FAISS index file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.metadata_path">
+<span class="sig-name descname"><span class="pre">metadata_path</span></span><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.metadata_path" title="Link to this definition"></a></dt>
+<dd><p>The path to the metadata file.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.index">
+<span class="sig-name descname"><span class="pre">index</span></span><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.index" title="Link to this definition"></a></dt>
+<dd><p>The FAISS index for storing vectors.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>faiss.Index</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.metadata">
+<span class="sig-name descname"><span class="pre">metadata</span></span><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.metadata" title="Link to this definition"></a></dt>
+<dd><p>A list to store message metadata.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#list" title="(in Python v3.13)">list</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<p>The constructor creates the directory if it doesn’t exist, and initializes or loads the FAISS index and metadata.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.add_vector">
+<span class="sig-name descname"><span class="pre">add_vector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">vector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">message_id</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">content</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">role</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#VectorStore.add_vector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.add_vector" title="Link to this definition"></a></dt>
+<dd><p>Adds a vector to the index and stores associated metadata.
+:type vector: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</span>
+:param vector: The vector to be added.
+:type vector: List[float]
+:type message_id: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></span>
+:param message_id: The unique identifier for the message.
+:type message_id: int
+:type content: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>
+:param content: The content of the message.
+:type content: str
+:type role: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a></span>
+:param role: The role associated with the message.
+:type role: str</p>
+<dl class="field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">None</span></code></a></span></p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="yamllm.memory.conversation_store.VectorStore.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_vector</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">k</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/yamllm/memory/conversation_store.html#VectorStore.search"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#yamllm.memory.conversation_store.VectorStore.search" title="Link to this definition"></a></dt>
+<dd><p>Search for the most similar items in the index based on the provided query vector.
+:type query_vector: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.List" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">List</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">float</span></code></a>]</span>
+:param query_vector: The query vector to search for similar items.
+:type query_vector: List[float]
+:type k: <span class="sphinx_autodoc_typehints-type"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a></span>
+:param k: The number of top similar items to return. Defaults to 5.
+:type k: int, optional</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A list of dictionaries containing the metadata of the
+most similar items and their similarity scores.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[Dict[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)">str</a>, Any]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="usage.html" class="btn btn-neutral float-left" title="Usage Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="configuration.html" class="btn btn-neutral float-right" title="Configuration Guide" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel Halwell.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
