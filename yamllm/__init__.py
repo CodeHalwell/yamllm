@@ -5,7 +5,7 @@ from yamllm.src.yamllm.core import (
     YamlLMConfig
 )
 
-from src.tools import (
+from yamllm.src.yamllm.tools import (
     ToolRegistry,
     Tool,
     ReadFileContent,
@@ -23,7 +23,7 @@ from src.tools import (
     UnitConverter
 )
 
-from src.memory import ConversationStore
+from yamllm.src.yamllm.memory import ConversationStore
 
 # Package metadata
 __version__ = "0.1.0"

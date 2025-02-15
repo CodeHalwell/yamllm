@@ -1,4 +1,4 @@
-from tools import (
+from yamllm.src.yamllm.tools import (
     ToolRegistry, 
     Tool,
     ReadFileContent,
@@ -22,7 +22,7 @@ from yamllm import (
     YamlLMConfig
 )
 
-from memory import ConversationStore
+from yamllm.src.yamllm.memory import ConversationStore
 
 __all__ = [
     # Core
