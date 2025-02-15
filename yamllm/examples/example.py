@@ -18,18 +18,14 @@ def main():
     llm = LLM(config_path=config_path)
 
     llm.api_key = os.environ.get("OPENAI_API_KEY")
-
-
-    llm.print_settings()
     
     while True:
         try:          
             prompt = input("Human: ")
             if prompt.lower() == "exit":
                 break
-            logger.info(f"\nSending basic query: {prompt}\n")
             response = llm.query(prompt)
-            logger.info(f"\nResponse: {response}\n")
+            logger.info(f"\nAI: {response}\n")
 
             
         except FileNotFoundError as e:

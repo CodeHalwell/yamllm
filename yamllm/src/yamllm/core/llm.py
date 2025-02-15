@@ -4,12 +4,30 @@ from openai import OpenAI, OpenAIError
 from typing import Optional, Dict, Any
 import os
 from typing import List, Dict
+import logging
 
+
+def setup_logging(config):
+    logger = logging.getLogger('yamllm')
+    logger.setLevel(getattr(logging, config.logging.level))
+    
+    # Remove any existing handlers
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # Create file handler
+    file_handler = logging.FileHandler(config.logging.file)
+    formatter = logging.Formatter(config.logging.format)
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    
+    return logger
 
 class LLM(object):  # Explicitly inherit from object
     def __init__(self, config_path: str) -> None:
         self.config_path = config_path
         self.config: YamlLMConfig = self.load_config()
+        self.logger = setup_logging(self.config)
 
         self.api_key = self.config.provider.api_key       
         self.model = self.config.provider.model
