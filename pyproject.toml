@@ -2,9 +2,18 @@
 name = "yamllm"
 version = "0.1.0"
 description = "YAML-based LLM configuration and execution"
-author = "Daniel Halwell"
+authors = [
+    {name = "Daniel Halwell", email = "danielhalwell@gmail.com"},
+]
 readme = "README.md"
 requires-python = ">=3.10"
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+]
 dependencies = [
     "faiss-cpu>=1.10.0",
     "matplotlib>=3.10.0",
