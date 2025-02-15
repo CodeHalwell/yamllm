@@ -27,7 +27,7 @@ context:
   system_prompt: "You are a helpful assistant, helping me achieve my goals"
   max_context_length: 4096
   memory:
-    enabled: false
+    enabled: true
     max_messages: 10
 
 # Memory Management

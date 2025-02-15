@@ -1,4 +1,5 @@
 from yamllm.src.yamllm.core.parser import parse_yaml_config, YamlLMConfig
+from yamllm.src.yamllm.memory import ConversationStore
 from openai import OpenAI, OpenAIError
 from typing import Optional, Dict, Any
 import os
@@ -50,8 +51,17 @@ class LLM(object):  # Explicitly inherit from object
             raise Exception(f"Unexpected error during query: {str(e)}")
 
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
-        messages = []
-        
+        # Initialize memory if enabled
+        if self.memory_enabled:
+            self.memory = ConversationStore()
+            # check if a database is present and create it if not there
+            if not self.memory.db_exists():
+                self.memory.create_db()
+            messages = self.memory.get_messages(session_id="session1", limit=self.memory_max_messages)
+        else:
+            self.memory = None
+            messages = []
+            
         # Add system prompt if provided
         if system_prompt or self.config.context.system_prompt:
             messages.append({
@@ -73,7 +83,15 @@ class LLM(object):  # Explicitly inherit from object
                 presence_penalty=self.presence_penalty,
                 stop=self.stop_sequences or None
             )         
-            return response.choices[0].message.content.strip()
+            response = response.choices[0].message.content.strip()
+
+            # add user prompt to the database
+            if self.memory:
+                self.memory.add_message(session_id="session1", role="user", content=prompt)
+                self.memory.add_message(session_id="session1", role="assistant", content=response)
+
+            return response
+
         except Exception as e:
             raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
