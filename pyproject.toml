@@ -1,5 +1,5 @@
 [project]
-name = "yamllm"
+name = "yamllm-core"
 version = "0.1.0"
 description = "YAML-based LLM configuration and execution"
 authors = [
@@ -46,5 +46,5 @@ packages = ["yamllm"]
 
 [project.urls]
 Homepage = "https://github.com/username/yamllm"
-Documentation = "https://yamllm.readthedocs.io/"
+Documentation = "https://yamllm-core.readthedocs.io/"
 Repository = "https://github.com/username/yamllm.git"
