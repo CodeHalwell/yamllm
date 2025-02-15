@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from typing import List, Dict, Any, Tuple, Optional
+from typing import List, Dict, Any
 import faiss
 import numpy as np
 import pickle

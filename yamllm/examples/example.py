@@ -1,5 +1,4 @@
 import os
-import logging
 import dotenv
 import pprint
 from yamllm.core.llm import LLM

@@ -1,10 +1,6 @@
 from .base import Tool
-import requests
-import datetime
-import re
-import json
 import numpy as np
-from typing import Any, List, Dict
+from typing import List, Dict
 
 class WebSearch(Tool):
     def __init__(self, api_key: str):

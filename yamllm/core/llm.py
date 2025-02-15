@@ -3,7 +3,7 @@ from yamllm.memory import ConversationStore, VectorStore
 from openai import OpenAI, OpenAIError
 from typing import Optional, Dict, Any
 import os
-from typing import List, Dict
+from typing import List
 import logging
 
 

@@ -1,6 +1,4 @@
 from .base import Tool
-import os
-import yaml
 
 class ReadFileContent(Tool):
     def __init__(self):

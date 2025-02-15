@@ -15,6 +15,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "pyyaml>=6.0.2",
     "requests>=2.32.3",
+    "ruff>=0.9.6",
     "scikit-learn>=1.6.1",
     "seaborn>=0.13.2",
 ]
@@ -33,3 +34,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["yamllm"]
+
+[project.urls]
+Homepage = "https://github.com/username/yamllm"
+Documentation = "https://yamllm.readthedocs.io/"
+Repository = "https://github.com/username/yamllm.git"
