@@ -45,6 +45,6 @@ build-backend = "hatchling.build"
 packages = ["yamllm"]
 
 [project.urls]
-Homepage = "https://github.com/username/yamllm"
-Documentation = "https://yamllm-core.readthedocs.io/"
-Repository = "https://github.com/username/yamllm.git"
+Homepage = "https://github.com/codehalwell/yamllm"
+Documentation = "https://codehalwell.github.io/yamllm/"
+Repository = "https://github.com/codehalwell/yamllm.git"
