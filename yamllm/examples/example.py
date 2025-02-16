@@ -27,9 +27,9 @@ dotenv.load_dotenv()
 
 # Get the absolute path to the config file
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-config_path = os.path.join(root_dir, ".config_examples", "google_config.yaml")
+config_path = os.path.join(root_dir, ".config_examples", "deepseek_config.yaml")
 
-llm = LLM(config_path=config_path, api_key=os.environ.get("GOOGLE_API_KEY"))
+llm = LLM(config_path=config_path, api_key=os.environ.get("DEEPSEEK_API_KEY"))
 
 while True:
     try:          
