@@ -70,11 +70,11 @@ def test_llm_initialization(mock_setup_logging, mock_openai, mock_parse_yaml_con
     assert llm.stop_sequences is None
     assert llm.system_prompt == 'You are a helpful assistant.'
     assert llm.max_context_length == 2048
-    assert llm.memory_enabled == True
+    assert llm.memory_enabled is True
     assert llm.memory_max_messages == 10
     assert llm.output_format == 'text'
-    assert llm.output_stream == False
-    assert llm.tools_enabled == False
+    assert llm.output_stream is False
+    assert llm.tools_enabled is False
     assert llm.tools == []
     assert llm.tools_timeout == 5
     assert llm.base_url == 'https://api.openai.com/v1'
