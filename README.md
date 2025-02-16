@@ -5,7 +5,7 @@ A Python library for YAML-based LLM configuration and execution.
 ## Installation
 
 ```bash
-pip install yamllm
+pip install yamllm-core
 ```
 
 ## Quick Start
@@ -24,8 +24,20 @@ print(response)
 ```
 
 ## Configuration
+YAMLLM uses YAML files for configuration. Set up a `.config` file to define the parameters for your LLM instance. This file should include settings such as the model type, temperature, maximum tokens, and system prompt.
 
-YAMLLM uses YAML files for configuration. Example configuration:
+Example configuration:
+
+```yaml
+model: gpt-4-turbo-preview
+temperature: 0.7
+max_tokens: 500
+system_prompt: "You are a helpful AI assistant."
+```
+
+Place the `.config` file in your project directory and reference it in your code to initialize the LLM instance.
+
+Example configuration:
 
 ```yaml
 model: gpt-4-turbo-preview
