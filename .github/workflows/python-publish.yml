@@ -28,7 +28,7 @@ jobs:
       run: uv pip install build twine
     
     - name: Build package
-      run: uv python -m build
+      run: uv pip install -e . && python -m build
     
     - name: Publish package to PyPI
       env:
