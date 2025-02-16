@@ -1,5 +1,5 @@
 import unittest
-from yamllm.config import Config
+from yamllm.core.config import Config
 
 class TestConfig(unittest.TestCase):
 
