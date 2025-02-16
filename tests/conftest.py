@@ -1,11 +1,10 @@
 import sys
 from pathlib import Path
+import pytest
 
 # Get the project root directory
 ROOT_DIR = Path(__file__).parent.parent
 sys.path.append(str(ROOT_DIR))
-
-import pytest
 
 @pytest.fixture
 def config():
