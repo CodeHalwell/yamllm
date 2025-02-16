@@ -34,3 +34,5 @@ faiss_index.idx
 metadata.pkl
 .ruff_cache
 dev
+test_results.txt
+report.html
