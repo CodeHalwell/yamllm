@@ -1,4 +1,4 @@
-from yamllm import LLM, ConversationStore
+from yamllm import ConversationStore
 """
 This script retrieves and displays conversation messages from a SQLite database.
 Modules:

@@ -1,6 +1,4 @@
-import os
 import pytest
-import sqlite3
 from yamllm.memory.conversation_store import ConversationStore, VectorStore
 
 @pytest.fixture
