@@ -2,7 +2,7 @@
 provider:
   name: "openai"  # supported: openai, google, deepseek, mistral
   model: "gpt-4o-mini"  # model identifier
-  api_key: # api key goes here, besy practice to put into dotenv
+  api_key: # api key goes here, best practice to put into dotenv
   base_url: # optional: for custom endpoints
 
 # Model Configuration
@@ -28,21 +28,11 @@ context:
   max_context_length: 16000
   memory:
     enabled: true
-    max_messages: 10
-
-# Memory Management
-memory_management:
-  save_previous_messages: false
-  storage:
-    type: "database"  # supported: encrypted_file, database
-    database_url: "sqlite:///memory_storage.db"
-    save_embeddings: true  # enable saving embeddings for semantic search
-    retrieval:
-    method: "latest_first"  # supported: latest_first, oldest_first, semantic_search
-    max_retrieve: 50
-    embedding_search:
-      enabled: true
-      similarity_threshold: 0.8  # threshold for semantic search
+    max_messages: 10  # number of messages to keep in conversation history
+    conversation_db: "yamllm/memory/conversation_history.db"
+    vector_store:
+      index_path: "yamllm/memory/vector_store/faiss_index.idx"
+      metadata_path: "yamllm/memory/vector_store/metadata.pkl"
     
 # Output Formatting
 output:
