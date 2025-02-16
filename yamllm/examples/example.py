@@ -3,6 +3,24 @@ import dotenv
 import pprint
 from yamllm.core.llm import LLM
 
+"""
+This script initializes a language model (LLM) using a configuration file and an API key, 
+then enters a loop where it takes user input, queries the LLM with the input, and prints the response.
+Modules:
+    os: Provides a way of using operating system dependent functionality.
+    dotenv: Loads environment variables from a .env file.
+    pprint: Provides a capability to pretty-print data structures.
+    yamllm.core.llm: Contains the LLM class for interacting with the language model.
+Functions:
+    None
+Usage:
+    Run the script and enter prompts when prompted. Type 'exit' to terminate the loop.
+Exceptions:
+    FileNotFoundError: Raised when the configuration file is not found.
+    ValueError: Raised when there is a configuration error.
+    Exception: Catches all other exceptions and prints an error message.
+"""
+
 # Initialize pretty printer
 pp = pprint.PrettyPrinter(indent=2, width=80)
 dotenv.load_dotenv()
