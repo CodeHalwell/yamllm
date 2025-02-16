@@ -1,0 +1,67 @@
+# LLM Provider Settings
+provider:
+  name: "openai"  # supported: openai, google, deepseek, mistral
+  model: "gpt-4o-mini"  # model identifier
+  api_key: # api key goes here, besy practice to put into dotenv
+  base_url: # optional: for custom endpoints
+
+# Model Configuration
+model_settings:
+  temperature: 0.7
+  max_tokens: 1000
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stop_sequences: []
+  
+# Request Settings
+request:
+  timeout: 30  # seconds
+  retry:
+    max_attempts: 3
+    initial_delay: 1
+    backoff_factor: 2
+    
+# Context Management
+context:
+  system_prompt: "You are a helpful assistant, helping me achieve my goals"
+  max_context_length: 16000
+  memory:
+    enabled: true
+    max_messages: 10
+
+# Memory Management
+memory_management:
+  save_previous_messages: false
+  storage:
+    type: "database"  # supported: encrypted_file, database
+    database_url: "sqlite:///memory_storage.db"
+    save_embeddings: true  # enable saving embeddings for semantic search
+    retrieval:
+    method: "latest_first"  # supported: latest_first, oldest_first, semantic_search
+    max_retrieve: 50
+    embedding_search:
+      enabled: true
+      similarity_threshold: 0.8  # threshold for semantic search
+    
+# Output Formatting
+output:
+  format: "text"  # supported: text, json, markdown
+  stream: false
+
+logging:
+  level: "INFO"
+  file: "yamllm.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Tool Management 
+tools:
+  enabled: false
+  tool_timeout: 10  # seconds
+  tool_list: ['calculator', 'web_search']
+
+# Safety Settings
+safety:
+  content_filtering: true
+  max_requests_per_minute: 60
+  sensitive_keywords: []

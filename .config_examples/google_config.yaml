@@ -1,9 +1,9 @@
 # LLM Provider Settings
 provider:
-  name: "openai"  # supported: openai, anthropic, google, deepseek, mistral
-  model: "gpt-3.5-turbo"  # model identifier
-  api_key: # api key goes here
-  base_url: # optional: for custom endpoints
+  name: "google"  # supported: openai, anthropic, google, deepseek, mistral
+  model: "gemini-1.5-flash"  # model identifier
+  api_key: # api key goes here, besy practice to put into dotenv
+  base_url: "https://generativelanguage.googleapis.com/v1beta/openai/" # optional: for custom endpoints
 
 # Model Configuration
 model_settings:

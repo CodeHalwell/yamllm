@@ -5,6 +5,9 @@ from typing import Optional, Dict, Any
 import os
 from typing import List
 import logging
+import dotenv 
+
+dotenv.load_dotenv()
 
 
 def setup_logging(config):
@@ -62,7 +65,7 @@ class LLM(object):
         >>> llm.api_key = "your-api-key"
         >>> response = llm.query("Hello, world!")
     """
-    def __init__(self, config_path: str) -> None:
+    def __init__(self, config_path: str, api_key: Optional[str] = None) -> None:
         """
         Initialize the LLM instance with the given configuration path.
 
@@ -73,7 +76,8 @@ class LLM(object):
         self.config: YamlLMConfig = self.load_config()
         self.logger = setup_logging(self.config)
 
-        self.api_key = self.config.provider.api_key       
+        self.provider = self.config.provider.name
+        self.api_key = api_key       
         self.model = self.config.provider.model
         self.temperature = self.config.model_settings.temperature
         self.max_tokens = self.config.model_settings.max_tokens
@@ -90,11 +94,16 @@ class LLM(object):
         self.tools_enabled = self.config.tools.enabled
         self.tools = self.config.tools.tools
         self.tools_timeout = self.config.tools.tool_timeout
+        self.base_url = self.config.provider.base_url
 
         # Initialize OpenAI client
         self.client = OpenAI(
             api_key=self.api_key,
-            base_url=self.config.provider.base_url
+            base_url=self.base_url
+        )
+
+        self.embedding_client = OpenAI(
+            api_key=os.environ["OPENAI_API_KEY"],
         )
 
     def create_embedding(self, text: str) -> bytes:
@@ -111,7 +120,7 @@ class LLM(object):
             Exception: If there is an error creating the embedding.
         """
         try:
-            response = self.client.embeddings.create(
+            response = self.embedding_client.embeddings.create(
                 input=text,
                 model="text-embedding-3-small"
             )
@@ -237,55 +246,74 @@ class LLM(object):
             messages.append(context_prompt)
         
         # Add user message
-        messages.append({"role": "user", "content": prompt})
+        messages.append({"role": "user", "content": str(prompt)})
 
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                frequency_penalty=self.frequency_penalty,
-                presence_penalty=self.presence_penalty,
-                stop=self.stop_sequences or None
-            )         
-            response_text = response.choices[0].message.content.strip()
+        if self.provider == 'openai':  
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                    frequency_penalty=self.frequency_penalty,
+                    presence_penalty=self.presence_penalty,
+                    stop=self.stop_sequences or None
+                )         
+                response_text = response.choices[0].message.content.strip()
 
-            # Create embeddings and store messages if memory is enabled
-            if self.memory:
-                # Store user message
-                message_id = self.memory.add_message(
-                    session_id="session1", 
-                    role="user", 
-                    content=prompt
-                )
-                prompt_embedding = self.create_embedding(prompt)
-                self.vector_store.add_vector(
-                    vector=prompt_embedding,
-                    message_id=message_id,
-                    content=prompt,
-                    role="user"
-                )
-                
-                # Store assistant response
-                response_id = self.memory.add_message(
-                    session_id="session1", 
-                    role="assistant", 
-                    content=response_text
-                )
-                response_embedding = self.create_embedding(response_text)
-                self.vector_store.add_vector(
-                    vector=response_embedding,
-                    message_id=response_id,
-                    content=response_text,
-                    role="assistant"
-                )
+            except Exception as e:
+                 raise Exception(f"Error getting response from OpenAI: {str(e)}")
+            
+        else: 
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    n=1,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                )         
+                response_text = response.choices[0].message.content.strip()
 
-            return response_text
+            except Exception as e:
+                 raise Exception(f"Error getting response from the Google Endpoint: {str(e)}")
 
-        except Exception as e:
-            raise Exception(f"Error getting response from OpenAI: {str(e)}")
+
+        # Create embeddings and store messages if memory is enabled
+        if self.memory:
+            # Store user message
+            message_id = self.memory.add_message(
+                session_id="session1", 
+                role="user", 
+                content=prompt
+            )
+            prompt_embedding = self.create_embedding(prompt)
+            self.vector_store.add_vector(
+                vector=prompt_embedding,
+                message_id=message_id,
+                content=prompt,
+                role="user"
+            )
+            
+            # Store assistant response
+            response_id = self.memory.add_message(
+                session_id="session1", 
+                role="assistant", 
+                content=response_text
+            )
+            response_embedding = self.create_embedding(response_text)
+            self.vector_store.add_vector(
+                vector=response_embedding,
+                message_id=response_id,
+                content=response_text,
+                role="assistant"
+            )
+
+        return response_text
+
+
 
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
         """

@@ -12,8 +12,8 @@ class ModelSettings(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 1000
     top_p: float = 1.0
-    frequency_penalty: float = 0.0
-    presence_penalty: float = 0.0
+    frequency_penalty: float = None
+    presence_penalty: float = None
     stop_sequences: List[str] = []
 
 class RetrySettings(BaseModel):
