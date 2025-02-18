@@ -25,9 +25,15 @@ class RequestSettings(BaseModel):
     timeout: int = 30
     retry: RetrySettings
 
+class VectorStoreSettings(BaseModel):
+    index_path: str = None
+    metadata_path: str = None
+
 class MemorySettings(BaseModel):
     enabled: bool = False
     max_messages: int = 10
+    conversation_db: str = None
+    vector_store: VectorStoreSettings = VectorStoreSettings()
 
 class ContextSettings(BaseModel):
     system_prompt: str = "You are a helpful assistant."

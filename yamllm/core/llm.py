@@ -49,6 +49,7 @@ def setup_logging(config):
     
     return logger
 
+
 class LLM(object):
     """
     Main LLM interface class for YAMLLM.
@@ -58,50 +59,78 @@ class LLM(object):
 
     Args:
         config_path (str): Path to YAML configuration file
-        api_key (str, optional): API key for the LLM service
+        api_key (str): API key for the LLM service
 
     Examples:
-        >>> llm = LLM("config.yaml")
-        >>> llm.api_key = "your-api-key"
+        >>> llm = LLM(config_path = "config.yaml", api_key = "your-api-key")
+
         >>> response = llm.query("Hello, world!")
     """
-    def __init__(self, config_path: str, api_key: Optional[str] = None) -> None:
+    def __init__(self, config_path: str, api_key: str) -> None:
         """
         Initialize the LLM instance with the given configuration path.
 
         Args:
-            config_path (str): Path to the YAML configuration file.
+            config_path (str): Path to the YAML configuration file
+            api_key (str): API key for the LLM service
         """
+        # Basic configuration
         self.config_path = config_path
+        self.api_key = api_key
         self.config: YamlLMConfig = self.load_config()
         self.logger = setup_logging(self.config)
 
+        # Provider settings
         self.provider = self.config.provider.name
-        self.api_key = api_key       
         self.model = self.config.provider.model
+        self.base_url = self.config.provider.base_url
+
+        # Model settings
         self.temperature = self.config.model_settings.temperature
         self.max_tokens = self.config.model_settings.max_tokens
         self.top_p = self.config.model_settings.top_p
         self.frequency_penalty = self.config.model_settings.frequency_penalty
         self.presence_penalty = self.config.model_settings.presence_penalty
         self.stop_sequences = self.config.model_settings.stop_sequences
+
+        # Request settings
+        self.request_timeout = self.config.request.timeout
+        self.retry_max_attempts = self.config.request.retry.max_attempts
+        self.retry_initial_delay = self.config.request.retry.initial_delay
+        self.retry_backoff_factor = self.config.request.retry.backoff_factor
+
+        # Context settings
         self.system_prompt = self.config.context.system_prompt
         self.max_context_length = self.config.context.max_context_length
+
+        # Memory settings
         self.memory_enabled = self.config.context.memory.enabled
         self.memory_max_messages = self.config.context.memory.max_messages
+        self.conversation_db_path = self.config.context.memory.conversation_db
+        self.vector_index_path = self.config.context.memory.vector_store.index_path
+        self.vector_metadata_path = self.config.context.memory.vector_store.metadata_path
+
+        # Output settings
         self.output_format = self.config.output.format
         self.output_stream = self.config.output.stream
+
+        # Tool settings
         self.tools_enabled = self.config.tools.enabled
         self.tools = self.config.tools.tools
         self.tools_timeout = self.config.tools.tool_timeout
-        self.base_url = self.config.provider.base_url
 
-        # Initialize OpenAI client
+        # Safety settings
+        self.content_filtering = self.config.safety.content_filtering
+        self.max_requests_per_minute = self.config.safety.max_requests_per_minute
+        self.sensitive_keywords = self.config.safety.sensitive_keywords
+
+        # Initialize OpenAI client for regular requests
         self.client = OpenAI(
             api_key=self.api_key,
             base_url=self.base_url
         )
 
+        # Initialize OpenAI client for embeddings
         self.embedding_client = OpenAI(
             api_key=os.environ["OPENAI_API_KEY"],
         )
@@ -129,6 +158,7 @@ class LLM(object):
         except Exception as e:
             raise Exception(f"Error creating embedding: {str(e)}")       
         
+
     def find_similar_messages(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
         """
         Find messages similar to the query.
@@ -143,6 +173,7 @@ class LLM(object):
         query_embedding = self.create_embedding(query)
         similar_messages = self.vector_store.search(query_embedding, k)
         return similar_messages
+
 
     def load_config(self) -> YamlLMConfig:
         """
@@ -202,14 +233,13 @@ class LLM(object):
         if self.memory_enabled:
             self.memory = ConversationStore()
             self.vector_store = VectorStore()
-            # Check if a database is present and create it if not there
             if not self.memory.db_exists():
                 self.memory.create_db()
                 
             # First, find similar messages if we have previous conversations
             similar_messages = []
             try:
-                similar_results = self.find_similar_messages(prompt, k=3)
+                similar_results = self.find_similar_messages(prompt, k=2)
                 for result in similar_results:
                     similar_messages.append({
                         "role": result["role"],
@@ -248,70 +278,63 @@ class LLM(object):
         # Add user message
         messages.append({"role": "user", "content": str(prompt)})
 
-        if self.provider == 'openai':  
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    top_p=self.top_p,
-                    frequency_penalty=self.frequency_penalty,
-                    presence_penalty=self.presence_penalty,
-                    stop=self.stop_sequences or None
-                )         
-                response_text = response.choices[0].message.content.strip()
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=self.stop_sequences or None
+            )         
+            response_text = response.choices[0].message.content.strip()
 
-            except Exception as e:
-                 raise Exception(f"Error getting response from OpenAI: {str(e)}")
-            
-        else: 
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    n=1,
-                    messages=messages,
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    top_p=self.top_p,
-                )         
-                response_text = response.choices[0].message.content.strip()
+        except Exception as e:
+                raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
-            except Exception as e:
-                 raise Exception(f"Error getting response from the Google Endpoint: {str(e)}")
-
-
-        # Create embeddings and store messages if memory is enabled
+        # Handle memory storage if enabled
         if self.memory:
-            # Store user message
-            message_id = self.memory.add_message(
-                session_id="session1", 
-                role="user", 
-                content=prompt
-            )
-            prompt_embedding = self.create_embedding(prompt)
-            self.vector_store.add_vector(
-                vector=prompt_embedding,
-                message_id=message_id,
-                content=prompt,
-                role="user"
-            )
-            
-            # Store assistant response
-            response_id = self.memory.add_message(
-                session_id="session1", 
-                role="assistant", 
-                content=response_text
-            )
-            response_embedding = self.create_embedding(response_text)
-            self.vector_store.add_vector(
-                vector=response_embedding,
-                message_id=response_id,
-                content=response_text,
-                role="assistant"
-            )
+            self._store_memory(prompt, response_text)
 
         return response_text
+
+    def _store_memory(self, prompt: str, response_text: str) -> None:
+        """
+        Helper method to store conversation in memory.
+        
+        Args:
+            prompt (str): The user's input prompt
+            response_text (str): The model's response text
+        """
+        # Store user message
+        message_id = self.memory.add_message(
+            session_id="session1", 
+            role="user", 
+            content=prompt
+        )
+        prompt_embedding = self.create_embedding(prompt)
+        self.vector_store.add_vector(
+            vector=prompt_embedding,
+            message_id=message_id,
+            content=prompt,
+            role="user"
+        )
+        
+        # Store assistant response
+        response_id = self.memory.add_message(
+            session_id="session1", 
+            role="assistant", 
+            content=response_text
+        )
+        response_embedding = self.create_embedding(response_text)
+        self.vector_store.add_vector(
+            vector=response_embedding,
+            message_id=response_id,
+            content=response_text,
+            role="assistant"
+        )
 
 
 
@@ -332,40 +355,147 @@ class LLM(object):
 
     def print_settings(self) -> None:
         """
-        Print the current settings of the LLM (Language Model).
-
-        This method outputs the following settings:
-        - Model: The model being used.
-        - Temperature: The temperature setting for the model.
-        - Max Tokens: The maximum number of tokens.
-        - Top P: The top-p sampling parameter.
-        - Frequency Penalty: The frequency penalty parameter.
-        - Presence Penalty: The presence penalty parameter.
-        - Stop Sequences: The stop sequences used by the model.
-        - System Prompt: The system prompt from the configuration context.
-        - Max Context Length: The maximum context length.
-        - Memory Enabled: Whether memory is enabled.
-        - Memory Max Messages: The maximum number of messages in memory.
-        - Output Format: The format of the output.
-        - Output Stream: The output stream.
-        - Tools Enabled: Whether tools are enabled.
-        - Tools: The tools available.
-        - Tools Timeout: The timeout setting for tools.
+        Print the current settings of the LLM (Language Model) in an organized format.
+        Settings are grouped by category for better readability.
         """
-        print("LLM Settings:")
-        print(f"Model: {self.model}")
-        print(f"Temperature: {self.temperature}")
-        print(f"Max Tokens: {self.max_tokens}")
-        print(f"Top P: {self.top_p}")
-        print(f"Frequency Penalty: {self.frequency_penalty}")
-        print(f"Presence Penalty: {self.presence_penalty}")
-        print(f"Stop Sequences: {self.stop_sequences}")
-        print(f"System Prompt: {self.config.context.system_prompt}")
-        print(f"Max Context Length: {self.max_context_length}")
-        print(f"Memory Enabled: {self.memory_enabled}")
-        print(f"Memory Max Messages: {self.memory_max_messages}")
-        print(f"Output Format: {self.output_format}")
-        print(f"Output Stream: {self.output_stream}")
-        print(f"Tools Enabled: {self.tools_enabled}")
-        print(f"Tools: {self.tools}")
-        print(f"Tools Timeout: {self.tools_timeout}")
+        settings = {
+            "Provider Settings": {
+                "Provider": self.provider,
+                "Model": self.model,
+                "Base URL": self.base_url
+            },
+            "Model Settings": {
+                "Temperature": self.temperature,
+                "Max Tokens": self.max_tokens,
+                "Top P": self.top_p,
+                "Frequency Penalty": self.frequency_penalty,
+                "Presence Penalty": self.presence_penalty,
+                "Stop Sequences": self.stop_sequences
+            },
+            "Request Settings": {
+                "Timeout": self.request_timeout,
+                "Max Retry Attempts": self.retry_max_attempts,
+                "Initial Retry Delay": self.retry_initial_delay,
+                "Retry Backoff Factor": self.retry_backoff_factor
+            },
+            "Context Settings": {
+                "System Prompt": self.system_prompt,
+                "Max Context Length": self.max_context_length
+            },
+            "Memory Settings": {
+                "Enabled": self.memory_enabled,
+                "Max Messages": self.memory_max_messages,
+                "Conversation DB Path": self.conversation_db_path,
+                "Vector Index Path": self.vector_index_path,
+                "Vector Metadata Path": self.vector_metadata_path
+            },
+            "Output Settings": {
+                "Format": self.output_format,
+                "Stream": self.output_stream
+            },
+            "Tool Settings": {
+                "Enabled": self.tools_enabled,
+                "Tools": self.tools,
+                "Timeout": self.tools_timeout
+            },
+            "Safety Settings": {
+                "Content Filtering": self.content_filtering,
+                "Max Requests/Minute": self.max_requests_per_minute,
+                "Sensitive Keywords": self.sensitive_keywords
+            }
+        }
+
+        print("\nLLM Configuration Settings:")
+        print("=" * 50)
+        for category, values in settings.items():
+            print(f"\n{category}:")
+            print("-" * len(category))
+            for key, value in values.items():
+                print(f"{key:20}: {value}")
+
+
+class OpenAIGPT(LLM):
+    def __init__(self, config_path: str, api_key: str) -> None:
+        super().__init__(config_path, api_key)
+        self.provider = "openai"
+
+    
+class GoogleGemini(LLM):
+    def __init__(self, config_path: str, api_key: str) -> None:
+        super().__init__(config_path, api_key)
+        self.provider = 'google'
+
+    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Override get_response to use only Google-supported parameters.
+        """
+        if self.memory_enabled:
+            self.memory = ConversationStore()
+            self.vector_store = VectorStore()
+            if not self.memory.db_exists():
+                self.memory.create_db()
+                
+            similar_messages = []
+            try:
+                similar_results = self.find_similar_messages(prompt, k=2)
+                for result in similar_results:
+                    similar_messages.append({
+                        "role": result["role"],
+                        "content": result["content"]
+                    })
+            except Exception:
+                pass
+                
+            messages = self.memory.get_messages(
+                session_id="session1", 
+                limit=self.memory_max_messages
+            )
+        else:
+            self.memory = None
+            messages = []
+            similar_messages = []
+        
+        if system_prompt or self.system_prompt:
+            messages.append({
+                "role": "system",
+                "content": system_prompt or self.system_prompt
+            })
+        
+        if similar_messages:
+            context_prompt = {
+                "role": "system",
+                "content": "Here are some relevant previous conversations:\n" + 
+                        "\n".join([f"{m['role']}: {m['content']}" for m in similar_messages])
+            }
+            messages.append(context_prompt)
+        
+        messages.append({"role": "user", "content": str(prompt)})
+
+        try:
+            # Only use parameters supported by Google's API
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                n=1
+            )         
+            response_text = response.choices[0].message.content.strip()
+
+        except Exception as e:
+             raise Exception(f"Error getting response from Google: {str(e)}")
+
+        # Handle memory storage if enabled
+        if self.memory:
+            self._store_memory(prompt, response_text)
+
+        return response_text
+    
+class DeepSeek(LLM):
+    def __init__(self, config_path: str, api_key: str) -> None:
+        super().__init__(config_path, api_key)
+        self.provider = 'deepseek'
+
+
+
