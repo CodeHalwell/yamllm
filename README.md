@@ -10,19 +10,55 @@ pip install yamllm-core
 
 ## Quick Start
 
+In order to run a simple query, run a script as follows. NOTE: Printing of the response is not required as this is handles by the query method. This uses the rich library to print the responses in the console.
+
 ```python
-from yamllm.core.llm import OpenAIGPT, GoogleGemini, DeepSeek
+from yamllm.core.llm import OpenAIGPT, GoogleGemini, DeepSeek, MistralAI
 import os
 import dotenv
 
 dotenv.load_dotenv()
 
+config_path = "path/to/config.yaml"
+
 # Initialize LLM with config
-llm = OpenAIGPT(config_path="path/to/config.yaml", api_key=os.environ.get("OPENAI_API_KEY"))
+llm = GoogleGemini(config_path=config_path, api_key=os.environ.get("GOOGLE_API_KEY"))
 
 # Make a query
-response = llm.query("What is the meaning of life?")
-print(response)
+response = llm.query("Give me some boiler plate pytorch code please")
+```
+
+In order to have an ongoing conversation with the model, run a script as follows.
+
+```python
+from yamllm.core.llm import OpenAIGPT, GoogleGemini, DeepSeek, MistralAI
+from rich.console import Console
+import os
+import dotenv
+
+dotenv.load_dotenv()
+console = Console()
+
+config_path = "path/to/config.yaml"
+
+llm = GoogleGemini(config_path=config_path, api_key=os.environ.get("GOOGLE_API_KEY"))
+
+while True:
+    try:          
+        prompt = input("\nHuman: ")
+        if prompt.lower() == "exit":
+            break
+        
+        response = llm.query(prompt)
+        if response is None:
+            continue
+        
+    except FileNotFoundError as e:
+        console.print(f"[red]Configuration file not found:[/red] {e}")
+    except ValueError as e:
+        console.print(f"[red]Configuration error:[/red] {e}")
+    except Exception as e:
+        console.print(f"[red]An error occurred:[/red] {str(e)}")
 ```
 
 ## Configuration
@@ -34,7 +70,7 @@ Example configuration:
   name: "openai"  # supported: openai, google, deepseek, mistral
   model: "gpt-4o-mini"  # model identifier
   api_key: # api key goes here, best practice to put into dotenv
-  base_url: # optional: for custom endpoints
+  base_url: # optional: for custom endpoints e.g. "https://generativelanguage.googleapis.com/v1beta/openai/"
 
 # Model Configuration
 model_settings:
@@ -96,7 +132,9 @@ Place the `.config` file in your project directory and reference it in your code
 - Simple API interface
 - Customizable prompt templates
 - Error handling and retry logic
-- In built memory management in sqlite database
+- In built memory management in sqlite database for short term memory
+- Use of vector database for long term memory based on semantic search
+- Choose streaming or non-streamed response
 
 ## License
 
