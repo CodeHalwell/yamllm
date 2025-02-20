@@ -1,9 +1,9 @@
 # LLM Provider Settings
 provider:
-  name: "deepseek"  # supported: openai, google, deepseek and mistralai supported.
-  model: "deepseek-chat"  # model identifier
+  name: "mistralai"  # supported: openai, google, deepseek and mistralai supported.
+  model: "mistral-small-latest"  # model identifier
   api_key: # api key goes here, besy practice to put into dotenv
-  base_url: "https://api.deepseek.com" # optional: for custom endpoints
+  base_url: "https://api.mistral.ai/v1/" # optional: for custom endpoints
 
 # Model Configuration
 model_settings:
@@ -33,6 +33,7 @@ context:
     vector_store:
       index_path: "yamllm/memory/vector_store/faiss_index.idx"
       metadata_path: "yamllm/memory/vector_store/metadata.pkl"
+      top_k: 2
     
 # Output Formatting
 output:

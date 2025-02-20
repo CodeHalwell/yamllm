@@ -1,6 +1,6 @@
 # LLM Provider Settings
 provider:
-  name: "openai"  # supported: openai, anthropic, google, deepseek, mistral
+  name: "openai"  # supported: openai, google, deepseek and mistralai supported.
   model: "gpt-o1-mini"  # model identifier
   api_key: # api key goes here, besy practice to put into dotenv
   base_url: # optional: for custom endpoints

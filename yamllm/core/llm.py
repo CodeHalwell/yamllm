@@ -109,6 +109,8 @@ class LLM(object):
         self.conversation_db_path = self.config.context.memory.conversation_db
         self.vector_index_path = self.config.context.memory.vector_store.index_path
         self.vector_metadata_path = self.config.context.memory.vector_store.metadata_path
+        self.vector_store_top_k = self.config.context.memory.vector_store.top_k
+
 
         # Output settings
         self.output_format = self.config.output.format
@@ -159,7 +161,7 @@ class LLM(object):
             raise Exception(f"Error creating embedding: {str(e)}")       
         
 
-    def find_similar_messages(self, query: str, k: int = 5) -> List[Dict[str, Any]]:
+    def find_similar_messages(self, query: str, k: int) -> List[Dict[str, Any]]:
         """
         Find messages similar to the query.
 
@@ -171,7 +173,7 @@ class LLM(object):
             List[Dict[str, Any]]: List of similar messages with their metadata and similarity scores.
         """
         query_embedding = self.create_embedding(query)
-        similar_messages = self.vector_store.search(query_embedding, k)
+        similar_messages = self.vector_store.search(query_embedding, self.vector_store_top_k)
         return similar_messages
 
 
@@ -239,7 +241,7 @@ class LLM(object):
             # First, find similar messages if we have previous conversations
             similar_messages = []
             try:
-                similar_results = self.find_similar_messages(prompt, k=2)
+                similar_results = self.find_similar_messages(prompt, self.vector_store_top_k)
                 for result in similar_results:
                     similar_messages.append({
                         "role": result["role"],
@@ -387,7 +389,8 @@ class LLM(object):
                 "Max Messages": self.memory_max_messages,
                 "Conversation DB Path": self.conversation_db_path,
                 "Vector Index Path": self.vector_index_path,
-                "Vector Metadata Path": self.vector_metadata_path
+                "Vector Metadata Path": self.vector_metadata_path,
+                "Vector Store Top K": self.vector_store_top_k,
             },
             "Output Settings": {
                 "Format": self.output_format,
@@ -447,6 +450,86 @@ class DeepSeek(LLM):
         super().__init__(config_path, api_key)
         self.provider = 'deepseek'
 
+class MistralAI(LLM):
+    def __init__(self, config_path: str, api_key: str) -> None:
+        super().__init__(config_path, api_key)
+        self.provider = 'mistralai'
+    
+    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Override get_response to use only Mistral-supported parameters.
+        
+        Args:
+            prompt (str): The prompt to send to the model.
+            system_prompt (Optional[str]): An optional system prompt for context.
+            
+        Returns:
+            str: The response from the Mistral language model.
+            
+        Raises:
+            Exception: If there is an error getting the response from Mistral.
+        """
+        if self.memory_enabled:
+            self.memory = ConversationStore()
+            self.vector_store = VectorStore()
+            if not self.memory.db_exists():
+                self.memory.create_db()
+                
+            similar_messages = []
+            try:
+                similar_results = self.find_similar_messages(prompt, k=2)
+                for result in similar_results:
+                    similar_messages.append({
+                        "role": result["role"],
+                        "content": result["content"]
+                    })
+            except Exception:
+                pass
+                
+            messages = self.memory.get_messages(
+                session_id="session1", 
+                limit=self.memory_max_messages
+            )
+        else:
+            self.memory = None
+            messages = []
+            similar_messages = []
+        
+        if system_prompt or self.system_prompt:
+            messages.append({
+                "role": "system",
+                "content": system_prompt or self.system_prompt
+            })
+        
+        if similar_messages:
+            context_prompt = {
+                "role": "system",
+                "content": "Here are some relevant previous conversations:\n" + 
+                        "\n".join([f"{m['role']}: {m['content']}" for m in similar_messages])
+            }
+            messages.append(context_prompt)
+        
+        messages.append({"role": "user", "content": str(prompt)})
+
+        try:
+            # Only use parameters supported by Mistral's API
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p
+            )         
+            response_text = response.choices[0].message.content.strip()
+
+        except Exception as e:
+            raise Exception(f"Error getting response from Mistral: {str(e)}")
+
+        # Handle memory storage if enabled
+        if self.memory:
+            self._store_memory(prompt, response_text)
+
+        return response_text
     
 class GoogleGemini(LLM):
     def __init__(self, config_path: str, api_key: str) -> None:

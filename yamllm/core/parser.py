@@ -28,6 +28,7 @@ class RequestSettings(BaseModel):
 class VectorStoreSettings(BaseModel):
     index_path: str = None
     metadata_path: str = None
+    top_k: int = 5
 
 class MemorySettings(BaseModel):
     enabled: bool = False
