@@ -5,7 +5,10 @@ from typing import Optional, Dict, Any
 import os
 from typing import List
 import logging
-import dotenv 
+import dotenv
+from rich.live import Live
+from rich.markdown import Markdown
+from rich.console import Console 
 
 dotenv.load_dotenv()
 
@@ -279,26 +282,56 @@ class LLM(object):
         # Add user message
         messages.append({"role": "user", "content": str(prompt)})
 
-        try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                frequency_penalty=self.frequency_penalty,
-                presence_penalty=self.presence_penalty,
-                stop=self.stop_sequences or None
-            )         
-            response_text = response.choices[0].message.content
+        if self.output_stream:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                    frequency_penalty=self.frequency_penalty,
+                    presence_penalty=self.presence_penalty,
+                    stop=self.stop_sequences or None,
+                    stream=True
+                )
+                console = Console()
+                response_text = ""
+                
+                with Live(console=console, refresh_per_second=10) as live:
+                    for chunk in response:
+                        if chunk.choices[0].delta.content:
+                            response_text += chunk.choices[0].delta.content
+                            # Render the accumulated text as markdown
+                            md = Markdown(response_text)
+                            live.update(md)
 
-        except Exception as e:
+            except Exception as e:
                 raise Exception(f"Error getting response from OpenAI: {str(e)}")
+
+        else:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                    frequency_penalty=self.frequency_penalty,
+                    presence_penalty=self.presence_penalty,
+                    stop=self.stop_sequences or None
+                )         
+                response_text = response.choices[0].message.content
+
+            except Exception as e:
+                    raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
         # Handle memory storage if enabled
         if self.memory:
             self._store_memory(prompt, response_text)
 
+        if self.output_stream:
+            return None        
         return response_text
 
     def _store_memory(self, prompt: str, response_text: str) -> None:
@@ -512,25 +545,52 @@ class MistralAI(LLM):
                 "content": str(prompt)
             })
 
-        try:
-            # Only use parameters supported by Mistral's API
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p
-            )         
-            response_text = response.choices[0].message.content
+        if self.output_stream:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                    stream=True
+                )
+                console = Console()
+                response_text = ""
+                
+                with Live(console=console, refresh_per_second=10) as live:
+                    for chunk in response:
+                        if chunk.choices[0].delta.content:
+                            response_text += chunk.choices[0].delta.content
+                            md = Markdown(response_text)
+                            live.update(md)
 
-            # Handle memory storage if enabled
-            if self.memory_enabled:
-                self._store_memory(prompt, response_text)
+                if self.memory_enabled:
+                    self._store_memory(prompt, response_text)
+                    
+                return None
 
-            return response_text
+            except Exception as e:
+                raise Exception(f"Error getting response from Mistral: {str(e)}")
+            
+        else:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p
+                )         
+                response_text = response.choices[0].message.content
 
-        except Exception as e:
-            raise Exception(f"Error getting response from Mistral: {str(e)}")
+                if self.memory_enabled:
+                    self._store_memory(prompt, response_text)
+
+                return response_text
+
+            except Exception as e:
+                raise Exception(f"Error getting response from Mistral: {str(e)}")
     
 class GoogleGemini(LLM):
     def __init__(self, config_path: str, api_key: str) -> None:
@@ -583,24 +643,52 @@ class GoogleGemini(LLM):
         
         messages.append({"role": "user", "content": str(prompt)})
 
-        try:
-            # Only use parameters supported by Google's API
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                n=1
-            )         
-            response_text = response.choices[0].message.content
+        if self.output_stream:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                    n=1,
+                    stream=True
+                )
+                console = Console()
+                response_text = ""
+                
+                with Live(console=console, refresh_per_second=10) as live:
+                    for chunk in response:
+                        if chunk.choices[0].delta.content:
+                            response_text += chunk.choices[0].delta.content
+                            md = Markdown(response_text)
+                            live.update(md)
 
-        except Exception as e:
-             raise Exception(f"Error getting response from Google: {str(e)}")
+                if self.memory:
+                    self._store_memory(prompt, response_text)
+                    
+                return None
 
-        # Handle memory storage if enabled
-        if self.memory:
-            self._store_memory(prompt, response_text)
+            except Exception as e:
+                raise Exception(f"Error getting response from Google: {str(e)}")
+            
+        else:
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens,
+                    top_p=self.top_p,
+                    n=1
+                )         
+                response_text = response.choices[0].message.content
 
-        return response_text
+                if self.memory:
+                    self._store_memory(prompt, response_text)
+
+                return response_text
+
+            except Exception as e:
+                raise Exception(f"Error getting response from Google: {str(e)}")
     
