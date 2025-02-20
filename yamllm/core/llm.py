@@ -451,13 +451,9 @@ class DeepSeek(LLM):
         self.provider = 'deepseek'
 
 class MistralAI(LLM):
-    def __init__(self, config_path: str, api_key: str) -> None:
-        super().__init__(config_path, api_key)
-        self.provider = 'mistralai'
-    
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
-        Override get_response to use only Mistral-supported parameters.
+        Override get_response to use only Mistral-supported parameters and message ordering.
         
         Args:
             prompt (str): The prompt to send to the model.
@@ -469,47 +465,52 @@ class MistralAI(LLM):
         Raises:
             Exception: If there is an error getting the response from Mistral.
         """
-        if self.memory_enabled:
-            self.memory = ConversationStore()
-            self.vector_store = VectorStore()
-            if not self.memory.db_exists():
-                self.memory.create_db()
-                
-            similar_messages = []
-            try:
-                similar_results = self.find_similar_messages(prompt, k=2)
-                for result in similar_results:
-                    similar_messages.append({
-                        "role": result["role"],
-                        "content": result["content"]
-                    })
-            except Exception:
-                pass
-                
-            messages = self.memory.get_messages(
-                session_id="session1", 
-                limit=self.memory_max_messages
-            )
-        else:
-            self.memory = None
-            messages = []
-            similar_messages = []
+        messages = []
         
+        # Start with system prompt if provided (must be first)
         if system_prompt or self.system_prompt:
             messages.append({
                 "role": "system",
                 "content": system_prompt or self.system_prompt
             })
         
-        if similar_messages:
-            context_prompt = {
-                "role": "system",
-                "content": "Here are some relevant previous conversations:\n" + 
-                        "\n".join([f"{m['role']}: {m['content']}" for m in similar_messages])
-            }
-            messages.append(context_prompt)
-        
-        messages.append({"role": "user", "content": str(prompt)})
+        # Initialize memory if enabled
+        if self.memory_enabled:
+            self.memory = ConversationStore()
+            self.vector_store = VectorStore()
+            if not self.memory.db_exists():
+                self.memory.create_db()
+            
+            # Get conversation history
+            history = self.memory.get_messages(
+                session_id="session1", 
+                limit=self.memory_max_messages
+            )
+            
+            # Add history messages maintaining strict user-assistant alternation
+            messages.extend(history)
+            
+            # Find and format similar messages as part of the user's prompt
+            similar_context = ""
+            try:
+                similar_results = self.find_similar_messages(prompt, k=2)
+                if similar_results:
+                    similar_context = "\nRelevant context from previous conversations:\n" + \
+                        "\n".join([f"{m['role']}: {m['content']}" for m in similar_results])
+            except Exception:
+                pass
+            
+            # Add current prompt with context
+            messages.append({
+                "role": "user", 
+                "content": f"{prompt}{similar_context}"
+            })
+        else:
+            # Just add the current prompt if memory is disabled
+            messages.append({
+                "role": "user",
+                "content": str(prompt)
+            })
 
         try:
             # Only use parameters supported by Mistral's API
@@ -522,14 +523,14 @@ class MistralAI(LLM):
             )         
             response_text = response.choices[0].message.content.strip()
 
+            # Handle memory storage if enabled
+            if self.memory_enabled:
+                self._store_memory(prompt, response_text)
+
+            return response_text
+
         except Exception as e:
             raise Exception(f"Error getting response from Mistral: {str(e)}")
-
-        # Handle memory storage if enabled
-        if self.memory:
-            self._store_memory(prompt, response_text)
-
-        return response_text
     
 class GoogleGemini(LLM):
     def __init__(self, config_path: str, api_key: str) -> None:
