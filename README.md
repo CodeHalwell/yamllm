@@ -8,6 +8,10 @@ A Python library for YAML-based LLM configuration and execution.
 pip install yamllm-core
 ```
 
+```bash
+uv add yamllm-core
+```
+
 ## Quick Start
 
 In order to run a simple query, run a script as follows. NOTE: Printing of the response is not required as this is handles by the query method. This uses the rich library to print the responses in the console.
