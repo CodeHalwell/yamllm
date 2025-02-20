@@ -297,13 +297,14 @@ class LLM(object):
                 )
                 console = Console()
                 response_text = ""
+                print()
                 
                 with Live(console=console, refresh_per_second=10) as live:
                     for chunk in response:
                         if chunk.choices[0].delta.content:
                             response_text += chunk.choices[0].delta.content
-                            # Render the accumulated text as markdown
-                            md = Markdown(response_text)
+                            # Add a newline before the AI response
+                            md = Markdown(f"\nAI: {response_text}", style="green")
                             live.update(md)
 
             except Exception as e:
@@ -562,7 +563,8 @@ class MistralAI(LLM):
                     for chunk in response:
                         if chunk.choices[0].delta.content:
                             response_text += chunk.choices[0].delta.content
-                            md = Markdown(response_text)
+                            # Add a newline before the AI response
+                            md = Markdown(f"\nAI: {response_text}", style="green")
                             live.update(md)
 
                 if self.memory_enabled:
@@ -656,12 +658,14 @@ class GoogleGemini(LLM):
                 )
                 console = Console()
                 response_text = ""
+                print()
                 
                 with Live(console=console, refresh_per_second=10) as live:
                     for chunk in response:
                         if chunk.choices[0].delta.content:
                             response_text += chunk.choices[0].delta.content
-                            md = Markdown(response_text)
+                            # Add a newline before the AI response
+                            md = Markdown(f"\nAI: {response_text}", style="green")
                             live.update(md)
 
                 if self.memory:

@@ -47,10 +47,10 @@ while True:
         # Handle markdown formatting if present
         try:
             if any(marker in response for marker in ['###', '```', '*', '_', '-']):
-                md = Markdown(response)
+                md = Markdown(response, style="green")
                 console.print(md)
             else:
-                console.print(response)
+                console.print(response, style="green")
         except TypeError:
             console.print("[red]Error: Received invalid response format[/red]")
         
