@@ -327,15 +327,13 @@ class LLM(object):
                 
                 # Add Rich console formatting
                 console = Console()
-                print()  # Add blank line before response
-                console.print("\nAI:", style="bold green")
                 
                 # Handle markdown formatting if present
                 if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown(response_text, style="green")
+                    md = Markdown("\nAI:" + response_text, style="green")
                     console.print(md)
                 else:
-                    console.print(response_text, style="green")
+                    console.print("\nAI:" + response_text, style="green")
 
                 if self.memory:
                     self._store_memory(prompt, response_text)
@@ -601,15 +599,13 @@ class MistralAI(LLM):
                 
                 # Add Rich console formatting
                 console = Console()
-                print()  # Add blank line before response
-                console.print("\nAI:", style="bold green")
                 
                 # Handle markdown formatting if present
                 if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown(response_text, style="green")
+                    md = Markdown("\nAI:" + response_text, style="green")
                     console.print(md)
                 else:
-                    console.print(response_text, style="green")
+                    console.print("\nAI:" + response_text, style="green")
 
                 if self.memory:
                     self._store_memory(prompt, response_text)
@@ -718,15 +714,13 @@ class GoogleGemini(LLM):
                 
                 # Add Rich console formatting
                 console = Console()
-                print()  # Add blank line before response
-                console.print("\nAI:", style="bold green")
                 
                 # Handle markdown formatting if present
                 if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown(response_text, style="green")
+                    md = Markdown("\nAI:" + response_text, style="green")
                     console.print(md)
                 else:
-                    console.print(response_text, style="green")
+                    console.print("\nAI:" + response_text, style="green")
 
                 if self.memory:
                     self._store_memory(prompt, response_text)
