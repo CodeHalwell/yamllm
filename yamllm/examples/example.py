@@ -41,18 +41,6 @@ while True:
         response = llm.query(prompt)
         if response is None:
             continue
-            
-        console.print("\nAI:", style="bold green")
-        
-        # Handle markdown formatting if present
-        try:
-            if any(marker in response for marker in ['###', '```', '*', '_', '-']):
-                md = Markdown(response, style="green")
-                console.print(md)
-            else:
-                console.print(response, style="green")
-        except TypeError:
-            console.print("[red]Error: Received invalid response format[/red]")
         
     except FileNotFoundError as e:
         console.print(f"[red]Configuration file not found:[/red] {e}")

@@ -10,6 +10,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.console import Console 
 
+
 dotenv.load_dotenv()
 
 
@@ -323,17 +324,29 @@ class LLM(object):
                     stop=self.stop_sequences or None
                 )         
                 response_text = response.choices[0].message.content
+                
+                # Add Rich console formatting
+                console = Console()
+                print()  # Add blank line before response
+                console.print("\nAI:", style="bold green")
+                
+                # Handle markdown formatting if present
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown(response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print(response_text, style="green")
+
+                if self.memory:
+                    self._store_memory(prompt, response_text)
+
+                if self.output_stream:
+                    return None
+                else:
+                    return response_text
 
             except Exception as e:
-                    raise Exception(f"Error getting response from OpenAI: {str(e)}")
-
-        # Handle memory storage if enabled
-        if self.memory:
-            self._store_memory(prompt, response_text)
-
-        if self.output_stream:
-            return None        
-        return response_text
+                raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
     def _store_memory(self, prompt: str, response_text: str) -> None:
         """
@@ -585,12 +598,27 @@ class MistralAI(LLM):
                     top_p=self.top_p
                 )         
                 response_text = response.choices[0].message.content
+                
+                # Add Rich console formatting
+                console = Console()
+                print()  # Add blank line before response
+                console.print("\nAI:", style="bold green")
+                
+                # Handle markdown formatting if present
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown(response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print(response_text, style="green")
 
-                if self.memory_enabled:
+                if self.memory:
                     self._store_memory(prompt, response_text)
 
-                return response_text
-
+                if self.output_stream:
+                    return None
+                else:
+                    return response_text
+                
             except Exception as e:
                 raise Exception(f"Error getting response from Mistral: {str(e)}")
     
@@ -687,11 +715,26 @@ class GoogleGemini(LLM):
                     n=1
                 )         
                 response_text = response.choices[0].message.content
+                
+                # Add Rich console formatting
+                console = Console()
+                print()  # Add blank line before response
+                console.print("\nAI:", style="bold green")
+                
+                # Handle markdown formatting if present
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown(response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print(response_text, style="green")
 
                 if self.memory:
                     self._store_memory(prompt, response_text)
 
-                return response_text
+                if self.output_stream:
+                    return None
+                else:
+                    return response_text
 
             except Exception as e:
                 raise Exception(f"Error getting response from Google: {str(e)}")
