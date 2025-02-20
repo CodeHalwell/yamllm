@@ -413,11 +413,39 @@ class LLM(object):
             for key, value in values.items():
                 print(f"{key:20}: {value}")
 
+    def __repr__(self) -> str:
+        """Return a detailed string representation of the LLM instance."""
+        return f"{self.__class__.__name__}(provider='{self.provider}', model='{self.model}')"
+
+    def __str__(self) -> str:
+        """Return a human-readable string representation of the LLM instance."""
+        return f"{self.__class__.__name__} using {self.provider} {self.model}"
+
+    def __enter__(self):
+        """Support context manager interface."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Clean up resources when exiting context manager."""
+        if hasattr(self, 'client'):
+            self.client.close()
+        if hasattr(self, 'embedding_client'):
+            self.embedding_client.close()
+
+    def __bool__(self) -> bool:
+        """Return True if the LLM instance is properly initialized with an API key."""
+        return bool(self.api_key)
+
 
 class OpenAIGPT(LLM):
     def __init__(self, config_path: str, api_key: str) -> None:
         super().__init__(config_path, api_key)
         self.provider = "openai"
+
+class DeepSeek(LLM):
+    def __init__(self, config_path: str, api_key: str) -> None:
+        super().__init__(config_path, api_key)
+        self.provider = 'deepseek'
 
     
 class GoogleGemini(LLM):
@@ -492,10 +520,3 @@ class GoogleGemini(LLM):
 
         return response_text
     
-class DeepSeek(LLM):
-    def __init__(self, config_path: str, api_key: str) -> None:
-        super().__init__(config_path, api_key)
-        self.provider = 'deepseek'
-
-
-

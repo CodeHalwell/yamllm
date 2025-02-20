@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 import faiss
 import numpy as np
 import pickle
@@ -8,8 +8,10 @@ import pickle
 class ConversationStore:
     """
     A class to manage conversation history stored in a SQLite database.
+
     Attributes:
         db_path (str): The path to the SQLite database file.
+
     Methods:
         db_exists() -> bool:
             Check if the database file exists.
@@ -19,6 +21,18 @@ class ConversationStore:
             Add a message to the database and return its ID.
         get_messages(session_id: str = None, limit: int = None) -> List[Dict[str, str]]:
             Retrieve messages from the database.
+        get_session_ids() -> List[str]:
+            Retrieve a list of unique session IDs from the database.
+        delete_session(session_id: str) -> None:
+            Delete all messages associated with a specific session ID.
+        delete_database() -> None:
+            Delete the entire database file.
+        __len__() -> int:
+            Returns the total number of messages in the store.
+        __str__() -> str:
+            Returns a human-readable string representation.
+        __repr__() -> str:
+            Returns a detailed string representation.
     """
     def __init__(self, db_path: str = "yamllm/memory/conversation_history.db"):
         self.db_path = db_path
@@ -120,6 +134,59 @@ class ConversationStore:
         finally:
             conn.close()
 
+    def get_session_ids(self) -> List[str]:
+        """
+        Retrieve a list of unique session IDs from the database.
+        Returns:
+            List[str]: A list of unique session IDs.
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT DISTINCT session_id FROM messages')
+            results = cursor.fetchall()
+            return [row[0] for row in results]
+        finally:
+            conn.close()
+
+    def delete_session(self, session_id: str) -> None:
+        """
+        Delete all messages associated with a specific session ID.
+        Args:
+            session_id (str): The ID of the session to delete.
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('DELETE FROM messages WHERE session_id = ?', (session_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def delete_database(self) -> None:
+        """Delete the entire database file."""
+        os.remove(self.db_path)
+
+
+    def __repr__(self) -> str:
+        """Returns a detailed string representation of the ConversationStore object."""
+        return f"ConversationStore(db_path='{self.db_path}')"
+    
+    def __str__(self) -> str:
+        """Returns a human-readable string representation of the ConversationStore object."""
+        session_count = len(self.get_session_ids())
+        return f"ConversationStore with {session_count} sessions at {self.db_path}"
+    
+    def __len__(self) -> int:
+        """Returns the total number of messages in the store."""
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute('SELECT COUNT(*) FROM messages')
+            return cursor.fetchone()[0]
+        finally:
+            conn.close()
+        
 class VectorStore:
     def __init__(self, vector_dim: int = 1536, store_path: str = "yamllm/memory/vector_store"):
         """
@@ -155,14 +222,17 @@ class VectorStore:
 
     def add_vector(self, vector: List[float], message_id: int, content: str, role: str) -> None:
         """
-        Adds a vector to the index and stores associated metadata.
+        Add a vector to the index with its associated metadata.
+
         Args:
-            vector (List[float]): The vector to be added.
-            message_id (int): The unique identifier for the message.
-            content (str): The content of the message.
-            role (str): The role associated with the message.
-        Returns:
-            None
+            vector (List[float]): The embedding vector to be added.
+            message_id (int): Unique identifier for the message.
+            content (str): The message content.
+            role (str): The role of the message sender.
+
+        Note:
+            The vector is L2-normalized before being added to the index.
+            Updates are automatically saved to disk.
         """
         vector_np = np.array([vector]).astype('float32')
         faiss.normalize_L2(vector_np)
@@ -191,13 +261,18 @@ class VectorStore:
 
     def search(self, query_vector: List[float], k: int = 5) -> List[Dict[str, Any]]:
         """
-        Search for the most similar items in the index based on the provided query vector.
+        Search for the k most similar vectors in the index.
+
         Args:
-            query_vector (List[float]): The query vector to search for similar items.
-            k (int, optional): The number of top similar items to return. Defaults to 5.
+            query_vector (List[float]): The query embedding vector.
+            k (int, optional): Number of similar items to return. Defaults to 5.
+
         Returns:
-            List[Dict[str, Any]]: A list of dictionaries containing the metadata of the 
-            most similar items and their similarity scores.
+            List[Dict[str, Any]]: List of dictionaries containing:
+                - id (int): Message ID
+                - content (str): Message content
+                - role (str): Message role
+                - similarity (float): Similarity score
         """
         query_np = np.array([query_vector]).astype('float32')
         faiss.normalize_L2(query_np)
@@ -215,3 +290,41 @@ class VectorStore:
         ]
         
         return results
+    
+    def get_vec_and_text(self) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
+        """
+        Retrieve all vectors and their associated metadata.
+
+        Returns:
+            Tuple[np.ndarray, List[Dict[str, Any]]]: A tuple containing:
+                - np.ndarray: Array of shape (n, vector_dim) containing all vectors
+                - List[Dict[str, Any]]: List of metadata dictionaries for each vector
+                  with keys: 'id', 'content', 'role'
+
+        Note:
+            Returns empty array and list if the index is empty.
+        """
+        if self.index.ntotal == 0:
+            return np.array([]), []
+        
+        # Initialize array to store vectors
+        vectors = np.empty((self.index.ntotal, self.vector_dim), dtype=np.float32)
+        
+        # Reconstruct vectors one by one
+        for i in range(self.index.ntotal):
+            vectors[i] = self.index.reconstruct(i)
+        
+        return vectors, self.metadata
+    
+    def __repr__(self) -> str:
+        """Returns a detailed string representation of the VectorStore object."""
+        return f"VectorStore(vector_dim={self.vector_dim}, store_path='{self.store_path}')"
+    
+    def __str__(self) -> str:
+        """Returns a human-readable string representation of the VectorStore object."""
+        vector_count = self.index.ntotal
+        return f"VectorStore with {vector_count} vectors of dimension {self.vector_dim}"
+    
+    def __len__(self) -> int:
+        """Returns the total number of vectors in the store."""
+        return self.index.ntotal
