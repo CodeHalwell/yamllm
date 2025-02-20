@@ -18,11 +18,12 @@ import pandas as pd
 from tabulate import tabulate
 
 # load the history into a variable
-history = ConversationStore(r"yamllm\memory\conversation_history.db")
+history = ConversationStore(r"memory\conversation_history.db")
 
 # use the get_messages() method to load the messages and load into a DataFrame for easy viewing
-messages = history.get_messages('session1')
+messages = history.get_messages()
 df = pd.DataFrame(messages)
+
 
 # Print the table using tabulate, which displays in an easy to read format
 print(tabulate(df, headers='keys', tablefmt='psql'))

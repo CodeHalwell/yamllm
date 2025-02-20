@@ -25,7 +25,7 @@ class ConversationStore:
             Retrieve a list of unique session IDs from the database.
         delete_session(session_id: str) -> None:
             Delete all messages associated with a specific session ID.
-        delete_database() -> None:
+            delete_database() -> None:
             Delete the entire database file.
         __len__() -> int:
             Returns the total number of messages in the store.

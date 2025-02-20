@@ -253,7 +253,6 @@ class LLM(object):
                 
             # Get recent conversation history
             messages = self.memory.get_messages(
-                session_id="session1", 
                 limit=self.memory_max_messages
             )
         else:
@@ -338,8 +337,6 @@ class LLM(object):
             role="assistant"
         )
 
-
-
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
         """
         Update the settings of the instance with the provided keyword arguments.
@@ -350,6 +347,9 @@ class LLM(object):
         Args:
             **kwargs (Dict[str, Any]): Keyword arguments where the key is the 
             attribute name and the value is the new value for that attribute.
+
+        Example:
+            >>> llm.update_settings(temperature=0.8)
         """
         for key, value in kwargs.items():
             if hasattr(self, key):
