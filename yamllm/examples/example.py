@@ -1,8 +1,7 @@
 import os
 import dotenv
 from rich.console import Console
-from rich.markdown import Markdown
-from yamllm.core.llm import GoogleGemini, OpenAIGPT, DeepSeek, MistralAI
+from yamllm.core.llm import GoogleGemini
 
 """
 This script initializes a language model (LLM) using a configuration file and an API key, 

@@ -1,4 +1,6 @@
 from yamllm import ConversationStore
+import pandas as pd
+from tabulate import tabulate
 """
 This script retrieves and displays conversation messages from a SQLite database.
 Modules:
@@ -14,8 +16,6 @@ Variables:
 Usage:
     Run the script to print the conversation messages for 'session1' in a tabular format.
 """
-import pandas as pd
-from tabulate import tabulate
 
 # load the history into a variable
 history = ConversationStore(r"memory\conversation_history.db")

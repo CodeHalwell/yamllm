@@ -1,4 +1,4 @@
-from yamllm.core.llm import OpenAIGPT, GoogleGemini, DeepSeek
+from yamllm.core.llm import GoogleGemini
 import os
 import dotenv
 
