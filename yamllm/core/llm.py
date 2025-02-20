@@ -290,7 +290,7 @@ class LLM(object):
                 presence_penalty=self.presence_penalty,
                 stop=self.stop_sequences or None
             )         
-            response_text = response.choices[0].message.content.strip()
+            response_text = response.choices[0].message.content
 
         except Exception as e:
                 raise Exception(f"Error getting response from OpenAI: {str(e)}")
@@ -521,7 +521,7 @@ class MistralAI(LLM):
                 max_tokens=self.max_tokens,
                 top_p=self.top_p
             )         
-            response_text = response.choices[0].message.content.strip()
+            response_text = response.choices[0].message.content
 
             # Handle memory storage if enabled
             if self.memory_enabled:
@@ -593,7 +593,7 @@ class GoogleGemini(LLM):
                 top_p=self.top_p,
                 n=1
             )         
-            response_text = response.choices[0].message.content.strip()
+            response_text = response.choices[0].message.content
 
         except Exception as e:
              raise Exception(f"Error getting response from Google: {str(e)}")

@@ -1,6 +1,7 @@
 import os
 import dotenv
-import pprint
+from rich.console import Console
+from rich.markdown import Markdown
 from yamllm.core.llm import GoogleGemini, OpenAIGPT, DeepSeek, MistralAI
 
 """
@@ -22,7 +23,7 @@ Exceptions:
 """
 
 # Initialize pretty printer
-pp = pprint.PrettyPrinter(indent=2, width=80)
+console = Console()
 dotenv.load_dotenv()
 
 # Get the absolute path to the config file
@@ -33,17 +34,23 @@ llm = OpenAIGPT(config_path=config_path, api_key=os.environ.get("OPENAI_API_KEY"
 
 while True:
     try:          
-        prompt = input("Human: ")
+        prompt = input("\nHuman: ")
         if prompt.lower() == "exit":
             break
+        
         response = llm.query(prompt)
-        print("\nAI:")
-        pp.pprint(response)
-        print()
+        console.print("\nAI:", style="bold green")
+        
+        # Handle markdown formatting if present
+        if any(marker in response for marker in ['###', '```', '*', '_', '-']):
+            md = Markdown(response)
+            console.print(md)
+        else:
+            console.print(response)
         
     except FileNotFoundError as e:
-        pp.pprint(f"Configuration file not found: {e}")
+        console.print(f"[red]Configuration file not found:[/red] {e}")
     except ValueError as e:
-        pp.pprint(f"Configuration error: {e}")
+        console.print(f"[red]Configuration error:[/red] {e}")
     except Exception as e:
-        pp.pprint(f"An error occurred: {e}")
+        console.print(f"[red]An error occurred:[/red] {e}")
