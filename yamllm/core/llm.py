@@ -233,8 +233,29 @@ class LLM(object):
 
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
-        Send a query to the language model and get the response.
-        """        
+        Generates a response from the language model based on the provided prompt and optional system prompt.
+        
+        Args:
+            prompt (str): The user's input prompt to generate a response for.
+            system_prompt (Optional[str], optional): An optional system prompt to provide context or instructions to the model. Defaults to None.
+        
+        Returns:
+            str: The generated response from the language model if output_stream is disabled.
+            None: If output_stream is enabled, the response is streamed and displayed in real-time.
+        
+        Raises:
+            Exception: If there is an error getting a response from the language model.
+        
+        Behavior:
+            - If a system prompt is provided or exists in the instance, it is added as the first message.
+            - If memory is enabled, conversation history is retrieved and added to the messages.
+            - Similar messages from previous conversations are found and appended to the user's prompt.
+            - The current prompt is added to the messages.
+            - If output_stream is enabled, the response is streamed and displayed using Rich's Live and Markdown components.
+            - If output_stream is disabled, the response is retrieved in a single call and displayed using Rich's Console and Markdown components.
+            - The conversation memory is updated with the new prompt and response.
+        """
+    
         messages = []
         
         # Start with system prompt if provided (must be first)
@@ -481,76 +502,117 @@ class LLM(object):
 
 
 class OpenAIGPT(LLM):
+    """
+    A class to interact with OpenAI's GPT models.
+
+    Attributes:
+        provider (str): The name of the provider, set to "openai".
+
+    Methods:
+        __init__(config_path: str, api_key: str) -> None:
+            Initializes the OpenAIGPT instance with the given configuration path and API key.
+
+    Initializes the OpenAIGPT instance.
+
+    Args:
+        config_path (str): The path to the configuration file.
+        api_key (str): The API key for accessing OpenAI's services.
+    """
     def __init__(self, config_path: str, api_key: str) -> None:
         super().__init__(config_path, api_key)
         self.provider = "openai"
 
 class DeepSeek(LLM):
+    """
+    DeepSeek is a subclass of LLM that initializes a connection to the DeepSeek provider.
+
+    Attributes:
+        provider (str): The name of the provider, set to 'deepseek'.
+
+    Methods:
+        __init__(config_path: str, api_key: str) -> None:
+            Initializes the DeepSeek instance with the given configuration path and API key.
+
+        Initializes the DeepSeek instance.
+
+        Args:
+            config_path (str): The path to the configuration file.
+            api_key (str): The API key for authentication.
+        """
     def __init__(self, config_path: str, api_key: str) -> None:
         super().__init__(config_path, api_key)
         self.provider = 'deepseek'
 
 class MistralAI(LLM):
+    """    MistralAI class for interacting with the Mistral language model.
+        Attributes:
+            provider (str): The name of the AI provider, set to 'mistral'.
+        Methods:
+            __init__(config_path: str, api_key: str) -> None:
+                Initializes the MistralAI instance with the given configuration path and API key.
+            get_response(prompt: str, system_prompt: Optional[str] = None) -> str:
+                Generates a response from the Mistral language model based on the given prompt and optional system prompt.
+                Parameters:
+                    prompt (str): The user input prompt to generate a response for.
+                    system_prompt (Optional[str]): An optional system prompt to provide context for the response.
+                Returns:
+                    str: The generated response from the Mistral language model."""
+    def __init__(self, config_path: str, api_key: str) -> None:
+        super().__init__(config_path, api_key)
+        self.provider = 'mistral'
+
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
-        Override get_response to use only Mistral-supported parameters and message ordering.
+        Generate a response based on the given prompt and optional system prompt.
+        This method overrides the base `get_response` method to use only Mistral-supported 
+        parameters and message ordering. It supports memory initialization, conversation 
+        history retrieval, and finding similar messages to provide relevant context.
         
-        Args:
-            prompt (str): The prompt to send to the model.
-            system_prompt (Optional[str]): An optional system prompt for context.
-            
+        Parameters:
+        - prompt (str): The user prompt to generate a response for.
+        - system_prompt (Optional[str]): An optional system prompt to provide context.
+        
         Returns:
-            str: The response from the Mistral language model.
-            
+        - str: The generated response text if `output_stream` is False, otherwise None.
+        
         Raises:
-            Exception: If there is an error getting the response from Mistral.
-        """
+        - Exception: If there is an error getting a response from Mistral."""
+
         messages = []
         
-        # Start with system prompt if provided (must be first)
+        # Start with system prompt if provided
         if system_prompt or self.system_prompt:
             messages.append({
                 "role": "system",
                 "content": system_prompt or self.system_prompt
             })
-        
+
         # Initialize memory if enabled
         if self.memory_enabled:
             self.memory = ConversationStore()
             self.vector_store = VectorStore()
             if not self.memory.db_exists():
                 self.memory.create_db()
-            
+                
             # Get conversation history
             history = self.memory.get_messages(
                 session_id="session1", 
                 limit=self.memory_max_messages
             )
-            
-            # Add history messages maintaining strict user-assistant alternation
             messages.extend(history)
             
-            # Find and format similar messages as part of the user's prompt
-            similar_context = ""
+            # Find similar messages and add as context to the prompt
             try:
                 similar_results = self.find_similar_messages(prompt, k=2)
                 if similar_results:
-                    similar_context = "\nRelevant context from previous conversations:\n" + \
+                    similar_context = "\nRelevant context:\n" + \
                         "\n".join([f"{m['role']}: {m['content']}" for m in similar_results])
+                    prompt = f"{prompt}\n{similar_context}"
             except Exception:
                 pass
-            
-            # Add current prompt with context
-            messages.append({
-                "role": "user", 
-                "content": f"{prompt}{similar_context}"
-            })
-        else:
-            # Just add the current prompt if memory is disabled
-            messages.append({
-                "role": "user",
-                "content": str(prompt)
-            })
+
+        # Add the current prompt
+        messages.append({"role": "user", "content": str(prompt)})
 
         if self.output_stream:
             try:
@@ -564,18 +626,17 @@ class MistralAI(LLM):
                 )
                 console = Console()
                 response_text = ""
+                print()
                 
                 with Live(console=console, refresh_per_second=10) as live:
                     for chunk in response:
                         if chunk.choices[0].delta.content:
                             response_text += chunk.choices[0].delta.content
-                            # Add a newline before the AI response
                             md = Markdown(f"\nAI: {response_text}", style="green")
                             live.update(md)
 
                 if self.memory_enabled:
                     self._store_memory(prompt, response_text)
-                    
                 return None
 
             except Exception as e:
@@ -592,35 +653,53 @@ class MistralAI(LLM):
                 )         
                 response_text = response.choices[0].message.content
                 
-                # Add Rich console formatting
                 console = Console()
-                
-                # Handle markdown formatting if present
                 if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
                     md = Markdown("\nAI:" + response_text, style="green")
                     console.print(md)
                 else:
                     console.print("\nAI:" + response_text, style="green")
-                
+
             except Exception as e:
                 raise Exception(f"Error getting response from Mistral: {str(e)}")
             
+        if self.memory_enabled:
+            self._store_memory(prompt, response_text)
 
-        self._store_memory(prompt, response_text)
-
-        if self.output_stream:
-            return None
-        else:
-            return response_text
+        return response_text if not self.output_stream else None
     
 class GoogleGemini(LLM):
+    """GoogleGemini is a subclass of LLM that interacts with Google's language model to generate responses based on given prompts.
+        
+        Attributes:
+        provider (str): The provider of the language model, set to 'google'.
+        
+        Methods:
+        __init__(config_path: str, api_key: str) -> None:
+            Initializes the GoogleGemini instance with the given configuration path and API key.
+        
+        get_response(prompt: str, system_prompt: Optional[str] = None) -> str:
+        
+        Generates a response from the language model based on the given prompt and optional system prompt.
+                str: The response from the language model.
+                Exception: If there is an error getting the response from the language model."""
     def __init__(self, config_path: str, api_key: str) -> None:
         super().__init__(config_path, api_key)
         self.provider = 'google'
 
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
-        Override get_response to use only Google-supported parameters.
+        Override get_response to use only Google-supported parameters and message ordering.
+        
+        Args:
+            prompt (str): The prompt to send to the model.
+            system_prompt (Optional[str]): An optional system prompt for context.
+            
+        Returns:
+            str: The response from the Google language model.
+            
+        Raises:
+            Exception: If there is an error getting the response from Google.
         """
         if self.memory_enabled:
             self.memory = ConversationStore()

@@ -38,7 +38,7 @@ context:
 # Output Formatting
 output:
   format: "text"  # supported: text, json, markdown
-  stream: false
+  stream: true
 
 logging:
   level: "INFO"
