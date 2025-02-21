@@ -141,6 +141,23 @@ class LLM(object):
             api_key=os.environ["OPENAI_API_KEY"],
         )
 
+        if self.memory_enabled:
+            try:
+                self.memory = ConversationStore(self.conversation_db_path)
+                self.vector_store = VectorStore(
+                    store_path=self.vector_index_path
+                )
+                if not self.memory.db_exists():
+                    self.memory.create_db()
+            except Exception as e:
+                self.logger.error(f"Error initializing memory: {str(e)}")
+                self.memory_enabled = False
+                self.memory = None
+                self.vector_store = None
+        else:
+            self.memory = None
+            self.vector_store = None
+
     def create_embedding(self, text: str) -> bytes:
         """
         Create an embedding for the given text using OpenAI's API.
@@ -224,51 +241,37 @@ class LLM(object):
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Send a query to the language model and get the response.
-
-        Args:
-            prompt (str): The prompt to send to the model.
-            system_prompt (Optional[str]): An optional system prompt to provide context.
-
-        Returns:
-            str: The response from the language model.
-
-        Raises:
-            Exception: If there is an error getting the response from OpenAI.
         """        
-        # Initialize memory if enabled
-        if self.memory_enabled:
-            self.memory = ConversationStore()
-            self.vector_store = VectorStore()
-            if not self.memory.db_exists():
-                self.memory.create_db()
-                
-            # First, find similar messages if we have previous conversations
-            similar_messages = []
+        messages = []
+        similar_messages = []
+
+        # Check if memory is enabled and properly initialized
+        if self.memory_enabled and self.memory is not None:
             try:
-                similar_results = self.find_similar_messages(prompt, self.vector_store_top_k)
+                # Get conversation history first
+                messages = self.memory.get_messages(
+                    session_id="session1",
+                    limit=self.memory_max_messages
+                )
+
+                # Then find similar messages
+                similar_results = self.find_similar_messages(prompt, k=2)
                 for result in similar_results:
-                    similar_messages.append({
-                        "role": result["role"],
-                        "content": result["content"]
-                    })
-            except Exception:
-                # If this is the first message, there won't be any similar messages
-                pass
-                
-            # Get recent conversation history
-            messages = self.memory.get_messages(
-                limit=self.memory_max_messages
-            )
-        else:
-            self.memory = None
-            messages = []
-            similar_messages = []
+                    if result.get('content') and result.get('role'):
+                        similar_messages.append({
+                            "role": result["role"],
+                            "content": result["content"]
+                        })
+            except Exception as e:
+                self.logger.warning(f"Error retrieving memory: {str(e)}")
+                messages = []
+                similar_messages = []
         
         # Add system prompt if provided
-        if system_prompt or self.config.context.system_prompt:
-            messages.append({
+        if system_prompt or self.system_prompt:
+            messages.insert(0, {
                 "role": "system",
-                "content": system_prompt or self.config.context.system_prompt
+                "content": system_prompt or self.system_prompt
             })
         
         # Add context from similar messages if any exist
@@ -324,6 +327,9 @@ class LLM(object):
                     stop=self.stop_sequences or None
                 )         
                 response_text = response.choices[0].message.content
+
+                if self.memory:
+                    self._store_memory(prompt, response_text)
                 
                 # Add Rich console formatting
                 console = Console()
@@ -335,9 +341,6 @@ class LLM(object):
                 else:
                     console.print("\nAI:" + response_text, style="green")
 
-                if self.memory:
-                    self._store_memory(prompt, response_text)
-
                 if self.output_stream:
                     return None
                 else:
@@ -347,40 +350,40 @@ class LLM(object):
                 raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
     def _store_memory(self, prompt: str, response_text: str) -> None:
-        """
-        Helper method to store conversation in memory.
-        
-        Args:
-            prompt (str): The user's input prompt
-            response_text (str): The model's response text
-        """
-        # Store user message
-        message_id = self.memory.add_message(
-            session_id="session1", 
-            role="user", 
-            content=prompt
-        )
-        prompt_embedding = self.create_embedding(prompt)
-        self.vector_store.add_vector(
-            vector=prompt_embedding,
-            message_id=message_id,
-            content=prompt,
-            role="user"
-        )
-        
-        # Store assistant response
-        response_id = self.memory.add_message(
-            session_id="session1", 
-            role="assistant", 
-            content=response_text
-        )
-        response_embedding = self.create_embedding(response_text)
-        self.vector_store.add_vector(
-            vector=response_embedding,
-            message_id=response_id,
-            content=response_text,
-            role="assistant"
-        )
+        """Store the conversation in memory."""
+        if not self.memory_enabled or self.memory is None or self.vector_store is None:
+            return
+            
+        try:
+            # Store user message
+            message_id = self.memory.add_message(
+                session_id="session1", 
+                role="user", 
+                content=prompt
+            )
+            prompt_embedding = self.create_embedding(prompt)
+            self.vector_store.add_vector(
+                vector=prompt_embedding,
+                message_id=message_id,
+                content=prompt,
+                role="user"
+            )
+            
+            # Store assistant response 
+            response_id = self.memory.add_message(
+                session_id="session1", 
+                role="assistant", 
+                content=response_text
+            )
+            response_embedding = self.create_embedding(response_text)
+            self.vector_store.add_vector(
+                vector=response_embedding,
+                message_id=response_id,
+                content=response_text,
+                role="assistant"
+            )
+        except Exception as e:
+            self.logger.error(f"Error storing memory: {str(e)}")
 
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
         """
