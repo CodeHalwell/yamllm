@@ -141,22 +141,15 @@ class LLM(object):
             api_key=os.environ["OPENAI_API_KEY"],
         )
 
+        self.memory = None
+        self.vector_store = None
         if self.memory_enabled:
-            try:
-                self.memory = ConversationStore(self.conversation_db_path)
-                self.vector_store = VectorStore(
-                    store_path=self.vector_index_path
-                )
-                if not self.memory.db_exists():
-                    self.memory.create_db()
-            except Exception as e:
-                self.logger.error(f"Error initializing memory: {str(e)}")
-                self.memory_enabled = False
-                self.memory = None
-                self.vector_store = None
-        else:
-            self.memory = None
-            self.vector_store = None
+            self.memory = ConversationStore(db_path=self.conversation_db_path)
+            self.vector_store = VectorStore(
+                store_path=os.path.dirname(self.vector_index_path)
+            )
+            if not self.memory.db_exists():
+                self.memory.create_db()
 
     def create_embedding(self, text: str) -> bytes:
         """
@@ -243,48 +236,46 @@ class LLM(object):
         Send a query to the language model and get the response.
         """        
         messages = []
-        similar_messages = []
-
-        # Check if memory is enabled and properly initialized
-        if self.memory_enabled and self.memory is not None:
-            try:
-                # Get conversation history first
-                messages = self.memory.get_messages(
-                    session_id="session1",
-                    limit=self.memory_max_messages
-                )
-
-                # Then find similar messages
-                similar_results = self.find_similar_messages(prompt, k=2)
-                for result in similar_results:
-                    if result.get('content') and result.get('role'):
-                        similar_messages.append({
-                            "role": result["role"],
-                            "content": result["content"]
-                        })
-            except Exception as e:
-                self.logger.warning(f"Error retrieving memory: {str(e)}")
-                messages = []
-                similar_messages = []
         
-        # Add system prompt if provided
+        # Start with system prompt if provided (must be first)
         if system_prompt or self.system_prompt:
-            messages.insert(0, {
+            messages.append({
                 "role": "system",
                 "content": system_prompt or self.system_prompt
             })
         
-        # Add context from similar messages if any exist
-        if similar_messages:
-            context_prompt = {
-                "role": "system",
-                "content": "Here are some relevant previous conversations:\n" + 
-                        "\n".join([f"{m['role']}: {m['content']}" for m in similar_messages])
-            }
-            messages.append(context_prompt)
-        
-        # Add user message
-        messages.append({"role": "user", "content": str(prompt)})
+        # Initialize memory if enabled
+        if self.memory_enabled:           
+            # Get conversation history
+            history = self.memory.get_messages(
+                session_id="session1", 
+                limit=self.memory_max_messages
+            )
+            
+            # Add history messages maintaining strict user-assistant alternation
+            messages.extend(history)
+            
+            # Find and format similar messages as part of the user's prompt
+            similar_context = ""
+            try:
+                similar_results = self.find_similar_messages(prompt, k=2)
+                if similar_results:
+                    similar_context = "\nRelevant context from previous conversations:\n" + \
+                        "\n".join([f"{m['role']}: {m['content']}" for m in similar_results])
+            except Exception:
+                pass
+            
+            # Add current prompt with context
+            messages.append({
+                "role": "user", 
+                "content": f"{prompt}{similar_context}"
+            })
+        else:
+            # Just add the current prompt if memory is disabled
+            messages.append({
+                "role": "user",
+                "content": str(prompt)
+            })
 
         if self.output_stream:
             try:
@@ -327,9 +318,6 @@ class LLM(object):
                     stop=self.stop_sequences or None
                 )         
                 response_text = response.choices[0].message.content
-
-                if self.memory:
-                    self._store_memory(prompt, response_text)
                 
                 # Add Rich console formatting
                 console = Console()
@@ -341,17 +329,21 @@ class LLM(object):
                 else:
                     console.print("\nAI:" + response_text, style="green")
 
-                if self.output_stream:
-                    return None
-                else:
-                    return response_text
-
             except Exception as e:
                 raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
+
+        self._store_memory(prompt, response_text)
+
+        if self.output_stream:
+            return None
+        else:
+            return response_text
+
     def _store_memory(self, prompt: str, response_text: str) -> None:
         """Store the conversation in memory."""
-        if not self.memory_enabled or self.memory is None or self.vector_store is None:
+
+        if not self.memory_enabled:
             return
             
         try:
@@ -609,17 +601,17 @@ class MistralAI(LLM):
                     console.print(md)
                 else:
                     console.print("\nAI:" + response_text, style="green")
-
-                if self.memory:
-                    self._store_memory(prompt, response_text)
-
-                if self.output_stream:
-                    return None
-                else:
-                    return response_text
                 
             except Exception as e:
                 raise Exception(f"Error getting response from Mistral: {str(e)}")
+            
+
+        self._store_memory(prompt, response_text)
+
+        if self.output_stream:
+            return None
+        else:
+            return response_text
     
 class GoogleGemini(LLM):
     def __init__(self, config_path: str, api_key: str) -> None:
@@ -725,14 +717,13 @@ class GoogleGemini(LLM):
                 else:
                     console.print("\nAI:" + response_text, style="green")
 
-                if self.memory:
-                    self._store_memory(prompt, response_text)
-
-                if self.output_stream:
-                    return None
-                else:
-                    return response_text
-
             except Exception as e:
                 raise Exception(f"Error getting response from Google: {str(e)}")
+            
+        self._store_memory(prompt, response_text)
+
+        if self.output_stream:
+            return None
+        else:
+            return response_text
     

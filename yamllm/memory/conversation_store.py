@@ -94,6 +94,9 @@ class ConversationStore:
             message_id = cursor.lastrowid
             conn.commit()
             return message_id
+        except Exception as e:
+            print(f"Error adding message: {e}")
+            return None
         finally:
             conn.close()
 
