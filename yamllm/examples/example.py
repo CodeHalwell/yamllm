@@ -1,7 +1,7 @@
 import os
 import dotenv
 from rich.console import Console
-from yamllm.core.llm import GoogleGemini, MistralAI
+from yamllm.core.llm import MistralAI
 
 """
 This script initializes a language model (LLM) using a configuration file and an API key, 
