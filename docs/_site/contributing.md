@@ -1,5 +1,3 @@
-[← Back to Index](index.md)
-
 # Contributing to YAMLLM
 
 Thank you for your interest in contributing to YAMLLM! This document provides guidelines and instructions for contributing to the project.

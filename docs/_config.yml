@@ -1,17 +1,43 @@
-theme: jekyll-theme-cayman
+remote_theme: pages-themes/cayman@v0.2.0
 plugins:
-  - jekyll-theme-cayman
+  - jekyll-remote-theme
   - jekyll-seo-tag
 
 title: YAMLLM
 description: YAML-based LLM configuration and execution
 show_downloads: true
+google_analytics: # your GA tracking ID here (optional)
 
+# Theme settings
+colors:
+  header_bg: "#159957"
+  header_bg_gradient: "#155799"
+  link_color: "#1e6bb8"
+  section_headings_color: "#159957"
+
+# Build settings
 markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: 'highlight'
 
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:path/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "docs"
+    values:
+      layout: "default"
+
+# Exclude files from processing
 exclude:
   - Gemfile
   - Gemfile.lock
@@ -20,3 +46,9 @@ exclude:
   - vendor/cache/
   - vendor/gems/
   - vendor/ruby/
+  - .sass-cache/
+  - .jekyll-cache/
+  - .git/
+  - .github/
+  - README.md
+  - LICENSE

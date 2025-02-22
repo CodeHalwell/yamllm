@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>Examples | YAMLLM</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="Examples" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="YAML-based LLM configuration and execution" />
+<meta property="og:description" content="YAML-based LLM configuration and execution" />
+<link rel="canonical" href="http://localhost:4000/examples.html" />
+<meta property="og:url" content="http://localhost:4000/examples.html" />
+<meta property="og:site_name" content="YAMLLM" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="Examples" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"YAML-based LLM configuration and execution","headline":"Examples","url":"http://localhost:4000/examples.html"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap" as="style" type="text/css" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="/assets/css/style.css?v=439618ed58689f4af4c4e87e204ac682704f12eb">
+    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+
+<!-- Setup Google Analytics -->
+
+
+
+<!-- You can set your favicon here -->
+<!-- link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" -->
+
+<!-- end custom head snippets -->
+
+  </head>
+  <body>
+    <a id="skip-to-content" href="#content">Skip to the content.</a>
+
+    <header class="page-header" role="banner">
+      <h1 class="project-name">Examples</h1>
+      <h2 class="project-tagline">YAML-based LLM configuration and execution</h2>
+      
+        <a href="https://github.com/CodeHalwell/yamllm" class="btn">View on GitHub</a>
+      
+      
+        <a href="https://github.com/CodeHalwell/yamllm/zipball/gh-pages" class="btn">Download .zip</a>
+        <a href="https://github.com/CodeHalwell/yamllm/tarball/gh-pages" class="btn">Download .tar.gz</a>
+      
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      <h1 id="examples">Examples</h1>
+
+<h2 id="basic-usage">Basic Usage</h2>
+
+<h3 id="simple-query">Simple Query</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">GoogleGemini</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">dotenv</span>
+
+<span class="n">dotenv</span><span class="p">.</span><span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="n">config_path</span> <span class="o">=</span> <span class="s">"config.yaml"</span>
+<span class="n">llm</span> <span class="o">=</span> <span class="n">GoogleGemini</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"GOOGLE_API_KEY"</span><span class="p">))</span>
+
+<span class="c1"># Make a query - response printing is handled automatically
+</span><span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="s">"Give me some boilerplate pytorch code please"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="interactive-chat">Interactive Chat</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">GoogleGemini</span>
+<span class="kn">from</span> <span class="nn">rich.console</span> <span class="kn">import</span> <span class="n">Console</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">dotenv</span>
+
+<span class="n">dotenv</span><span class="p">.</span><span class="n">load_dotenv</span><span class="p">()</span>
+<span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+
+<span class="n">config_path</span> <span class="o">=</span> <span class="s">"config.yaml"</span>
+<span class="n">llm</span> <span class="o">=</span> <span class="n">GoogleGemini</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"GOOGLE_API_KEY"</span><span class="p">))</span>
+
+<span class="k">while</span> <span class="bp">True</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>          
+        <span class="n">prompt</span> <span class="o">=</span> <span class="nb">input</span><span class="p">(</span><span class="s">"</span><span class="se">\n</span><span class="s">Human: "</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">prompt</span><span class="p">.</span><span class="n">lower</span><span class="p">()</span> <span class="o">==</span> <span class="s">"exit"</span><span class="p">:</span>
+            <span class="k">break</span>
+        
+        <span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="n">prompt</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">response</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+            <span class="k">continue</span>
+        
+    <span class="k">except</span> <span class="nb">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="p">.</span><span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[red]Configuration file not found:[/red] </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="p">.</span><span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[red]Configuration error:[/red] </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+    <span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">console</span><span class="p">.</span><span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[red]An error occurred:[/red] </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="provider-examples">Provider Examples</h2>
+
+<h3 id="openai">OpenAI</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">OpenAIGPT</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">dotenv</span>
+
+<span class="n">dotenv</span><span class="p">.</span><span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="n">config_path</span> <span class="o">=</span> <span class="s">"config.yaml"</span>
+<span class="n">llm</span> <span class="o">=</span> <span class="n">OpenAIGPT</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"OPENAI_API_KEY"</span><span class="p">))</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="s">"What is machine learning?"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="mistral-ai">Mistral AI</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">MistralAI</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">dotenv</span>
+
+<span class="n">dotenv</span><span class="p">.</span><span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="n">config_path</span> <span class="o">=</span> <span class="s">"config.yaml"</span>
+<span class="n">llm</span> <span class="o">=</span> <span class="n">MistralAI</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"MISTRAL_API_KEY"</span><span class="p">))</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="s">"Explain quantum computing"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h3 id="deepseek">DeepSeek</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">DeepSeek</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">dotenv</span>
+
+<span class="n">dotenv</span><span class="p">.</span><span class="n">load_dotenv</span><span class="p">()</span>
+
+<span class="n">config_path</span> <span class="o">=</span> <span class="s">"config.yaml"</span>
+<span class="n">llm</span> <span class="o">=</span> <span class="n">DeepSeek</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="n">config_path</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"DEEPSEEK_API_KEY"</span><span class="p">))</span>
+<span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="s">"Help me write a Python function"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="configuration-examples">Configuration Examples</h2>
+
+<h3 id="openai-configuration">OpenAI Configuration</h3>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">provider</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">openai"</span>
+  <span class="na">model</span><span class="pi">:</span> <span class="s2">"</span><span class="s">gpt-4-turbo-preview"</span>
+  <span class="na">api_key</span><span class="pi">:</span> <span class="s">${OPENAI_API_KEY}</span>
+  <span class="na">base_url</span><span class="pi">:</span> <span class="no">null</span>  <span class="c1"># optional: for custom endpoints</span>
+
+<span class="na">model_settings</span><span class="pi">:</span>
+  <span class="na">temperature</span><span class="pi">:</span> <span class="m">0.7</span>
+  <span class="na">max_tokens</span><span class="pi">:</span> <span class="m">1000</span>
+</code></pre></div></div>
+
+<h3 id="google-configuration">Google Configuration</h3>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">provider</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">google"</span>
+  <span class="na">model</span><span class="pi">:</span> <span class="s2">"</span><span class="s">gemini-pro"</span>
+  <span class="na">api_key</span><span class="pi">:</span> <span class="s">${GOOGLE_API_KEY}</span>
+  <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">https://generativelanguage.googleapis.com/v1beta/openai/"</span>
+
+<span class="na">model_settings</span><span class="pi">:</span>
+  <span class="na">temperature</span><span class="pi">:</span> <span class="m">0.7</span>
+  <span class="na">max_tokens</span><span class="pi">:</span> <span class="m">1000</span>
+</code></pre></div></div>
+
+<h3 id="mistral-configuration">Mistral Configuration</h3>
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">provider</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s2">"</span><span class="s">mistralai"</span>
+  <span class="na">model</span><span class="pi">:</span> <span class="s2">"</span><span class="s">mistral-small-latest"</span>
+  <span class="na">api_key</span><span class="pi">:</span> <span class="s">${MISTRAL_API_KEY}</span>
+  <span class="na">base_url</span><span class="pi">:</span> <span class="s2">"</span><span class="s">https://api.mistral.ai/v1/"</span>
+
+<span class="na">model_settings</span><span class="pi">:</span>
+  <span class="na">temperature</span><span class="pi">:</span> <span class="m">0.7</span>
+  <span class="na">max_tokens</span><span class="pi">:</span> <span class="m">1000</span>
+</code></pre></div></div>
+
+<h2 id="error-handling-examples">Error Handling Examples</h2>
+
+<h3 id="basic-error-handling">Basic Error Handling</h3>
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">GoogleGemini</span>
+<span class="kn">from</span> <span class="nn">rich.console</span> <span class="kn">import</span> <span class="n">Console</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">dotenv</span>
+
+<span class="n">dotenv</span><span class="p">.</span><span class="n">load_dotenv</span><span class="p">()</span>
+<span class="n">console</span> <span class="o">=</span> <span class="n">Console</span><span class="p">()</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">llm</span> <span class="o">=</span> <span class="n">GoogleGemini</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="s">"config.yaml"</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="n">os</span><span class="p">.</span><span class="n">environ</span><span class="p">.</span><span class="n">get</span><span class="p">(</span><span class="s">"GOOGLE_API_KEY"</span><span class="p">))</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="n">llm</span><span class="p">.</span><span class="n">query</span><span class="p">(</span><span class="s">"Your prompt here"</span><span class="p">)</span>
+<span class="k">except</span> <span class="nb">FileNotFoundError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">console</span><span class="p">.</span><span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[red]Configuration file not found:[/red] </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+<span class="k">except</span> <span class="nb">ValueError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">console</span><span class="p">.</span><span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[red]Configuration error:[/red] </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+<span class="k">except</span> <span class="nb">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+    <span class="n">console</span><span class="p">.</span><span class="k">print</span><span class="p">(</span><span class="sa">f</span><span class="s">"[red]An error occurred:[/red] </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s">"</span><span class="p">)</span>
+</code></pre></div></div>
+
+<h2 id="environment-setup">Environment Setup</h2>
+
+<h3 id="install-package">Install Package</h3>
+<div class="language-bash highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="c"># Using pip</span>
+pip <span class="nb">install </span>yamllm-core
+
+<span class="c"># Using uv</span>
+uv add yamllm-core
+</code></pre></div></div>
+
+<h3 id="environment-variables">Environment Variables</h3>
+<p>Create a <code class="language-plaintext highlighter-rouge">.env</code> file in your project root:</p>
+<div class="language-plaintext highlighter-rouge"><div class="highlight"><pre class="highlight"><code>OPENAI_API_KEY=your_api_key_here
+GOOGLE_API_KEY=your_api_key_here
+MISTRAL_API_KEY=your_api_key_here
+DEEPSEEK_API_KEY=your_api_key_here
+</code></pre></div></div>
+
+<h2 id="additional-resources">Additional Resources</h2>
+
+<ul>
+  <li>Full documentation: <a href="https://github.com/codehalwell/yamllm/docs">YAMLLM Documentation</a></li>
+  <li>Source code: <a href="https://github.com/codehalwell/yamllm">GitHub Repository</a></li>
+  <li>Issue tracker: <a href="https://github.com/codehalwell/yamllm/issues">GitHub Issues</a></li>
+</ul>
+
+
+      <footer class="site-footer">
+        
+          <span class="site-footer-owner"><a href="https://github.com/CodeHalwell/yamllm">yamllm</a> is maintained by <a href="https://github.com/CodeHalwell">CodeHalwell</a>.</span>
+        
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</span>
+      </footer>
+    </main>
+  </body>
+</html>

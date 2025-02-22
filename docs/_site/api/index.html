@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="UTF-8">
+
+<!-- Begin Jekyll SEO tag v2.8.0 -->
+<title>API Reference | YAMLLM</title>
+<meta name="generator" content="Jekyll v3.10.0" />
+<meta property="og:title" content="API Reference" />
+<meta property="og:locale" content="en_US" />
+<meta name="description" content="YAML-based LLM configuration and execution" />
+<meta property="og:description" content="YAML-based LLM configuration and execution" />
+<link rel="canonical" href="http://localhost:4000/api/" />
+<meta property="og:url" content="http://localhost:4000/api/" />
+<meta property="og:site_name" content="YAMLLM" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary" />
+<meta property="twitter:title" content="API Reference" />
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebPage","description":"YAML-based LLM configuration and execution","headline":"API Reference","url":"http://localhost:4000/api/"}</script>
+<!-- End Jekyll SEO tag -->
+
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap" as="style" type="text/css" crossorigin>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#157878">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="stylesheet" href="/assets/css/style.css?v=439618ed58689f4af4c4e87e204ac682704f12eb">
+    <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
+
+<!-- Setup Google Analytics -->
+
+
+
+<!-- You can set your favicon here -->
+<!-- link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" -->
+
+<!-- end custom head snippets -->
+
+  </head>
+  <body>
+    <a id="skip-to-content" href="#content">Skip to the content.</a>
+
+    <header class="page-header" role="banner">
+      <h1 class="project-name">API Reference</h1>
+      <h2 class="project-tagline">YAML-based LLM configuration and execution</h2>
+      
+        <a href="https://github.com/CodeHalwell/yamllm" class="btn">View on GitHub</a>
+      
+      
+        <a href="https://github.com/CodeHalwell/yamllm/zipball/gh-pages" class="btn">Download .zip</a>
+        <a href="https://github.com/CodeHalwell/yamllm/tarball/gh-pages" class="btn">Download .tar.gz</a>
+      
+    </header>
+
+    <main id="content" class="main-content" role="main">
+      <h1 id="api-reference">API Reference</h1>
+
+<h2 id="core-classes">Core Classes</h2>
+
+<h3 id="llm-base-class">LLM Base Class</h3>
+
+<p>The foundational class for all LLM providers:</p>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">LLM</span>
+
+<span class="k">class</span> <span class="nc">LLM</span><span class="p">:</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="s">"""
+        Initialize LLM with configuration.
+
+        Args:
+            config_path (str): Path to YAML configuration file
+            api_key (str): API key for the LLM service
+        """</span>
+
+    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">system_prompt</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="s">"""
+        Send a query to the language model.
+
+        Args:
+            prompt (str): The prompt to send
+            system_prompt (Optional[str]): Optional system context
+
+        Returns:
+            str: Model response
+        """</span>
+
+    <span class="k">def</span> <span class="nf">update_settings</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="s">"""Update configuration settings at runtime."""</span>
+</code></pre></div></div>
+
+<h3 id="provider-specific-classes">Provider-Specific Classes</h3>
+
+<h4 id="openaigpt">OpenAIGPT</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">OpenAIGPT</span>
+
+<span class="k">class</span> <span class="nc">OpenAIGPT</span><span class="p">(</span><span class="n">LLM</span><span class="p">):</span>
+    <span class="s">"""OpenAI GPT model implementation."""</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="s">"""
+        Initialize OpenAI GPT client.
+
+        Args:
+            config_path (str): Path to config file
+            api_key (str): OpenAI API key
+        """</span>
+</code></pre></div></div>
+
+<h4 id="googlegemini">GoogleGemini</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">GoogleGemini</span>
+
+<span class="k">class</span> <span class="nc">GoogleGemini</span><span class="p">(</span><span class="n">LLM</span><span class="p">):</span>
+    <span class="s">"""Google Gemini model implementation."""</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="s">"""
+        Initialize Google Gemini client.
+
+        Args:
+            config_path (str): Path to config file
+            api_key (str): Google API key
+        """</span>
+</code></pre></div></div>
+
+<h4 id="deepseek">DeepSeek</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">DeepSeek</span>
+
+<span class="k">class</span> <span class="nc">DeepSeek</span><span class="p">(</span><span class="n">LLM</span><span class="p">):</span>
+    <span class="s">"""DeepSeek model implementation."""</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="s">"""
+        Initialize DeepSeek client.
+
+        Args:
+            config_path (str): Path to config file
+            api_key (str): DeepSeek API key
+        """</span>
+</code></pre></div></div>
+
+<h4 id="mistralai">MistralAI</h4>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.core.llm</span> <span class="kn">import</span> <span class="n">MistralAI</span>
+
+<span class="k">class</span> <span class="nc">MistralAI</span><span class="p">(</span><span class="n">LLM</span><span class="p">):</span>
+    <span class="s">"""MistralAI model implementation."""</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config_path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">api_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">):</span>
+        <span class="s">"""
+        Initialize MistralAI client.
+
+        Args:
+            config_path (str): Path to config file
+            api_key (str): Mistral API key
+        """</span>
+</code></pre></div></div>
+
+<h2 id="memory-management">Memory Management</h2>
+
+<h3 id="conversationstore">ConversationStore</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.memory</span> <span class="kn">import</span> <span class="n">ConversationStore</span>
+
+<span class="k">class</span> <span class="nc">ConversationStore</span><span class="p">:</span>
+    <span class="s">"""SQLite-based conversation history manager."""</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">db_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s">"yamllm/memory/conversation_history.db"</span><span class="p">):</span>
+        <span class="s">"""
+        Initialize conversation store.
+
+        Args:
+            db_path (str): Path to SQLite database
+        """</span>
+    
+    <span class="k">def</span> <span class="nf">add_message</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="s">"""
+        Add a message to history.
+
+        Args:
+            session_id (str): Conversation session ID
+            role (str): Message role (user/assistant)
+            content (str): Message content
+
+        Returns:
+            int: Message ID
+        """</span>
+
+    <span class="k">def</span> <span class="nf">get_messages</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">session_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="bp">None</span><span class="p">,</span> <span class="n">limit</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="bp">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]:</span>
+        <span class="s">"""
+        Retrieve conversation history.
+
+        Args:
+            session_id (str): Optional session filter
+            limit (int): Optional message limit
+
+        Returns:
+            List[Dict[str, str]]: Message history
+        """</span>
+</code></pre></div></div>
+
+<h3 id="vectorstore">VectorStore</h3>
+
+<div class="language-python highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">yamllm.memory</span> <span class="kn">import</span> <span class="n">VectorStore</span>
+
+<span class="k">class</span> <span class="nc">VectorStore</span><span class="p">:</span>
+    <span class="s">"""FAISS-based vector storage for semantic search."""</span>
+    
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector_dim</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1536</span><span class="p">,</span> <span class="n">store_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s">"yamllm/memory/vector_store"</span><span class="p">):</span>
+        <span class="s">"""
+        Initialize vector store.
+
+        Args:
+            vector_dim (int): Embedding dimension
+            store_path (str): Path to store files
+        """</span>
+
+    <span class="k">def</span> <span class="nf">add_vector</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">vector</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">message_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">content</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">role</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="s">"""
+        Add vector to store.
+
+        Args:
+            vector (List[float]): Embedding vector
+            message_id (int): Message reference ID
+            content (str): Message content
+            role (str): Message role
+        """</span>
+
+    <span class="k">def</span> <span class="nf">search</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_vector</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">float</span><span class="p">],</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]:</span>
+        <span class="s">"""
+        Search similar vectors.
+
+        Args:
+            query_vector (List[float]): Search vector
+            k (int): Number of results
+
+        Returns:
+            List[Dict[str, Any]]: Similar messages
+        """</span>
+</code></pre></div></div>
+
+<h2 id="configuration-schema">Configuration Schema</h2>
+
+<p>Expected YAML configuration structure:</p>
+
+<div class="language-yaml highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="na">provider</span><span class="pi">:</span>
+  <span class="na">name</span><span class="pi">:</span> <span class="s">str</span>          <span class="c1"># Provider name (openai/google/deepseek/mistral)</span>
+  <span class="na">model</span><span class="pi">:</span> <span class="s">str</span>         <span class="c1"># Model identifier</span>
+  <span class="na">api_key</span><span class="pi">:</span> <span class="s">str</span>       <span class="c1"># API key (use env vars)</span>
+  <span class="na">base_url</span><span class="pi">:</span> <span class="s">str</span>      <span class="c1"># Optional API endpoint</span>
+
+<span class="na">model_settings</span><span class="pi">:</span>
+  <span class="na">temperature</span><span class="pi">:</span> <span class="s">float</span>     <span class="c1"># Response randomness (0.0-1.0)</span>
+  <span class="na">max_tokens</span><span class="pi">:</span> <span class="s">int</span>       <span class="c1"># Maximum response length</span>
+  <span class="na">top_p</span><span class="pi">:</span> <span class="s">float</span>         <span class="c1"># Nucleus sampling parameter</span>
+  <span class="na">frequency_penalty</span><span class="pi">:</span> <span class="s">float</span>
+  <span class="na">presence_penalty</span><span class="pi">:</span> <span class="s">float</span>
+  <span class="na">stop_sequences</span><span class="pi">:</span> <span class="s">list</span>
+
+<span class="na">request</span><span class="pi">:</span>
+  <span class="na">timeout</span><span class="pi">:</span> <span class="s">int</span>      <span class="c1"># Request timeout seconds</span>
+  <span class="na">retry</span><span class="pi">:</span>
+    <span class="na">max_attempts</span><span class="pi">:</span> <span class="s">int</span>
+    <span class="na">initial_delay</span><span class="pi">:</span> <span class="s">int</span>
+    <span class="na">backoff_factor</span><span class="pi">:</span> <span class="s">int</span>
+
+<span class="na">context</span><span class="pi">:</span>
+  <span class="na">system_prompt</span><span class="pi">:</span> <span class="s">str</span>    <span class="c1"># System context</span>
+  <span class="na">max_context_length</span><span class="pi">:</span> <span class="s">int</span>
+  <span class="na">memory</span><span class="pi">:</span>
+    <span class="na">enabled</span><span class="pi">:</span> <span class="s">bool</span>
+    <span class="na">max_messages</span><span class="pi">:</span> <span class="s">int</span>
+    <span class="na">conversation_db</span><span class="pi">:</span> <span class="s">str</span>
+    <span class="na">vector_store</span><span class="pi">:</span>
+      <span class="na">index_path</span><span class="pi">:</span> <span class="s">str</span>
+      <span class="na">metadata_path</span><span class="pi">:</span> <span class="s">str</span>
+      <span class="na">top_k</span><span class="pi">:</span> <span class="s">int</span>
+
+<span class="na">output</span><span class="pi">:</span>
+  <span class="na">format</span><span class="pi">:</span> <span class="s">str</span>      <span class="c1"># text/json/markdown</span>
+  <span class="na">stream</span><span class="pi">:</span> <span class="s">bool</span>     <span class="c1"># Enable streaming</span>
+
+<span class="na">tools</span><span class="pi">:</span>
+  <span class="na">enabled</span><span class="pi">:</span> <span class="s">bool</span>
+  <span class="na">tool_timeout</span><span class="pi">:</span> <span class="s">int</span>
+  <span class="na">tool_list</span><span class="pi">:</span> <span class="s">list</span>
+
+<span class="na">safety</span><span class="pi">:</span>
+  <span class="na">content_filtering</span><span class="pi">:</span> <span class="s">bool</span>
+  <span class="na">max_requests_per_minute</span><span class="pi">:</span> <span class="s">int</span>
+  <span class="na">sensitive_keywords</span><span class="pi">:</span> <span class="s">list</span>
+</code></pre></div></div>
+
+<h2 id="usage-examples">Usage Examples</h2>
+
+<p>See the <a href="/examples.html">Examples</a> page for detailed usage examples.</p>
+
+
+      <footer class="site-footer">
+        
+          <span class="site-footer-owner"><a href="https://github.com/CodeHalwell/yamllm">yamllm</a> is maintained by <a href="https://github.com/CodeHalwell">CodeHalwell</a>.</span>
+        
+        <span class="site-footer-credits">This page was generated by <a href="https://pages.github.com">GitHub Pages</a>.</span>
+      </footer>
+    </main>
+  </body>
+</html>

@@ -1,5 +1,3 @@
-[← Back to Index](index.md)
-
 # Configuration Guide
 
 ## Overview

@@ -23,21 +23,3 @@ pre > code {
   border: 0;
   padding: 0;
 }
-
-/* Back to index link styling */
-a[href="index.md"], a[href="../index.md"] {
-  display: inline-block;
-  margin-bottom: 1rem;
-  color: #606c71;
-  text-decoration: none;
-  
-  &:hover {
-      color: #155799;
-      text-decoration: underline;
-  }
-  
-  &::before {
-      content: "←";
-      margin-right: 0.5rem;
-  }
-}

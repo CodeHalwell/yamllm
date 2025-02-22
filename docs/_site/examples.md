@@ -1,5 +1,3 @@
-[← Back to Index](index.md)
-
 # Examples
 
 ## Basic Usage

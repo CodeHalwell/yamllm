@@ -1,5 +1,3 @@
-[← Back to Index](../index.md)
-
 # API Reference
 
 ## Core Classes
