@@ -23,7 +23,16 @@
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link rel="preload" href="https://fonts.googleapis.com/css?family=Open+Sans:400,700&display=swap" as="style" type="text/css" crossorigin>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#157878">
+    <style>
+      :root {
+        --theme-color: #157878;
+      }
+      @supports not (color: var(--theme-color)) {
+        body {
+          background-color: #157878;
+        }
+      }
+    </style>
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="stylesheet" href="/assets/css/style.css?v=439618ed58689f4af4c4e87e204ac682704f12eb">
     <!-- start custom head snippets, customize with your own _includes/head-custom.html file -->
