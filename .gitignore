@@ -6,7 +6,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
 develop-eggs/
 dist/
 downloads/
@@ -36,3 +35,11 @@ metadata.pkl
 dev
 test_results.txt
 report.html
+.doctrees
+.buildinfo
+objects.inv
+autoapi
+_sources
+docs/source
+make.bat
+Makefile
