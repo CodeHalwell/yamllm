@@ -38,8 +38,5 @@ report.html
 .doctrees
 .buildinfo
 objects.inv
-autoapi
-_sources
-docs/source
 make.bat
 Makefile

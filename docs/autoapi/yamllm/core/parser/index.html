@@ -1,0 +1,1911 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="../../../../">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>yamllm.core.parser &mdash; YAMLLM 0.1.5 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+
+  
+      <script src="../../../../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../../../../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="../../../../_static/documentation_options.js?v=59fadc99"></script>
+      <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
+      <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="yamllm.core.utils" href="../utils/index.html" />
+    <link rel="prev" title="yamllm.core.llm" href="../llm/index.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../../index.html" class="icon icon-home">
+            YAMLLM
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Documentation</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../usage.html">Usage Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../configuration.html">Configuration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../api-reference.html">API Reference</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../../../index.html">API Reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="../../index.html">yamllm</a><ul class="current">
+<li class="toctree-l3 current"><a class="reference internal" href="../../index.html#submodules">Submodules</a><ul class="current">
+<li class="toctree-l4 current"><a class="reference internal" href="../index.html">yamllm.core</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../memory/index.html">yamllm.memory</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../tools/index.html">yamllm.tools</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../../index.html">YAMLLM</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../../index.html">API Reference</a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">yamllm</a></li>
+          <li class="breadcrumb-item"><a href="../index.html">yamllm.core</a></li>
+      <li class="breadcrumb-item active">yamllm.core.parser</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../../../../_sources/autoapi/yamllm/core/parser/index.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="module-yamllm.core.parser">
+<span id="yamllm-core-parser"></span><h1>yamllm.core.parser<a class="headerlink" href="#module-yamllm.core.parser" title="Link to this heading"></a></h1>
+<section id="classes">
+<h2>Classes<a class="headerlink" href="#classes" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#yamllm.core.parser.ContextSettings" title="yamllm.core.parser.ContextSettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ContextSettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#yamllm.core.parser.LoggingSettings" title="yamllm.core.parser.LoggingSettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">LoggingSettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#yamllm.core.parser.MemorySettings" title="yamllm.core.parser.MemorySettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">MemorySettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#yamllm.core.parser.ModelSettings" title="yamllm.core.parser.ModelSettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ModelSettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#yamllm.core.parser.OutputSettings" title="yamllm.core.parser.OutputSettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">OutputSettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#yamllm.core.parser.ProviderSettings" title="yamllm.core.parser.ProviderSettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ProviderSettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#yamllm.core.parser.RequestSettings" title="yamllm.core.parser.RequestSettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RequestSettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#yamllm.core.parser.RetrySettings" title="yamllm.core.parser.RetrySettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">RetrySettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#yamllm.core.parser.SafetySettings" title="yamllm.core.parser.SafetySettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SafetySettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#yamllm.core.parser.Tools" title="yamllm.core.parser.Tools"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Tools</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#yamllm.core.parser.VectorStoreSettings" title="yamllm.core.parser.VectorStoreSettings"><code class="xref py py-obj docutils literal notranslate"><span class="pre">VectorStoreSettings</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#yamllm.core.parser.YamlLMConfig" title="yamllm.core.parser.YamlLMConfig"><code class="xref py py-obj docutils literal notranslate"><span class="pre">YamlLMConfig</span></code></a></p></td>
+<td><p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="functions">
+<h2>Functions<a class="headerlink" href="#functions" title="Link to this heading"></a></h2>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="#yamllm.core.parser.parse_yaml_config" title="yamllm.core.parser.parse_yaml_config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">parse_yaml_config</span></code></a>(→ YamlLMConfig)</p></td>
+<td><p>Parses a YAML file into a YamlLMConfig Pydantic model.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading"></a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">ContextSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.ContextSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.ContextSettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.max_context_length">
+<span class="sig-name descname"><span class="pre">max_context_length</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4096</span></em><a class="headerlink" href="#yamllm.core.parser.ContextSettings.max_context_length" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.memory">
+<span class="sig-name descname"><span class="pre">memory</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.MemorySettings" title="yamllm.core.parser.MemorySettings"><span class="pre">MemorySettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.ContextSettings.memory" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ContextSettings.system_prompt">
+<span class="sig-name descname"><span class="pre">system_prompt</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'You</span> <span class="pre">are</span> <span class="pre">a</span> <span class="pre">helpful</span> <span class="pre">assistant.'</span></em><a class="headerlink" href="#yamllm.core.parser.ContextSettings.system_prompt" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">LoggingSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.file">
+<span class="sig-name descname"><span class="pre">file</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'yamllm.log'</span></em><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.file" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.format">
+<span class="sig-name descname"><span class="pre">format</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'%(asctime)s</span> <span class="pre">-</span> <span class="pre">%(name)s</span> <span class="pre">-</span> <span class="pre">%(levelname)s</span> <span class="pre">-</span> <span class="pre">%(message)s'</span></em><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.LoggingSettings.level">
+<span class="sig-name descname"><span class="pre">level</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'INFO'</span></em><a class="headerlink" href="#yamllm.core.parser.LoggingSettings.level" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">MemorySettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.MemorySettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.MemorySettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.conversation_db">
+<span class="sig-name descname"><span class="pre">conversation_db</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#yamllm.core.parser.MemorySettings.conversation_db" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.enabled">
+<span class="sig-name descname"><span class="pre">enabled</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#yamllm.core.parser.MemorySettings.enabled" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.max_messages">
+<span class="sig-name descname"><span class="pre">max_messages</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">10</span></em><a class="headerlink" href="#yamllm.core.parser.MemorySettings.max_messages" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.MemorySettings.vector_store">
+<span class="sig-name descname"><span class="pre">vector_store</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.VectorStoreSettings" title="yamllm.core.parser.VectorStoreSettings"><span class="pre">VectorStoreSettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.MemorySettings.vector_store" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">ModelSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.ModelSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.ModelSettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.frequency_penalty">
+<span class="sig-name descname"><span class="pre">frequency_penalty</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#yamllm.core.parser.ModelSettings.frequency_penalty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.max_tokens">
+<span class="sig-name descname"><span class="pre">max_tokens</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1000</span></em><a class="headerlink" href="#yamllm.core.parser.ModelSettings.max_tokens" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.presence_penalty">
+<span class="sig-name descname"><span class="pre">presence_penalty</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#yamllm.core.parser.ModelSettings.presence_penalty" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.stop_sequences">
+<span class="sig-name descname"><span class="pre">stop_sequences</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#yamllm.core.parser.ModelSettings.stop_sequences" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.temperature">
+<span class="sig-name descname"><span class="pre">temperature</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">0.7</span></em><a class="headerlink" href="#yamllm.core.parser.ModelSettings.temperature" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ModelSettings.top_p">
+<span class="sig-name descname"><span class="pre">top_p</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.13)"><span class="pre">float</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1.0</span></em><a class="headerlink" href="#yamllm.core.parser.ModelSettings.top_p" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">OutputSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.OutputSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.OutputSettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.format">
+<span class="sig-name descname"><span class="pre">format</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'text'</span></em><a class="headerlink" href="#yamllm.core.parser.OutputSettings.format" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.OutputSettings.stream">
+<span class="sig-name descname"><span class="pre">stream</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#yamllm.core.parser.OutputSettings.stream" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">ProviderSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.api_key">
+<span class="sig-name descname"><span class="pre">api_key</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.api_key" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.base_url">
+<span class="sig-name descname"><span class="pre">base_url</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.13)"><span class="pre">None</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.base_url" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.model">
+<span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.model" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.ProviderSettings.name">
+<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><a class="headerlink" href="#yamllm.core.parser.ProviderSettings.name" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">RequestSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.RequestSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.RequestSettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.retry">
+<span class="sig-name descname"><span class="pre">retry</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.RetrySettings" title="yamllm.core.parser.RetrySettings"><span class="pre">RetrySettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.RequestSettings.retry" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RequestSettings.timeout">
+<span class="sig-name descname"><span class="pre">timeout</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">30</span></em><a class="headerlink" href="#yamllm.core.parser.RequestSettings.timeout" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">RetrySettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.RetrySettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.RetrySettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.backoff_factor">
+<span class="sig-name descname"><span class="pre">backoff_factor</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#yamllm.core.parser.RetrySettings.backoff_factor" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.initial_delay">
+<span class="sig-name descname"><span class="pre">initial_delay</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#yamllm.core.parser.RetrySettings.initial_delay" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.RetrySettings.max_attempts">
+<span class="sig-name descname"><span class="pre">max_attempts</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">3</span></em><a class="headerlink" href="#yamllm.core.parser.RetrySettings.max_attempts" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">SafetySettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.SafetySettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.SafetySettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.content_filtering">
+<span class="sig-name descname"><span class="pre">content_filtering</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">True</span></em><a class="headerlink" href="#yamllm.core.parser.SafetySettings.content_filtering" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.max_requests_per_minute">
+<span class="sig-name descname"><span class="pre">max_requests_per_minute</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">60</span></em><a class="headerlink" href="#yamllm.core.parser.SafetySettings.max_requests_per_minute" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.SafetySettings.sensitive_keywords">
+<span class="sig-name descname"><span class="pre">sensitive_keywords</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#yamllm.core.parser.SafetySettings.sensitive_keywords" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">Tools</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.Tools" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.Tools.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.enabled">
+<span class="sig-name descname"><span class="pre">enabled</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.13)"><span class="pre">bool</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#yamllm.core.parser.Tools.enabled" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.tool_timeout">
+<span class="sig-name descname"><span class="pre">tool_timeout</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">30</span></em><a class="headerlink" href="#yamllm.core.parser.Tools.tool_timeout" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.Tools.tools">
+<span class="sig-name descname"><span class="pre">tools</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#yamllm.core.parser.Tools.tools" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">VectorStoreSettings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.index_path">
+<span class="sig-name descname"><span class="pre">index_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.index_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.metadata_path">
+<span class="sig-name descname"><span class="pre">metadata_path</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.metadata_path" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.VectorStoreSettings.top_k">
+<span class="sig-name descname"><span class="pre">top_k</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.13)"><span class="pre">int</span></a></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#yamllm.core.parser.VectorStoreSettings.top_k" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">YamlLMConfig</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">/</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">**data:</span> <span class="pre">Any</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig" title="Link to this definition"></a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">pydantic.BaseModel</span></code></p>
+<p>Usage docs: <a class="reference external" href="https://docs.pydantic.dev/2.10/concepts/models/">https://docs.pydantic.dev/2.10/concepts/models/</a></p>
+<p>A base class for creating Pydantic models.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__class_vars__">
+<span class="sig-name descname"><span class="pre">__class_vars__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__class_vars__" title="Link to this definition"></a></dt>
+<dd><p>The names of the class variables defined on the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__private_attributes__">
+<span class="sig-name descname"><span class="pre">__private_attributes__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__private_attributes__" title="Link to this definition"></a></dt>
+<dd><p>Metadata about the private attributes of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__signature__">
+<span class="sig-name descname"><span class="pre">__signature__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__signature__" title="Link to this definition"></a></dt>
+<dd><p>The synthesized <cite>__init__</cite> [<cite>Signature</cite>][inspect.Signature] of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_complete__">
+<span class="sig-name descname"><span class="pre">__pydantic_complete__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_complete__" title="Link to this definition"></a></dt>
+<dd><p>Whether model building is completed, or if there are still undefined fields.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_core_schema__">
+<span class="sig-name descname"><span class="pre">__pydantic_core_schema__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_core_schema__" title="Link to this definition"></a></dt>
+<dd><p>The core schema of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_custom_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_custom_init__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_custom_init__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model has a custom <cite>__init__</cite> function.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_decorators__">
+<span class="sig-name descname"><span class="pre">__pydantic_decorators__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_decorators__" title="Link to this definition"></a></dt>
+<dd><p>Metadata containing the decorators defined on the model.
+This replaces <cite>Model.__validators__</cite> and <cite>Model.__root_validators__</cite> from Pydantic V1.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_generic_metadata__">
+<span class="sig-name descname"><span class="pre">__pydantic_generic_metadata__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_generic_metadata__" title="Link to this definition"></a></dt>
+<dd><p>Metadata for generic models; contains data used for a similar purpose to
+__args__, __origin__, __parameters__ in typing-module generics. May eventually be replaced by these.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_parent_namespace__">
+<span class="sig-name descname"><span class="pre">__pydantic_parent_namespace__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_parent_namespace__" title="Link to this definition"></a></dt>
+<dd><p>Parent namespace of the model, used for automatic rebuilding of models.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_post_init__">
+<span class="sig-name descname"><span class="pre">__pydantic_post_init__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_post_init__" title="Link to this definition"></a></dt>
+<dd><p>The name of the post-init method for the model, if defined.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_root_model__">
+<span class="sig-name descname"><span class="pre">__pydantic_root_model__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_root_model__" title="Link to this definition"></a></dt>
+<dd><p>Whether the model is a [<cite>RootModel</cite>][pydantic.root_model.RootModel].</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_serializer__">
+<span class="sig-name descname"><span class="pre">__pydantic_serializer__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_serializer__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaSerializer</cite> used to dump instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_validator__">
+<span class="sig-name descname"><span class="pre">__pydantic_validator__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_validator__" title="Link to this definition"></a></dt>
+<dd><p>The <cite>pydantic-core</cite> <cite>SchemaValidator</cite> used to validate instances of the model.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of field names and their corresponding [<cite>FieldInfo</cite>][pydantic.fields.FieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_computed_fields__">
+<span class="sig-name descname"><span class="pre">__pydantic_computed_fields__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_computed_fields__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary of computed field names and their corresponding [<cite>ComputedFieldInfo</cite>][pydantic.fields.ComputedFieldInfo] objects.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_extra__">
+<span class="sig-name descname"><span class="pre">__pydantic_extra__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_extra__" title="Link to this definition"></a></dt>
+<dd><p>A dictionary containing extra values, if [<cite>extra</cite>][pydantic.config.ConfigDict.extra]
+is set to <cite>‘allow’</cite>.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_fields_set__">
+<span class="sig-name descname"><span class="pre">__pydantic_fields_set__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_fields_set__" title="Link to this definition"></a></dt>
+<dd><p>The names of fields explicitly set during instantiation.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.__pydantic_private__">
+<span class="sig-name descname"><span class="pre">__pydantic_private__</span></span><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.__pydantic_private__" title="Link to this definition"></a></dt>
+<dd><p>Values of private attributes set on the model instance.</p>
+</dd></dl>
+
+<p>Create a new model by parsing and validating input data from keyword arguments.</p>
+<p>Raises [<cite>ValidationError</cite>][pydantic_core.ValidationError] if the input data cannot be
+validated to form a valid model.</p>
+<p><cite>self</cite> is explicitly positional-only to allow <cite>self</cite> as a field name.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.context">
+<span class="sig-name descname"><span class="pre">context</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.ContextSettings" title="yamllm.core.parser.ContextSettings"><span class="pre">ContextSettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.context" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.logging">
+<span class="sig-name descname"><span class="pre">logging</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.LoggingSettings" title="yamllm.core.parser.LoggingSettings"><span class="pre">LoggingSettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.logging" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.model_settings">
+<span class="sig-name descname"><span class="pre">model_settings</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.ModelSettings" title="yamllm.core.parser.ModelSettings"><span class="pre">ModelSettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.model_settings" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.output">
+<span class="sig-name descname"><span class="pre">output</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.OutputSettings" title="yamllm.core.parser.OutputSettings"><span class="pre">OutputSettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.output" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.provider">
+<span class="sig-name descname"><span class="pre">provider</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.ProviderSettings" title="yamllm.core.parser.ProviderSettings"><span class="pre">ProviderSettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.provider" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.request">
+<span class="sig-name descname"><span class="pre">request</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.RequestSettings" title="yamllm.core.parser.RequestSettings"><span class="pre">RequestSettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.request" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.safety">
+<span class="sig-name descname"><span class="pre">safety</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.SafetySettings" title="yamllm.core.parser.SafetySettings"><span class="pre">SafetySettings</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.safety" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="yamllm.core.parser.YamlLMConfig.tools">
+<span class="sig-name descname"><span class="pre">tools</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="#yamllm.core.parser.Tools" title="yamllm.core.parser.Tools"><span class="pre">Tools</span></a></em><a class="headerlink" href="#yamllm.core.parser.YamlLMConfig.tools" title="Link to this definition"></a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="yamllm.core.parser.parse_yaml_config">
+<span class="sig-prename descclassname"><span class="pre">yamllm.core.parser.</span></span><span class="sig-name descname"><span class="pre">parse_yaml_config</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">yaml_file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.13)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#yamllm.core.parser.YamlLMConfig" title="yamllm.core.parser.YamlLMConfig"><span class="pre">YamlLMConfig</span></a></span></span><a class="headerlink" href="#yamllm.core.parser.parse_yaml_config" title="Link to this definition"></a></dt>
+<dd><p>Parses a YAML file into a YamlLMConfig Pydantic model.</p>
+<blockquote>
+<div><blockquote>
+<div><p>Args:</p>
+</div></blockquote>
+<p>yaml_file_path (str): The path to the YAML file to be parsed.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>An instance of YamlLMConfig populated with the data from the YAML file.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference internal" href="#yamllm.core.parser.YamlLMConfig" title="yamllm.core.parser.YamlLMConfig">YamlLMConfig</a></p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#FileNotFoundError" title="(in Python v3.13)"><strong>FileNotFoundError</strong></a> – If the YAML file is not found at the specified path.</p></li>
+<li><p><strong>yaml.YAMLError</strong> – If there is an error parsing the YAML file.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.13)"><strong>ValueError</strong></a> – If the YAML file is empty or could not be parsed into a dictionary.</p></li>
+<li><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.13)"><strong>Exception</strong></a> – For any other unexpected errors that occur during parsing.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="../llm/index.html" class="btn btn-neutral float-left" title="yamllm.core.llm" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="../utils/index.html" class="btn btn-neutral float-right" title="yamllm.core.utils" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Daniel Halwell.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
