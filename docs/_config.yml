@@ -1,12 +1,11 @@
-remote_theme: pages-themes/cayman@v0.2.0
+theme: jekyll-theme-cayman
 plugins:
-- jekyll-remote-theme
+  - jekyll-theme-cayman
+  - jekyll-seo-tag
 
 title: YAMLLM
 description: YAML-based LLM configuration and execution
 show_downloads: true
-google_analytics:
-theme: cayman
 
 markdown: kramdown
 kramdown:
