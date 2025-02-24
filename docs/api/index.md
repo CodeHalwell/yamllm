@@ -35,6 +35,71 @@ class LLM:
 
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
         """Update configuration settings at runtime."""
+
+    def print_settings(self) -> None:
+        """Print the current settings of the LLM in an organized format."""
+
+    def create_embedding(self, text: str) -> bytes:
+        """
+        Create an embedding for the given text using OpenAI's API.
+
+        Args:
+            text (str): The text to create an embedding for.
+
+        Returns:
+            bytes: The embedding as bytes.
+        """
+
+    def find_similar_messages(self, query: str, k: int) -> List[Dict[str, Any]]:
+        """
+        Find messages similar to the query.
+
+        Args:
+            query (str): The text to find similar messages for.
+            k (int): Number of similar messages to return.
+
+        Returns:
+            List[Dict[str, Any]]: List of similar messages with their metadata and similarity scores.
+        """
+
+    def load_config(self) -> YamlLMConfig:
+        """
+        Load configuration from YAML file.
+
+        Returns:
+            YamlLMConfig: Parsed configuration.
+        """
+
+    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+        """
+        Generates a response from the language model based on the provided prompt and optional system prompt.
+
+        Args:
+            prompt (str): The user's input prompt to generate a response for.
+            system_prompt (Optional[str], optional): An optional system prompt to provide context or instructions to the model.
+
+        Returns:
+            str: The generated response from the language model if output_stream is disabled.
+            None: If output_stream is enabled, the response is streamed and displayed in real-time.
+        """
+
+    def _store_memory(self, prompt: str, response_text: str) -> None:
+        """Store the conversation in memory."""
+
+    def __repr__(self) -> str:
+        """Return a detailed string representation of the LLM instance."""
+
+    def __str__(self) -> str:
+        """Return a human-readable string representation of the LLM instance."""
+
+    def __enter__(self):
+        """Support context manager interface."""
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Clean up resources when exiting context manager."""
+
+    def __bool__(self) -> bool:
+        """Return True if the LLM instance is properly initialized with an API key."""
 ```
 
 ### Provider-Specific Classes
@@ -116,7 +181,7 @@ class MistralAI(LLM):
 ### ConversationStore
 
 ```python
-from yamllm.memory import ConversationStore
+from yamllm import ConversationStore
 
 class ConversationStore:
     """SQLite-based conversation history manager."""
@@ -158,7 +223,7 @@ class ConversationStore:
 ### VectorStore
 
 ```python
-from yamllm.memory import VectorStore
+from yamllm import VectorStore
 
 class VectorStore:
     """FAISS-based vector storage for semantic search."""

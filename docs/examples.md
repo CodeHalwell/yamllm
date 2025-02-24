@@ -6,7 +6,7 @@
 
 ### Simple Query
 ```python
-from yamllm.core.llm import GoogleGemini
+from yamllm import GoogleGemini
 import os
 import dotenv
 
@@ -21,7 +21,7 @@ response = llm.query("Give me some boilerplate pytorch code please")
 
 ### Interactive Chat
 ```python
-from yamllm.core.llm import GoogleGemini
+from yamllm import GoogleGemini
 from rich.console import Console
 import os
 import dotenv
@@ -54,7 +54,7 @@ while True:
 
 ### OpenAI
 ```python
-from yamllm.core.llm import OpenAIGPT
+from yamllm import OpenAIGPT
 import os
 import dotenv
 
@@ -67,7 +67,7 @@ response = llm.query("What is machine learning?")
 
 ### Mistral AI
 ```python
-from yamllm.core.llm import MistralAI
+from yamllm import MistralAI
 import os
 import dotenv
 
@@ -80,7 +80,7 @@ response = llm.query("Explain quantum computing")
 
 ### DeepSeek
 ```python
-from yamllm.core.llm import DeepSeek
+from yamllm import DeepSeek
 import os
 import dotenv
 
@@ -136,7 +136,7 @@ model_settings:
 
 ### Basic Error Handling
 ```python
-from yamllm.core.llm import GoogleGemini
+from yamllm import GoogleGemini
 from rich.console import Console
 import os
 import dotenv
