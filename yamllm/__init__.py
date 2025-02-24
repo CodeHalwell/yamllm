@@ -5,7 +5,7 @@ from .core.config import Config
 from .memory.conversation_store import ConversationStore, VectorStore
 from .tools import *
 
-__version__ = "0.1.8"
+__version__ = "0.1.9"
 
 __all__ = [
     "LLM",
