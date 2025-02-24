@@ -17,7 +17,7 @@ uv add yamllm-core
 In order to run a simple query, run a script as follows. NOTE: Printing of the response is not required as this is handles by the query method. This uses the rich library to print the responses in the console.
 
 ```python
-from yamllm.core.llm import OpenAIGPT, GoogleGemini, DeepSeek, MistralAI
+from yamllm import OpenAIGPT, GoogleGemini, DeepSeek, MistralAI
 import os
 import dotenv
 
@@ -35,7 +35,7 @@ response = llm.query("Give me some boiler plate pytorch code please")
 In order to have an ongoing conversation with the model, run a script as follows.
 
 ```python
-from yamllm.core.llm import OpenAIGPT, GoogleGemini, DeepSeek, MistralAI
+from yamllm import OpenAIGPT, GoogleGemini, DeepSeek, MistralAI
 from rich.console import Console
 import os
 import dotenv
@@ -63,6 +63,46 @@ while True:
         console.print(f"[red]Configuration error:[/red] {e}")
     except Exception as e:
         console.print(f"[red]An error occurred:[/red] {str(e)}")
+```
+
+## Working with Conversation History
+
+You can view your conversation history using the ConversationStore class. This will display all messages in a tabulated format:
+
+```python
+from yamllm import ConversationStore
+import pandas as pd
+from tabulate import tabulate
+
+# Initialize the conversation store
+history = ConversationStore("yamllm/memory/conversation_history.db")
+
+# Retrieve messages and create a DataFrame
+messages = history.get_messages()
+df = pd.DataFrame(messages)
+
+# Display messages in tabular format
+print(tabulate(df, headers='keys', tablefmt='psql'))
+```
+
+## Working with Vector Store
+
+The vector store allows you to manage and inspect embedded vectors from your conversations:
+
+```python
+from yamllm.memory import VectorStore
+
+# Initialize the vector store
+vector_store = VectorStore()
+
+# Retrieve vectors and metadata
+vectors, metadata = vector_store.get_vec_and_text()
+
+# Display vector store information
+print(f"Number of vectors: {len(vectors)}")
+print(f"Vector dimension: {vectors.shape[1] if len(vectors) > 0 else 0}")
+print(f"Number of metadata entries: {len(metadata)}")
+print(metadata)
 ```
 
 ## Configuration
