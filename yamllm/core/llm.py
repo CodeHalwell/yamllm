@@ -110,6 +110,7 @@ class LLM(object):
         # Memory settings
         self.memory_enabled = self.config.context.memory.enabled
         self.memory_max_messages = self.config.context.memory.max_messages
+        self.session_id = self.config.context.memory.session_id
         self.conversation_db_path = self.config.context.memory.conversation_db
         self.vector_index_path = self.config.context.memory.vector_store.index_path
         self.vector_metadata_path = self.config.context.memory.vector_store.metadata_path
@@ -269,7 +270,7 @@ class LLM(object):
         if self.memory_enabled:           
             # Get conversation history
             history = self.memory.get_messages(
-                session_id="session1", 
+                session_id=self.session_id, 
                 limit=self.memory_max_messages
             )
             
@@ -354,14 +355,14 @@ class LLM(object):
                 raise Exception(f"Error getting response from OpenAI: {str(e)}")
 
 
-        self._store_memory(prompt, response_text)
+        self._store_memory(prompt, response_text, self.session_id)
 
         if self.output_stream:
             return None
         else:
             return response_text
 
-    def _store_memory(self, prompt: str, response_text: str) -> None:
+    def _store_memory(self, prompt: str, response_text: str, session_id: str) -> None:
         """Store the conversation in memory."""
 
         if not self.memory_enabled:
@@ -370,7 +371,7 @@ class LLM(object):
         try:
             # Store user message
             message_id = self.memory.add_message(
-                session_id="session1", 
+                session_id=session_id, 
                 role="user", 
                 content=prompt
             )
@@ -384,7 +385,7 @@ class LLM(object):
             
             # Store assistant response 
             response_id = self.memory.add_message(
-                session_id="session1", 
+                session_id=session_id, 
                 role="assistant", 
                 content=response_text
             )
@@ -448,6 +449,7 @@ class LLM(object):
             "Memory Settings": {
                 "Enabled": self.memory_enabled,
                 "Max Messages": self.memory_max_messages,
+                "Session ID": self.session_id,
                 "Conversation DB Path": self.conversation_db_path,
                 "Vector Index Path": self.vector_index_path,
                 "Vector Metadata Path": self.vector_metadata_path,

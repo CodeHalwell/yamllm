@@ -12,8 +12,8 @@ class ModelSettings(BaseModel):
     temperature: float = 0.7
     max_tokens: int = 1000
     top_p: float = 1.0
-    frequency_penalty: float = None
-    presence_penalty: float = None
+    frequency_penalty: Optional[float]
+    presence_penalty: Optional[float]
     stop_sequences: List[str] = []
 
 class RetrySettings(BaseModel):
@@ -26,14 +26,15 @@ class RequestSettings(BaseModel):
     retry: RetrySettings
 
 class VectorStoreSettings(BaseModel):
-    index_path: str = None
-    metadata_path: str = None
+    index_path: Optional[str] = None
+    metadata_path: Optional[str] = None
     top_k: int = 5
 
 class MemorySettings(BaseModel):
     enabled: bool = False
     max_messages: int = 10
-    conversation_db: str = None
+    session_id: Optional[str] = None
+    conversation_db: Optional[str] = None
     vector_store: VectorStoreSettings = VectorStoreSettings()
 
 class ContextSettings(BaseModel):

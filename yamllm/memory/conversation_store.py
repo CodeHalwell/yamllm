@@ -1,6 +1,6 @@
 import sqlite3
 import os
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import faiss
 import numpy as np
 import pickle
@@ -72,7 +72,7 @@ class ConversationStore:
         finally:
             conn.close()
 
-    def add_message(self, session_id: str, role: str, content: str) -> int:
+    def add_message(self, session_id: str, role: str, content: str) -> Optional[int]:
         """
         Add a message to the database and return its ID.
 
@@ -82,7 +82,7 @@ class ConversationStore:
             content (str): The content of the message.
 
         Returns:
-            int: The ID of the newly added message in the database.
+            int | None: The ID of the newly added message in the database.
         """
         conn = sqlite3.connect(self.db_path)
         try:
@@ -100,7 +100,7 @@ class ConversationStore:
         finally:
             conn.close()
 
-    def get_messages(self, session_id: str = None, limit: int = None) -> List[Dict[str, str]]:
+    def get_messages(self, session_id: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, str]]:
         """
         Retrieve messages from the database.
         Args:
@@ -125,7 +125,7 @@ class ConversationStore:
             
             if limit:
                 query += ' LIMIT ?'
-                params.append(limit)
+                params.append(str(limit))
 
             cursor.execute(query, params)
             results = cursor.fetchall()

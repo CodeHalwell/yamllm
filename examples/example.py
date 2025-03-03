@@ -1,7 +1,7 @@
 import os
 import dotenv
 from rich.console import Console
-from yamllm.core.llm import MistralAI
+from yamllm.core.llm import OpenAIGPT
 
 """
 This script initializes a language model (LLM) using a configuration file and an API key, 
@@ -26,10 +26,12 @@ console = Console()
 dotenv.load_dotenv()
 
 # Get the absolute path to the config file
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-config_path = os.path.join(root_dir, ".config_examples", "mistral_config.yaml")
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+config_path = os.path.join(root_dir, ".config_examples", "basic_config_openai.yaml")
 
-llm = MistralAI(config_path=config_path, api_key=os.environ.get("MISTRAL_API_KEY"))
+llm = OpenAIGPT(config_path=config_path, api_key=os.environ.get("OpenAI_API_KEY"))
+
+llm.print_settings()
 
 while True:
     try:          

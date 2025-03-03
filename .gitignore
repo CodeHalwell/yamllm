@@ -41,3 +41,5 @@ objects.inv
 make.bat
 Makefile
 file.py
+.mypy_cache
+
