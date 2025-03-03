@@ -293,6 +293,7 @@ context:
   memory:
     enabled: bool
     max_messages: int
+    session_id: str
     conversation_db: str
     vector_store:
       index_path: str

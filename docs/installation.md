@@ -30,21 +30,26 @@ cd yamllm
 
 2. Create and activate a virtual environment:
 ```bash
-# Using uv (recommended)
-uv venv
+uv init
 .venv/Scripts/activate
+```
 
-# Using venv
+or
+
+```bash
 python -m venv .venv
 .venv/Scripts/activate
 ```
 
 3. Install development dependencies:
+Using uv
 ```bash
-# Using uv
 uv pip install -e ".[dev]"
+```
 
-# Using pip
+
+Using pip
+```
 pip install -e ".[dev]"
 ```
 
@@ -121,11 +126,13 @@ pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org yamllm
 3. Virtual Environment Issues:
 ```bash
 # Windows
+
 python -m pip install --upgrade pip
 python -m pip install virtualenv
 python -m virtualenv .venv
 
 # Linux/macOS
+
 python3 -m pip install --upgrade pip
 python3 -m pip install virtualenv
 python3 -m virtualenv .venv
@@ -140,6 +147,4 @@ python3 -m virtualenv .venv
 ## Support
 
 If you encounter any issues:
-1. Check our [GitHub Issues](https://github.com/codehalwell/yamllm/issues)
-2. Join our [Discord Community](https://discord.gg/yamllm)
-3. Read the [FAQ](faq.md)
+1. Check the [GitHub Issues](https://github.com/codehalwell/yamllm/issues)

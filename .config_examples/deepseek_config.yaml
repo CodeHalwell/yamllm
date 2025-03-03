@@ -29,6 +29,7 @@ context:
   memory:
     enabled: true
     max_messages: 10  # number of messages to keep in conversation history
+    session_id: "session2"
     conversation_db: "yamllm/memory/conversation_history.db"
     vector_store:
       index_path: "yamllm/memory/vector_store/faiss_index.idx"
