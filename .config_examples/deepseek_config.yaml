@@ -34,6 +34,7 @@ context:
     vector_store:
       index_path: "yamllm/memory/vector_store/faiss_index.idx"
       metadata_path: "yamllm/memory/vector_store/metadata.pkl"
+      top_k: 2
     
 # Output Formatting
 output:

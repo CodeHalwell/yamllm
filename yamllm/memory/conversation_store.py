@@ -262,7 +262,7 @@ class VectorStore:
         with open(self.metadata_path, 'wb') as f:
             pickle.dump(self.metadata, f)
 
-    def search(self, query_vector: List[float], k: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query_vector: List[float], k) -> List[Dict[str, Any]]:
         """
         Search for the k most similar vectors in the index.
 
