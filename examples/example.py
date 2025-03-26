@@ -29,7 +29,7 @@ dotenv.load_dotenv()
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 config_path = os.path.join(root_dir, ".config_examples", "basic_config_openai.yaml")
 
-llm = OpenAIGPT(config_path=config_path, api_key=os.environ.get("OpenAI_API_KEY"))
+llm = OpenAIGPT(config_path=config_path, api_key=os.environ.get("OPENAI_API_KEY"))
 
 llm.print_settings()
 

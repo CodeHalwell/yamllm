@@ -34,7 +34,7 @@ class ConversationStore:
         __repr__() -> str:
             Returns a detailed string representation.
     """
-    def __init__(self, db_path: str = "yamllm/memory/conversation_history.db"):
+    def __init__(self, db_path: str):
         self.db_path = db_path
 
     def db_exists(self) -> bool:
@@ -191,7 +191,7 @@ class ConversationStore:
             conn.close()
         
 class VectorStore:
-    def __init__(self, vector_dim: int = 1536, store_path: str = "yamllm/memory/vector_store"):
+    def __init__(self, store_path: str, vector_dim: int = 1536):
         """
         Initializes the ConversationStore object.
         Args:
@@ -292,7 +292,7 @@ class VectorStore:
             if idx != -1
         ]
         
-        return results
+        return results[:k]
     
     def get_vec_and_text(self) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
         """

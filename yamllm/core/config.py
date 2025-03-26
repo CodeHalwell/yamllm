@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Any
 from pydantic import BaseModel
+from yamllm.core.parser import parse_yaml_config
 
 class Config(BaseModel):
     """Configuration class for YAMLLM.
@@ -43,3 +44,29 @@ class Config(BaseModel):
             Config: New configuration instance
         """
         return cls(**config_dict)
+
+    def load_config(self, yaml_file_path: str):
+        """
+        Load configuration from a YAML file.
+
+        Args:
+            yaml_file_path (str): Path to the YAML configuration file.
+
+        Returns:
+            dict: Parsed configuration data.
+        """
+        self.config_data = parse_yaml_config(yaml_file_path)
+        return self.config_data
+
+    def validate_config(self, config: dict) -> bool:
+        """
+        Validate the configuration dictionary.
+
+        Args:
+            config (dict): Configuration data to validate.
+
+        Returns:
+            bool: True if valid, False otherwise.
+        """
+        required_keys = ["provider", "model_settings", "request"]
+        return all(key in config for key in required_keys)
