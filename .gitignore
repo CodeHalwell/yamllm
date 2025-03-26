@@ -42,4 +42,5 @@ make.bat
 Makefile
 file.py
 .mypy_cache
-
+.vscode
+settings.json
