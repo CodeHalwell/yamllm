@@ -5,7 +5,7 @@ from .core.config import Config
 from .memory.conversation_store import ConversationStore, VectorStore
 from .tools import Tool, ToolRegistry, WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool
 
-__version__ = "0.1.10"
+__version__ = "0.1.11"
 
 __all__ = [
     "LLM",

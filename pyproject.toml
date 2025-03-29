@@ -1,6 +1,6 @@
 [project]
 name = "yamllm-core"
-version = "0.1.10"
+version = "0.1.11"
 description = "YAML-based LLM configuration and execution"
 authors = [
     {name = "Daniel Halwell", email = "danielhalwell@gmail.com"},
