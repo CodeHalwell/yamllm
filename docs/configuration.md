@@ -42,10 +42,11 @@ context:
   memory:
     enabled: true
     max_messages: 10
-    conversation_db: "yamllm/memory/conversation_history.db"
+    session_id: 'MySession'
+    conversation_db: "memory/conversation_history.db"
     vector_store:
-      index_path: "yamllm/memory/vector_store/faiss_index.idx"
-      metadata_path: "yamllm/memory/vector_store/metadata.pkl"
+      index_path: "memory/vector_store/faiss_index.idx"
+      metadata_path: "memory/vector_store/metadata.pkl"
       top_k: 2
     
 # Output Formatting
@@ -63,7 +64,7 @@ logging:
 tools:
   enabled: false
   tool_timeout: 10
-  tool_list: ['calculator', 'web_search']
+  tool_list: ['calculator', 'web_search', 'weather']
 
 # Safety Settings
 safety:

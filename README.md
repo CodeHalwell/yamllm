@@ -111,10 +111,12 @@ YAMLLM uses YAML files for configuration. Set up a `.config` file to define the 
 Example configuration:
 
 ```yaml
-  name: "openai"  # supported: openai, google, deepseek, mistral
+  # LLM Provider Settings
+provider:
+  name: "openai"  # supported: openai, google, deepseek and mistralai supported.
   model: "gpt-4o-mini"  # model identifier
   api_key: # api key goes here, best practice to put into dotenv
-  base_url: # optional: for custom endpoints e.g. "https://generativelanguage.googleapis.com/v1beta/openai/"
+  base_url: # optional: for custom endpoints
 
 # Model Configuration
 model_settings:
@@ -135,15 +137,27 @@ request:
     
 # Context Management
 context:
-  system_prompt: "You are a helpful assistant, helping me achieve my goals"
+  system_prompt: "You are a helpful, conversational assistant with access to tools. 
+    When asked questions about current events, news, calculations, or unit conversions, use the appropriate tool.
+    For current information, use the web_search tool instead of stating you don't have up-to-date information.
+
+    Always present information in a natural, conversational way:
+    - For web search results, summarize the key points in your own words
+    - For calculations, explain the result in plain language
+    - For conversions, provide context about the conversion
+    - Use a friendly, helpful tone throughout
+
+    Do not show raw data or JSON in your responses unless specifically asked to do so."
   max_context_length: 16000
   memory:
     enabled: true
     max_messages: 10  # number of messages to keep in conversation history
-    conversation_db: "yamllm/memory/conversation_history.db"
+    session_id: "session2"
+    conversation_db: "memory/conversation_history.db"
     vector_store:
-      index_path: "yamllm/memory/vector_store/faiss_index.idx"
-      metadata_path: "yamllm/memory/vector_store/metadata.pkl"
+      index_path: "memory/vector_store/faiss_index.idx"
+      metadata_path: "memory/vector_store/metadata.pkl"
+      top_k: 3
     
 # Output Formatting
 output:
@@ -155,11 +169,11 @@ logging:
   file: "yamllm.log"
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# Tool Management - In development
+# Tool Management 
 tools:
-  enabled: false
+  enabled: true
   tool_timeout: 10  # seconds
-  tool_list: ['calculator', 'web_search']
+  tool_list: ['calculator', 'web_search', 'weather']
 
 # Safety Settings
 safety:
