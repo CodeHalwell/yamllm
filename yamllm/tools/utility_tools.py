@@ -43,7 +43,7 @@ class WebSearch(Tool):
             
         except Exception as e:
             import traceback
-            error_details = traceback.format_exc()
+            traceback.format_exc()
             return {"error": f"Search failed: {str(e)}"}
 
 class Calculator(Tool):
