@@ -1,11 +1,12 @@
 # test_duckduckgo.py
-from yamllm.tools.utility_tools import WebSearch
+from yamllm.tools.utility_tools import WeatherTool
 import json
+import os
 
 # Create WebSearch tool instance
-search_tool = WebSearch()
+search_tool = WeatherTool(api_key=os.environ.get('WEATHER_API_KEY'))
 
 # Test the tool
-results = search_tool.execute(query="latest AI developments", max_results=3)
+results = search_tool.execute("Northwich")
 
 print(json.dumps(results, indent=2))

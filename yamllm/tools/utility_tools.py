@@ -4,6 +4,57 @@ from typing import List, Dict
 from datetime import datetime
 import pytz
 import json
+from duckduckgo_search import DDGS
+import requests
+import os
+import dotenv
+
+# Load environment variables from .env file if it exists
+dotenv.load_dotenv()
+
+class WeatherTool(Tool):
+    "Tool to get current weather information from OpenWeatherMap API. Query is performed by city name."
+    def __init__(self, api_key: str):
+        super().__init__(
+            name="weather",
+            description="Get current weather information from OpenWeatherMap API"
+        )
+
+        self.api_key = os.environ['WEATHER_API_KEY'] if api_key is None else api_key
+        self.base_url = "http://api.openweathermap.org/data/2.5/weather"
+        self.params = {
+            "appid": self.api_key,
+            "units": "metric"  # Use metric units by default
+        }
+
+    def execute(self, location: str) -> Dict:
+        """
+        Execute a weather query using OpenWeatherMap API.
+        """
+        try:
+            self.params["q"] = location
+            response = requests.get(self.base_url, params=self.params)
+            response.raise_for_status()  # Raise an error for bad responses
+            
+            data = response.json()
+            
+            if data.get("cod") != 200:
+                return {"error": "City not found"}
+            
+            # Extract relevant information from the response
+            weather_info = {
+                "city": data["name"],
+                "temperature": data["main"]["temp"],
+                "description": data["weather"][0]["description"],
+                "humidity": data["main"]["humidity"],
+                "wind_speed": data["wind"]["speed"]
+            }
+            
+            return weather_info
+        
+        except Exception as e:
+            return {"error": str(e)}
+        
 
 class WebSearch(Tool):
     def __init__(self, api_key: str = None):  # Make api_key optional since DuckDuckGo doesn't require one
@@ -17,9 +68,7 @@ class WebSearch(Tool):
         """
         Execute a web search using DuckDuckGo.
         """
-        try:
-            from duckduckgo_search import DDGS
-            
+        try:            
             results = []
             with DDGS() as ddgs:
                 search_results = list(ddgs.text(query, max_results=max_results))

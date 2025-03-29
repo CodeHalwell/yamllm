@@ -10,7 +10,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.console import Console 
 import json
-from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter
+from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool
 import concurrent.futures
 
 
@@ -351,7 +351,8 @@ class LLM(object):
             "web_search": WebSearch,
             "calculator": Calculator,
             "timezone": TimezoneTool,
-            "unit_converter": UnitConverter
+            "unit_converter": UnitConverter,
+            "weather": WeatherTool
         }
         
         tool_definitions = []
@@ -363,8 +364,13 @@ class LLM(object):
                 
             tool_class = tool_classes[tool_name]
             
-            # Create a dummy instance to get name and description
-            tool_instance = tool_class()
+            if tool_name == "weather":
+                weather_api_key = os.environ.get("WEATHER_API_KEY")
+                if not weather_api_key:
+                    raise ValueError("Weather API key not found in environment variable 'WEATHER_API_KEY'")
+                tool_instance = tool_class(api_key=weather_api_key)
+            else:
+                tool_instance = tool_class()
                     
             # Define parameters schema based on the tool
             parameters_schema = self._get_tool_parameters(tool_name)
@@ -453,6 +459,20 @@ class LLM(object):
                     }
                 },
                 "required": ["value", "from_unit", "to_unit"]
+            },
+            "weather": {
+                "type": "object",
+                "properties": {
+                    "location": {
+                        "type": "string",
+                        "description": "Location for weather information (e.g., 'New York', 'London')"
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Date for the weather forecast (e.g., '2023-04-15')"
+                    }
+                },
+                "required": ["location"]
             }
         }
         
@@ -763,7 +783,8 @@ class LLM(object):
             "web_search": WebSearch,
             "calculator": Calculator,
             "timezone": TimezoneTool,
-            "unit_converter": UnitConverter
+            "unit_converter": UnitConverter,
+            "weather": WeatherTool
         }
         
         if tool_name not in tool_classes:
@@ -771,7 +792,13 @@ class LLM(object):
             
         # Initialize the tool
         try:
-            tool = tool_classes[tool_name]()
+            if tool_name == "weather":
+                weather_api_key = os.environ.get("WEATHER_API_KEY")
+                if not weather_api_key:
+                    return "Error: WEATHER_API_KEY not set"
+                tool = tool_classes[tool_name](api_key=weather_api_key)
+            else:
+                tool = tool_classes[tool_name]()
                 
             # Execute the tool with timeout
             with concurrent.futures.ThreadPoolExecutor() as executor:

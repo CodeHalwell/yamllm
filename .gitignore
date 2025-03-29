@@ -44,3 +44,4 @@ file.py
 .mypy_cache
 .vscode
 settings.json
+yamllm.log

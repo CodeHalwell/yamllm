@@ -50,7 +50,7 @@ logging:
 tools:
   enabled: true
   tool_timeout: 10  # seconds
-  tool_list: ['calculator', 'web_search']
+  tool_list: ['calculator', 'web_search', 'weather']
 
 # Safety Settings
 safety:
