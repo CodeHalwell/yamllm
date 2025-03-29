@@ -1,7 +1,7 @@
 import os
 import dotenv
 from rich.console import Console
-from yamllm.core.llm import OpenAIGPT, GoogleGemini
+from yamllm.core.llm import OpenAIGPT
 
 """
 This script initializes a language model (LLM) using a configuration file and an API key, 

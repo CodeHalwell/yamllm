@@ -1,8 +1,7 @@
 import os
 import dotenv
 from rich.console import Console
-from yamllm.core.llm import GoogleGemini
-from typing import cast
+from yamllm.core.llm import MistralAI
 
 """
 This script initializes a language model (LLM) using a configuration file and an API key, 
@@ -16,10 +15,10 @@ dotenv.load_dotenv()
 
 # Get the absolute path to the config file
 root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-config_path = os.path.join(root_dir, ".config_examples", "google_config.yaml")
+config_path = os.path.join(root_dir, ".config_examples", "mistral_config.yaml")
 
 # Initialize the LLM with config
-llm = GoogleGemini(config_path=config_path, api_key=cast(str, os.environ.get("GOOGLE_API_KEY")))
+llm = MistralAI(config_path=config_path, api_key=os.environ.get("MISTRAL_API_KEY"))
 
 # Display settings including tools configuration
 llm.print_settings()

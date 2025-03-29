@@ -723,7 +723,7 @@ class LLM(object):
                                     if isinstance(search_data, dict) and "results" in search_data:
                                         for i, result in enumerate(search_data.get("results", [])[:3]):
                                             tool_results_summary += f"- {result.get('title', 'No title')}: {result.get('snippet', 'No information')}\n"
-                                except:
+                                except Exception:
                                     tool_results_summary += f"\n{tool_name} results: {msg.get('content')[:200]}...\n"
                             else:
                                 tool_results_summary += f"\n{tool_name} results: {msg.get('content')[:200]}...\n"
@@ -738,7 +738,7 @@ class LLM(object):
                     console.print("\nAI:" + response_text, style="green")
                     return response_text
                     
-                except Exception as fallback_error:
+                except Exception:
                     # If even our fallback fails, return a generic message
                     response_text = "I encountered a technical issue while processing the tool results. Please try your question again or phrase it differently."
                     console.print("\nAI:" + response_text, style="green")
@@ -978,22 +978,209 @@ class DeepSeek(LLM):
         self.provider = 'deepseek'
 
 class MistralAI(LLM):
-    """    MistralAI class for interacting with the Mistral language model.
-        Attributes:
-            provider (str): The name of the AI provider, set to 'mistral'.
-        Methods:
-            __init__(config_path: str, api_key: str) -> None:
-                Initializes the MistralAI instance with the given configuration path and API key.
-            get_response(prompt: str, system_prompt: Optional[str] = None) -> str:
-                Generates a response from the Mistral language model based on the given prompt and optional system prompt.
-                Parameters:
-                    prompt (str): The user input prompt to generate a response for.
-                    system_prompt (Optional[str]): An optional system prompt to provide context for the response.
-                Returns:
-                    str: The generated response from the Mistral language model."""
+    """
+    MistralAI class for interacting with the Mistral language model.
+    
+    Attributes:
+        provider (str): The name of the AI provider, set to 'mistral'.
+    
+    Methods:
+        __init__(config_path: str, api_key: str) -> None:
+            Initializes the MistralAI instance with the given configuration path and API key.
+        get_response(prompt: str, system_prompt: Optional[str] = None) -> str:
+            Generates a response from the Mistral language model based on the given prompt and optional system prompt.
+    """
+    # Real-time query keywords - similar to GoogleGemini implementation
+    real_time_keywords = [
+        # Weather and natural phenomena
+        "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
+        "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
+        "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
+        
+        # News and current events
+        "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
+        "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
+        "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
+        
+        # Sports and entertainment
+        "score", "game", "match", "tournament", "championship", "playoff", "standings", 
+        "leaderboard", "box office", "premiere", "release", "concert", "performance", 
+        "episode", "ratings", "award", "nominations", "season", "show", "event",
+        
+        # Time-specific queries
+        "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
+        "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
+        "scheduled", "real-time", "live", "happening", "occurring", "next"
+    ]
+    
     def __init__(self, config_path: str, api_key: str) -> None:
         super().__init__(config_path, api_key)
         self.provider = 'mistral'
+    
+    def _prepare_standard_completion_params(self, messages):
+        """
+        Override to prepare parameters compatible with Mistral's API requirements.
+        
+        Args:
+            messages (list): Message objects.
+            
+        Returns:
+            dict: Parameters for API request with Mistral-specific adjustments.
+        """
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "top_p": self.top_p,
+        }
+        # Only add stop parameter if it contains actual stop sequences
+        if self.stop_sequences and len(self.stop_sequences) > 0:
+            params["stop"] = self.stop_sequences
+        return params
+    
+    def _handle_streaming_with_tool_detection(self, messages, tools_param=None):
+        """
+        Override to handle streaming with tool detection for Mistral's API.
+        
+        Args:
+            messages (list): List of message objects.
+            tools_param (list, optional): Tool definitions.
+            
+        Returns:
+            str: Response text.
+        """
+        try:
+            # Get the last user message and extract a clean query
+            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
+
+            is_real_time_query = any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and ("web_search" in self.tools)
+            
+            if is_real_time_query and tools_param and self.tools_enabled:
+                # Use non-streaming path with tools if it's a real-time query
+                console = Console()
+                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
+                return self._handle_non_streaming_response(messages, tools_param)
+            else:
+                # Otherwise, use streaming response
+                return self._handle_streaming_response(messages)
+        except Exception as e:
+            self.logger.warning(f"Tool detection request failed: {str(e)}")
+            return self._handle_streaming_response(messages)
+    
+    def _handle_non_streaming_response(self, messages, tools_param=None):
+        """
+        Handle non-streaming response with Mistral-specific tool handling.
+        
+        For real-time queries, bypass model tool selection by directly executing web search.
+        For other messages, include tool definitions in the API request.
+        
+        Args:
+            messages (list): List of message objects.
+            tools_param (list, optional): Tool definitions.
+            
+        Returns:
+            str: Response text.
+        """
+        try:
+            # Get the last user message and extract the actual query text
+            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
+
+            is_real_time_query = any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and ("web_search" in self.tools)
+
+            if is_real_time_query and tools_param and self.tools_enabled:
+                console = Console()
+                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
+                # Directly execute web search
+                web_search = WebSearch()
+                web_search_args = {
+                    "query": actual_query,
+                    "max_results": 5
+                }
+                
+                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
+                console.print("[yellow]Function:[/yellow] web_search")
+                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
+                
+                search_results = web_search.execute(**web_search_args)
+                result_str = str(search_results)
+                display_result = result_str[:200] + "..." if len(result_str) > 200 else result_str
+                console.print(f"[yellow]Result:[/yellow] {display_result}")
+                
+                if isinstance(search_results, dict) and "error" in search_results:
+                    error_msg = search_results.get("error", "Unknown search error")
+                    console.print(f"[red]Search error: {error_msg}[/red]")
+                    response_text = (f"I tried to search for information about '{actual_query}', but encountered a search error. "
+                                     f"Could you please try a different query?")
+                    console.print("\nAI:" + response_text, style="green")
+                    return response_text
+                
+                # Convert search results to a readable format
+                readable_results = ""
+                if isinstance(search_results, dict) and "results" in search_results:
+                    for i, result in enumerate(search_results.get("results", [])[:3]):
+                        readable_results += f"Source {i+1}: {result.get('title', 'No title')}\n"
+                        readable_results += f"Summary: {result.get('snippet', 'No information')}\n\n"
+                
+                # Enhance the user prompt with the search results
+                final_user_msg = (f"{actual_query}\n\nHere are some search results I found:\n\n{readable_results}"
+                                  f"\n\nPlease summarize this information in a helpful, conversational way.")
+                
+                new_messages = []
+                for m in messages:
+                    if m["role"] == "user" and m["content"] == last_user_msg:
+                        new_messages.append({"role": "user", "content": final_user_msg})
+                    else:
+                        new_messages.append(m)
+                
+                try:
+                    params = self._prepare_standard_completion_params(new_messages)
+                    final_response = self.client.chat.completions.create(**params)
+                    response_text = final_response.choices[0].message.content
+                    
+                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                        md = Markdown("\nAI:" + response_text, style="green")
+                        console.print(md)
+                    else:
+                        console.print("\nAI:" + response_text, style="green")
+                    return response_text
+                except Exception as e:
+                    self.logger.warning(f"Final response generation failed: {str(e)}")
+                    if readable_results:
+                        response_text = (f"Based on my search for '{actual_query}', I found:\n\n{readable_results}\n\n"
+                                         f"I couldn't generate a summary, but these are the relevant search results.")
+                    else:
+                        response_text = (f"I tried to search for information about '{actual_query}', but couldn't generate a complete response. "
+                                         f"Please try rephrasing your question.")
+                    console.print("\nAI:" + response_text, style="green")
+                    return response_text
+            else:
+                # For non-real-time queries, include tool definitions if available
+                completion_params = self._prepare_standard_completion_params(messages)
+                if tools_param and self.tools_enabled:
+                    completion_params["tools"] = tools_param
+                    completion_params["tool_choice"] = "auto"
+                    self.logger.debug(f"Sending tools to Mistral API: {json.dumps(tools_param)}")
+                
+                console = Console()
+                console.print("\n[yellow]Sending request with tools enabled...[/yellow]")
+                response = self.client.chat.completions.create(**completion_params)
+                
+                if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+                    return self._process_tool_calls(messages, response.choices[0].message)
+                else:
+                    response_text = response.choices[0].message.content
+                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                        md = Markdown("\nAI:" + response_text, style="green")
+                        console.print(md)
+                    else:
+                        console.print("\nAI:" + response_text, style="green")
+                    return response_text
+        except Exception as e:
+            self.logger.error(f"Non-streaming error: {str(e)}")
+            raise Exception(f"Error getting non-streaming response: {str(e)}")
     
 class GoogleGemini(LLM):
     """
@@ -1100,7 +1287,7 @@ class GoogleGemini(LLM):
                 
                 # Display tool call information
                 console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
-                console.print(f"[yellow]Function:[/yellow] web_search")
+                console.print("[yellow]Function:[/yellow] web_search")
                 console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
                 
                 # Execute the search directly
@@ -1241,7 +1428,7 @@ class GoogleGemini(LLM):
                 
                 # Display tool call information
                 console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
-                console.print(f"[yellow]Function:[/yellow] web_search")
+                console.print("[yellow]Function:[/yellow] web_search")
                 console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
                 
                 # Execute the search directly

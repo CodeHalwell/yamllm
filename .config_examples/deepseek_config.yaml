@@ -30,10 +30,10 @@ context:
     enabled: true
     max_messages: 10  # number of messages to keep in conversation history
     session_id: "session2"
-    conversation_db: "yamllm/memory/conversation_history.db"
+    conversation_db: "memory/conversation_history.db"
     vector_store:
-      index_path: "yamllm/memory/vector_store/faiss_index.idx"
-      metadata_path: "yamllm/memory/vector_store/metadata.pkl"
+      index_path: "memory/vector_store/faiss_index.idx"
+      metadata_path: "memory/vector_store/metadata.pkl"
       top_k: 2
     
 # Output Formatting
@@ -48,7 +48,7 @@ logging:
 
 # Tool Management 
 tools:
-  enabled: false
+  enabled: true
   tool_timeout: 10  # seconds
   tool_list: ['calculator', 'web_search']
 
