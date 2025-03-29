@@ -9,6 +9,7 @@ import dotenv
 from rich.live import Live
 from rich.markdown import Markdown
 from rich.console import Console 
+import json
 
 
 dotenv.load_dotenv()
@@ -123,7 +124,7 @@ class LLM(object):
 
         # Tool settings
         self.tools_enabled = self.config.tools.enabled
-        self.tools = self.config.tools.tools
+        self.tools = self.config.tools.tool_list
         self.tools_timeout = self.config.tools.tool_timeout
 
         # Safety settings
@@ -235,6 +236,7 @@ class LLM(object):
     def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Generates a response from the language model based on the provided prompt and optional system prompt.
+        Supports tool calling if tools_enabled is True.
         
         Args:
             prompt (str): The user's input prompt to generate a response for.
@@ -246,17 +248,7 @@ class LLM(object):
         
         Raises:
             Exception: If there is an error getting a response from the language model.
-        
-        Behavior:
-            - If a system prompt is provided or exists in the instance, it is added as the first message.
-            - If memory is enabled, conversation history is retrieved and added to the messages.
-            - Similar messages from previous conversations are found and appended to the user's prompt.
-            - The current prompt is added to the messages.
-            - If output_stream is enabled, the response is streamed and displayed using Rich's Live and Markdown components.
-            - If output_stream is disabled, the response is retrieved in a single call and displayed using Rich's Console and Markdown components.
-            - The conversation memory is updated with the new prompt and response.
         """
-    
         messages = []
         
         # Start with system prompt if provided (must be first)
@@ -299,72 +291,402 @@ class LLM(object):
                 "content": str(prompt)
             })
 
-        if self.output_stream:
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    top_p=self.top_p,
-                    frequency_penalty=self.frequency_penalty,
-                    presence_penalty=self.presence_penalty,
-                    stop=self.stop_sequences or None,
-                    stream=True
-                )
-                console = Console()
-                response_text = ""
-                print()
-                
-                with Live(console=console, refresh_per_second=10) as live:
-                    for chunk in response:
-                        if chunk.choices[0].delta.content:
-                            response_text += chunk.choices[0].delta.content
-                            # Add a newline before the AI response
-                            md = Markdown(f"\nAI: {response_text}", style="green")
-                            live.update(md)
+        # Prepare tools if enabled
+        tools_param = None
+        if self.tools_enabled and self.tools:
+            tools_param = self._prepare_tools()
 
-            except Exception as e:
-                raise Exception(f"Error getting response from OpenAI: {str(e)}")
-
+        # Process response based on stream setting and tool capabilities
+        if self.output_stream and not tools_param:
+            # Standard streaming without tools
+            response_text = self._handle_streaming_response(messages)
         else:
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=messages,
-                    temperature=self.temperature,
-                    max_tokens=self.max_tokens,
-                    top_p=self.top_p,
-                    frequency_penalty=self.frequency_penalty,
-                    presence_penalty=self.presence_penalty,
-                    stop=self.stop_sequences or None
-                )         
-                response_text = response.choices[0].message.content
-                
-                # Add Rich console formatting
-                console = Console()
-                
-                # Handle markdown formatting if present
-                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown("\nAI:" + response_text, style="green")
-                    console.print(md)
-                else:
-                    console.print("\nAI:" + response_text, style="green")
+            # Either non-streaming or streaming with tools
+            response_text = self._handle_non_streaming_response(messages, tools_param)
 
-            except Exception as e:
-                raise Exception(f"Error getting response from OpenAI: {str(e)}")
-
-
+        # Store the conversation in memory
         self._store_memory(prompt, response_text, self.session_id)
 
         if self.output_stream:
             return None
         else:
             return response_text
+    
+    def _prepare_tools(self):
+        """
+        Prepare tool definitions for the API call.
+        
+        Returns:
+            list: List of tool definitions in the format expected by the OpenAI API
+        """
+        from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter
+        
+        # Map tool names to their respective classes
+        tool_classes = {
+            "web_search": WebSearch,
+            "calculator": Calculator,
+            "timezone": TimezoneTool,
+            "unit_converter": UnitConverter
+        }
+        
+        tool_definitions = []
+        
+        for tool_name in self.tools:
+            if tool_name not in tool_classes:
+                self.logger.warning(f"Tool '{tool_name}' not found in available tools")
+                continue
+                
+            tool_class = tool_classes[tool_name]
+            
+            # Create a dummy instance to get name and description
+            # WebSearch doesn't need an API key for DuckDuckGo
+            if tool_name == "web_search":
+                tool_instance = tool_class()  # No need for API key with DuckDuckGo
+            else:
+                tool_instance = tool_class()
+                    
+            # Define parameters schema based on the tool
+            parameters_schema = self._get_tool_parameters(tool_name)
+            
+            tool_definition = {
+                "type": "function",
+                "function": {
+                    "name": tool_instance.name,
+                    "description": tool_instance.description,
+                    "parameters": parameters_schema
+                }
+            }
+            
+            tool_definitions.append(tool_definition)
+            
+        return tool_definitions
 
-    def _store_memory(self, prompt: str, response_text: str, session_id: str) -> None:
-        """Store the conversation in memory."""
+    def _get_tool_parameters(self, tool_name):
+        """
+        Get parameters schema for a specific tool.
+        
+        Args:
+            tool_name (str): Name of the tool
+            
+        Returns:
+            dict: Parameters schema for the tool
+        """
+        # Define parameter schemas for each tool
+        tool_parameters = {
+            "web_search": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "The search query to look up"
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of search results to return"
+                    }
+                },
+                "required": ["query"]
+            },
+            "calculator": {
+                "type": "object",
+                "properties": {
+                    "expression": {
+                        "type": "string",
+                        "description": "The mathematical expression to evaluate (e.g., '2 + 2', 'sin(0.5)', 'np.log(100)')"
+                    }
+                },
+                "required": ["expression"]
+            },
+            "timezone": {
+                "type": "object",
+                "properties": {
+                    "time": {
+                        "type": "string",
+                        "description": "The time to convert (e.g., '2023-04-15 14:30:00')"
+                    },
+                    "from_tz": {
+                        "type": "string",
+                        "description": "Source timezone (e.g., 'America/New_York')"
+                    },
+                    "to_tz": {
+                        "type": "string",
+                        "description": "Target timezone (e.g., 'Europe/London')"
+                    }
+                },
+                "required": ["time", "from_tz", "to_tz"]
+            },
+            "unit_converter": {
+                "type": "object",
+                "properties": {
+                    "value": {
+                        "type": "number",
+                        "description": "The value to convert"
+                    },
+                    "from_unit": {
+                        "type": "string",
+                        "description": "Source unit (e.g., 'kg', 'mile', 'celsius')"
+                    },
+                    "to_unit": {
+                        "type": "string",
+                        "description": "Target unit (e.g., 'lb', 'km', 'fahrenheit')"
+                    }
+                },
+                "required": ["value", "from_unit", "to_unit"]
+            }
+        }
+        
+        return tool_parameters.get(tool_name, {"type": "object", "properties": {}})
 
+    def _handle_streaming_response(self, messages):
+        """
+        Handle streaming response from the model.
+        
+        Args:
+            messages (list): List of message objects
+            
+        Returns:
+            str: Concatenated response text
+            
+        Raises:
+            Exception: If there is an error getting a response from the model
+        """
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=self.stop_sequences or None,
+                stream=True
+            )
+            console = Console()
+            response_text = ""
+            print()
+            
+            with Live(console=console, refresh_per_second=10) as live:
+                for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        response_text += chunk.choices[0].delta.content
+                        # Add a newline before the AI response
+                        md = Markdown(f"\nAI: {response_text}", style="green")
+                        live.update(md)
+
+            return response_text
+        except Exception as e:
+            raise Exception(f"Error getting streaming response: {str(e)}")
+
+    def _handle_non_streaming_response(self, messages, tools_param=None):
+        """
+        Handle non-streaming response from the model, with optional tool calling.
+        """
+        try:            
+            # Prepare API call parameters
+            completion_params = {
+                "model": self.model,
+                "messages": messages,
+                "temperature": self.temperature,
+                "max_tokens": self.max_tokens,
+                "top_p": self.top_p,
+                "frequency_penalty": self.frequency_penalty,
+                "presence_penalty": self.presence_penalty,
+                "stop": self.stop_sequences or None
+            }
+            
+            # Add tools if available
+            if tools_param:
+                completion_params["tools"] = tools_param
+                completion_params["tool_choice"] = "auto"  # Let the model decide when to use tools
+                
+            response = self.client.chat.completions.create(**completion_params)
+                       
+            # Check if the model wants to use a tool
+            if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+                return self._process_tool_calls(messages, response.choices[0].message)
+            else:
+                response_text = response.choices[0].message.content
+                
+                # Display the response
+                console = Console()
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown("\nAI:" + response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print("\nAI:" + response_text, style="green")
+                    
+                return response_text
+                
+        except Exception as e:
+            import traceback
+            print(f"Error in _handle_non_streaming_response: {str(e)}")
+            print(traceback.format_exc())
+            raise Exception(f"Error getting non-streaming response: {str(e)}")
+
+    def _process_tool_calls(self, messages, model_message, max_iterations=5):
+        """
+        Process tool calls from the model and get the final response.
+        """
+        if max_iterations <= 0:
+            return "Maximum tool call iterations reached. Unable to complete the request."
+            
+        console = Console()
+        console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
+        
+        # Add the assistant's message with tool calls to conversation
+        messages.append({
+            "role": "assistant",
+            "content": model_message.content or "",
+            "tool_calls": [
+                {
+                    "id": tool_call.id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.function.name,
+                        "arguments": tool_call.function.arguments
+                    }
+                } for tool_call in model_message.tool_calls
+            ]
+        })
+        
+        # Process each tool call
+        for tool_call in model_message.tool_calls:
+            function_name = tool_call.function.name
+            try:
+                function_args = json.loads(tool_call.function.arguments)
+            except json.JSONDecodeError:
+                function_args = {}
+                
+            console.print(f"[yellow]Function:[/yellow] {function_name}")
+            console.print(f"[yellow]Arguments:[/yellow] {tool_call.function.arguments}")
+            
+            # Execute the tool
+            tool_result = self._execute_tool(function_name, function_args)
+            
+            # Format the result for display (truncated if too long)
+            result_str = str(tool_result)
+            if len(result_str) > 200:
+                display_result = result_str[:200] + "..."
+            else:
+                display_result = result_str
+                
+            console.print(f"[yellow]Result:[/yellow] {display_result}")
+            
+            # Add the tool result to conversation with formatting instructions
+            tool_content = json.dumps(tool_result) if isinstance(tool_result, (list, dict)) else str(tool_result)
+            
+            # Add natural language instruction for the model
+            if function_name == "web_search":
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": tool_content
+                })
+                
+                # Add a user message with formatting instructions
+                messages.append({
+                    "role": "user",
+                    "content": "Please summarize these search results in a natural, conversational way. Highlight the most important points and present them as if you're having a conversation with me."
+                })
+            else:
+                # For other tools, just add the result
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": tool_content
+                })
+        
+        # Get the next response from the model with explicit instructions for natural language
+        try:
+            next_response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                frequency_penalty=self.frequency_penalty,
+                presence_penalty=self.presence_penalty,
+                stop=self.stop_sequences or None
+            )
+            
+            next_message = next_response.choices[0].message
+            
+            # Check if we need more tool calls
+            if hasattr(next_message, "tool_calls") and next_message.tool_calls:
+                # Recursive call for next round of tool calls
+                return self._process_tool_calls(messages, next_message, max_iterations - 1)
+            else:
+                # We have our final text response
+                response_text = next_message.content
+                
+                # Display the final response
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown("\nAI:" + response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print("\nAI:" + response_text, style="green")
+                    
+                return response_text
+                
+        except Exception as e:
+            raise Exception(f"Error processing tool calls: {str(e)}")
+
+    def _execute_tool(self, tool_name, tool_args):
+        """
+        Execute a tool with the provided arguments.
+        
+        Args:
+            tool_name (str): Name of the tool to execute
+            tool_args (dict): Arguments for the tool
+            
+        Returns:
+            Any: The result of the tool execution
+        """
+        from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter
+        
+        # Timeout handling for tool execution
+        import concurrent.futures
+        import threading
+        
+        # Map tool names to their respective classes
+        tool_classes = {
+            "web_search": WebSearch,
+            "calculator": Calculator,
+            "timezone": TimezoneTool,
+            "unit_converter": UnitConverter
+        }
+        
+        if tool_name not in tool_classes:
+            return f"Error: Tool '{tool_name}' not found"
+            
+        # Initialize the tool
+        try:
+            # No special case needed for WebSearch anymore
+            tool = tool_classes[tool_name]()
+                
+            # Execute the tool with timeout
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(tool.execute, **tool_args)
+                try:
+                    result = future.result(timeout=self.tools_timeout)
+                    return result
+                except concurrent.futures.TimeoutError:
+                    return f"Error: Tool execution timed out after {self.tools_timeout} seconds"
+                    
+        except Exception as e:
+            self.logger.error(f"Error executing tool '{tool_name}': {str(e)}")
+            return f"Error executing tool: {str(e)}"
+
+    def _store_memory(self, prompt: str, response_text: str, session_id: str, tool_interactions=None) -> None:
+        """Store the conversation in memory.
+        
+        Args:
+            prompt (str): User's prompt
+            response_text (str): Model's response
+            session_id (str): Session ID for the conversation
+            tool_interactions (list, optional): List of tool interactions
+        """
         if not self.memory_enabled:
             return
             
@@ -396,6 +718,16 @@ class LLM(object):
                 content=response_text,
                 role="assistant"
             )
+            
+            # Store tool interactions if provided
+            if tool_interactions:
+                for interaction in tool_interactions:
+                    self.memory.add_message(
+                        session_id=session_id,
+                        role="tool",
+                        content=json.dumps(interaction)
+                    )
+                    
         except Exception as e:
             self.logger.error(f"Error storing memory: {str(e)}")
 

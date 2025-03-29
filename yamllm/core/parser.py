@@ -57,9 +57,9 @@ class SafetySettings(BaseModel):
     sensitive_keywords: List[str] = []
 
 class Tools(BaseModel):
-    enabled: bool = False
-    tools: List[str] = []
+    enabled: bool = True
     tool_timeout: int = 30
+    tool_list: List[str] = [] 
 
 class YamlLMConfig(BaseModel):
     provider: ProviderSettings

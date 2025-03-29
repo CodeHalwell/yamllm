@@ -24,7 +24,17 @@ request:
     
 # Context Management
 context:
-  system_prompt: "You are a helpful assistant, helping me achieve my goals"
+  system_prompt: "You are a helpful, conversational assistant with access to tools. 
+    When asked questions about current events, news, calculations, or unit conversions, use the appropriate tool.
+    For current information, use the web_search tool instead of stating you don't have up-to-date information.
+
+    Always present information in a natural, conversational way:
+    - For web search results, summarize the key points in your own words
+    - For calculations, explain the result in plain language
+    - For conversions, provide context about the conversion
+    - Use a friendly, helpful tone throughout
+
+    Do not show raw data or JSON in your responses unless specifically asked to do so."
   max_context_length: 16000
   memory:
     enabled: true
@@ -39,7 +49,7 @@ context:
 # Output Formatting
 output:
   format: "text"  # supported: text, json, markdown
-  stream: true
+  stream: false
 
 logging:
   level: "INFO"
@@ -48,7 +58,7 @@ logging:
 
 # Tool Management 
 tools:
-  enabled: false
+  enabled: true
   tool_timeout: 10  # seconds
   tool_list: ['calculator', 'web_search']
 
