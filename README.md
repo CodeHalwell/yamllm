@@ -105,6 +105,19 @@ print(f"Number of metadata entries: {len(metadata)}")
 print(metadata)
 ```
 
+## Tools
+
+### Available Tools
+
+YAMLLM integrates a set of specialized tools to enhance functionality:
+
+- **Calculator:** Executes arithmetic and mathematical operations.
+- **Web Search:** Fetches up-to-date information from the internet. This use the DuckDuckGo API to search the internet.
+- **Weather:** Retrieves current weather conditions and forecasts. This uses the OpenWeatherMap API to retrieve the current temperature, wind speed, humidity and description.
+- **Web Scraper:** Extracts data from websites for further processing. This uses the beautiful soup library to parse the selected website.
+
+These tools allow the library to handle queries that require real-time data, precise calculations, and dynamic content retrieval.
+
 ## Configuration
 YAMLLM uses YAML files for configuration. Set up a `.config` file to define the parameters for your LLM instance. This file should include settings such as the model type, temperature, maximum tokens, and system prompt.
 
@@ -116,7 +129,7 @@ provider:
   name: "openai"  # supported: openai, google, deepseek and mistralai supported.
   model: "gpt-4o-mini"  # model identifier
   api_key: # api key goes here, best practice to put into dotenv
-  base_url: # optional: for custom endpoints
+  base_url: # optional: for custom endpoints when using the google, deepseek or mistral
 
 # Model Configuration
 model_settings:
@@ -173,7 +186,7 @@ logging:
 tools:
   enabled: true
   tool_timeout: 10  # seconds
-  tool_list: ['calculator', 'web_search', 'weather']
+  tool_list: ['calculator', 'web_search', 'weather', 'web_scraper']
 
 # Safety Settings
 safety:
