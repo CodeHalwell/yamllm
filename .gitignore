@@ -42,7 +42,7 @@ make.bat
 Makefile
 file.py
 .mypy_cache
-.vscode
 settings.json
 yamllm.log
-.vscode
+.vscode/settings.json
+MagicMock/
