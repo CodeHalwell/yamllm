@@ -3,7 +3,7 @@
 from .core.llm import LLM, OpenAIGPT, MistralAI, DeepSeek, GoogleGemini
 from .core.config import Config
 from .memory.conversation_store import ConversationStore, VectorStore
-from .tools import Tool, ToolRegistry, WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool
+from .tools import Tool, ToolRegistry, WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
 
 __version__ = "0.1.11"
 
@@ -23,4 +23,5 @@ __all__ = [
     "TimezoneTool",
     "UnitConverter",
     "WeatherTool",
+    "WebScraper",
 ]

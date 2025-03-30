@@ -10,7 +10,7 @@ from rich.live import Live
 from rich.markdown import Markdown
 from rich.console import Console 
 import json
-from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool
+from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
 import concurrent.futures
 
 
@@ -352,7 +352,8 @@ class LLM(object):
             "calculator": Calculator,
             "timezone": TimezoneTool,
             "unit_converter": UnitConverter,
-            "weather": WeatherTool
+            "weather": WeatherTool,
+            "web_scraper": WebScraper
         }
         
         tool_definitions = []
@@ -473,6 +474,16 @@ class LLM(object):
                     }
                 },
                 "required": ["location"]
+            },
+            "web_scraper": {
+                "type": "object",
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "description": "The URL to be scraped and summarised"
+                    }
+                },
+                "required": ["url"]
             }
         }
         
@@ -784,7 +795,8 @@ class LLM(object):
             "calculator": Calculator,
             "timezone": TimezoneTool,
             "unit_converter": UnitConverter,
-            "weather": WeatherTool
+            "weather": WeatherTool,
+            "web_scraper": WebScraper
         }
         
         if tool_name not in tool_classes:

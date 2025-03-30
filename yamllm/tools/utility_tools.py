@@ -8,6 +8,7 @@ from duckduckgo_search import DDGS
 import requests
 import os
 import dotenv
+from bs4 import BeautifulSoup
 
 # Load environment variables from .env file if it exists
 dotenv.load_dotenv()
@@ -57,6 +58,9 @@ class WeatherTool(Tool):
         
 
 class WebSearch(Tool):
+    """
+    Tool to perform web searches using DuckDuckGo API. This performs a search query and returns the results, typically a wide range of information.
+    """
     def __init__(self, api_key: str = None):  # Make api_key optional since DuckDuckGo doesn't require one
         super().__init__(
             name="web_search",
@@ -213,3 +217,37 @@ class UnitConverter(Tool):
                 
         except Exception as e:
             return f"Error converting units: {str(e)}"
+        
+
+class WebScraper(Tool):
+    """
+    Tool to scrape data from a webpage. This tool fetches the HTML content of a given URL and returns the text content.
+    """
+    def __init__(self):
+        super().__init__(
+            name="web_scraper",
+            description="Scrape data from a webpage and return the text content"
+        )
+
+    def execute(self, url: str) -> Dict:
+        """
+        Scrape data from a webpage.
+        """
+
+        soup = BeautifulSoup(requests.get(url).text, 'html.parser')
+
+        try:
+            soup = BeautifulSoup(requests.get(url).text, 'html.parser')
+            text = soup.get_text()
+            # Clean up the text content
+            text = ' '.join(text.split())
+            text = text.replace('\n', ' ').replace('\r', ' ').strip()
+            
+            # Return the raw HTML content as a string
+            return {
+                "url": url,
+                "content": text[:1000]  # Return first 1000 characters for brevity
+            }
+            
+        except Exception as e:
+            return {"error": str(e)}

@@ -1,4 +1,4 @@
-from .utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool
+from .utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
 from .base import Tool, ToolRegistry
 
 __all__ = [
@@ -9,4 +9,5 @@ __all__ = [
     'TimezoneTool',
     'UnitConverter',
     'WeatherTool',
+    'WebScraper'
 ]
