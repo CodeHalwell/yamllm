@@ -50,6 +50,22 @@ class LLM:
             bytes: The embedding as bytes.
         """
 
+    def _make_api_call(self, api_func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """
+        Make an API call with retry and exponential backoff for transient failures.
+        
+        Args:
+            api_func: The API function to call
+            *args: Positional arguments to pass to the API function
+            **kwargs: Keyword arguments to pass to the API function
+            
+        Returns:
+            The result of the API function call
+            
+        Raises:
+            Exception: If all retry attempts fail
+        """
+
     def find_similar_messages(self, query: str, k: int) -> List[Dict[str, Any]]:
         """
         Find messages similar to the query.
@@ -283,9 +299,9 @@ model_settings:
 request:
   timeout: int      # Request timeout seconds
   retry:
-    max_attempts: int
-    initial_delay: int
-    backoff_factor: int
+    max_attempts: int    # Maximum number of retry attempts for failed API calls
+    initial_delay: int   # Initial delay in seconds before first retry
+    backoff_factor: int  # Multiplier for exponential backoff between retries
 
 context:
   system_prompt: str    # System context
