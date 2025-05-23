@@ -1,8 +1,9 @@
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.memory import ConversationStore, VectorStore
 from openai import OpenAI, OpenAIError
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Callable, TypeVar, cast
 import os
+import time
 from typing import List
 import logging
 import dotenv
@@ -171,7 +172,8 @@ class LLM(object):
             Exception: If there is an error creating the embedding.
         """
         try:
-            response = self.embedding_client.embeddings.create(
+            response = self._make_api_call(
+                self.embedding_client.embeddings.create,
                 input=text,
                 model="text-embedding-3-small"
             )
@@ -512,7 +514,10 @@ class LLM(object):
                 preview_params["tools"] = tools_param
                 preview_params["tool_choice"] = "auto"
                 
-            preview_response = self.client.chat.completions.create(**preview_params)
+            preview_response = self._make_api_call(
+                self.client.chat.completions.create,
+                **preview_params
+            )
             
             # Check if model wants to use tools
             if (tools_param and hasattr(preview_response.choices[0].message, "tool_calls") 
@@ -543,7 +548,10 @@ class LLM(object):
             params = self._prepare_standard_completion_params(messages)
             params["stream"] = True
             
-            response = self.client.chat.completions.create(**params)
+            response = self._make_api_call(
+                self.client.chat.completions.create,
+                **params
+            )
             
             console = Console()
             response_text = ""
@@ -581,7 +589,10 @@ class LLM(object):
                 completion_params["tools"] = tools_param
                 completion_params["tool_choice"] = "auto"
                 
-            response = self.client.chat.completions.create(**completion_params)
+            response = self._make_api_call(
+                self.client.chat.completions.create,
+                **completion_params
+            )
                        
             # Check if the model wants to use a tool
             if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
@@ -702,7 +713,10 @@ class LLM(object):
             else:
                 params = self._prepare_standard_completion_params(messages)
                 
-            next_response = self.client.chat.completions.create(**params)
+            next_response = self._make_api_call(
+                self.client.chat.completions.create,
+                **params
+            )
             
             next_message = next_response.choices[0].message
             
@@ -878,6 +892,56 @@ class LLM(object):
                     
         except Exception as e:
             self.logger.error(f"Error storing memory: {str(e)}")
+    
+    # Define a type variable for the return type
+    T = TypeVar('T')
+    
+    def _make_api_call(self, api_func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """
+        Make an API call with retry and exponential backoff for transient failures.
+        
+        Args:
+            api_func: The API function to call
+            *args: Positional arguments to pass to the API function
+            **kwargs: Keyword arguments to pass to the API function
+            
+        Returns:
+            The result of the API function call
+            
+        Raises:
+            Exception: If all retry attempts fail
+        """
+        attempts = 0
+        max_attempts = self.retry_max_attempts
+        initial_delay = self.retry_initial_delay
+        backoff_factor = self.retry_backoff_factor
+        last_exception = None
+        
+        while attempts < max_attempts:
+            try:
+                return api_func(*args, **kwargs)
+            except (ConnectionError, TimeoutError, OpenAIError) as e:
+                attempts += 1
+                last_exception = e
+                
+                # If this was the last attempt, re-raise the exception
+                if attempts >= max_attempts:
+                    self.logger.error(f"API call failed after {max_attempts} attempts: {str(e)}")
+                    raise
+                
+                # Calculate delay with exponential backoff
+                delay = initial_delay * (backoff_factor ** (attempts - 1))
+                self.logger.warning(f"API call attempt {attempts} failed: {str(e)}. Retrying in {delay} seconds...")
+                
+                # Sleep before the next attempt
+                time.sleep(delay)
+        
+        # This should never happen, but just in case
+        if last_exception:
+            raise last_exception
+        
+        # This line should never be reached but is needed for type checking
+        return cast(T, None)
 
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
         """
