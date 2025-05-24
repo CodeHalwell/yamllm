@@ -39,7 +39,7 @@ context:
   memory:
     enabled: true
     max_messages: 10  # number of messages to keep in conversation history
-    session_id: "session2"
+    session_id: "session3"
     conversation_db: "memory/conversation_history.db"
     vector_store:
       index_path: "memory/vector_store/faiss_index.idx"

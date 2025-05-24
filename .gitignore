@@ -20,8 +20,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-.env
-.venv
 env/
 venv/
 .pytest_cache/
@@ -46,3 +44,4 @@ settings.json
 yamllm.log
 .vscode/settings.json
 MagicMock/
+
