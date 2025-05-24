@@ -1,10 +1,8 @@
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.memory import ConversationStore, VectorStore
 from openai import OpenAI, OpenAIError
-from typing import Optional, Dict, Any, Callable, TypeVar, cast
+from typing import Optional, Dict, Any, Union, Type, List
 import os
-import time
-from typing import List
 import logging
 import dotenv
 import json
@@ -12,6 +10,9 @@ from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, Unit
 import concurrent.futures
 from yamllm.providers.factory import ProviderFactory
 from yamllm.providers.base import Message, ToolDefinition
+
+# Import provider interfaces
+from yamllm.core.providers import BaseProvider, OpenAIProvider, AnthropicProvider
 
 
 dotenv.load_dotenv()
@@ -63,7 +64,7 @@ class LLM(object):
 
     This class handles configuration loading and API interactions
     with language models. It serves as a base class for provider-specific
-    implementations.
+    implementations and supports a provider-agnostic interface.
 
     Args:
         config_path (str): Path to YAML configuration file
@@ -73,6 +74,13 @@ class LLM(object):
         >>> llm = LLM(config_path = "config.yaml", api_key = "your-api-key")
         >>> response = llm.query("Hello, world!")
     """
+    # Provider mapping
+    PROVIDER_MAP = {
+        "openai": OpenAIProvider,
+        "anthropic": AnthropicProvider,
+        # Will add more providers as they're implemented
+    }
+    
     def __init__(self, config_path: str, api_key: str) -> None:
         """
         Initialize the LLM instance with the given configuration path.
@@ -91,6 +99,7 @@ class LLM(object):
         self.provider_name = self.config.provider.name if not hasattr(self, 'provider') else self.provider
         self.model = self.config.provider.model
         self.base_url = self.config.provider.base_url
+        self.extra_settings = getattr(self.config.provider, 'extra_settings', {})
 
         # Model settings
         self.temperature = self.config.model_settings.temperature
@@ -131,26 +140,67 @@ class LLM(object):
         self.max_requests_per_minute = self.config.safety.max_requests_per_minute
         self.sensitive_keywords = self.config.safety.sensitive_keywords
 
-        # Initialize the provider using the factory
-        self.provider = ProviderFactory.create_provider(
-            provider_name=self.provider_name,
-            api_key=self.api_key,
-            model=self.model,
-            base_url=self.base_url,
-            logger=self.logger,
-            tools=self.tools,
-            tools_enabled=self.tools_enabled
-        )
+        # Initialize provider client
+        self.provider_client = self._initialize_provider()
 
-        # For backward compatibility
-        self.client = self.provider.client if hasattr(self.provider, 'client') else None
-        self.embedding_client = self.provider.embedding_client if hasattr(self.provider, 'embedding_client') else None
+        # Initialize OpenAI client for embeddings (to be used across providers)
+        self.embedding_client = OpenAI(
+            api_key=os.environ.get("OPENAI_API_KEY") or self.api_key,
+        )
 
         # Initialize memory and vector store if enabled
         self.memory = None
         self.vector_store = None
         if self.memory_enabled:
             self._initialize_memory()
+            
+        # Add real-time keywords for providers that need them
+        self.real_time_keywords = [
+            # Weather and natural phenomena
+            "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
+            "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
+            "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
+            
+            # News and current events
+            "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
+            "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
+            "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
+            
+            # Sports and entertainment
+            "score", "game", "match", "tournament", "championship", "playoff", "standings", 
+            "leaderboard", "box office", "premiere", "release", "concert", "performance", 
+            "episode", "ratings", "award", "nominations", "season", "show", "event",
+            
+            # Time-specific queries
+            "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
+            "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
+            "scheduled", "real-time", "live", "happening", "occurring", "next"
+        ]
+
+    def _initialize_provider(self) -> BaseProvider:
+        """
+        Initialize the provider based on configuration.
+        
+        Returns:
+            BaseProvider: The initialized provider client
+        """
+        # For direct subclasses like OpenAIGPT, we want to use the specific provider
+        provider_name = self.provider.lower()
+        provider_class = self.PROVIDER_MAP.get(provider_name)
+        
+        if not provider_class:
+            if provider_name == "openai" or self.__class__.__name__ == "LLM":
+                # Default to OpenAI provider for base LLM class or explicit OpenAI provider
+                provider_class = OpenAIProvider
+            else:
+                raise ValueError(f"Unsupported provider: {self.provider}. Supported providers: {', '.join(self.PROVIDER_MAP.keys())}")
+        
+        # Initialize the provider with our settings
+        return provider_class(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            **self.extra_settings
+        )
 
     def _initialize_memory(self):
         """Initialize memory and vector store"""
@@ -161,7 +211,7 @@ class LLM(object):
         if not self.memory.db_exists():
             self.memory.create_db()
 
-    def create_embedding(self, text: str) -> bytes:
+    def create_embedding(self, text: str) -> Union[List[float], bytes]:
         """
         Create an embedding for the given text.
 
@@ -169,14 +219,19 @@ class LLM(object):
             text (str): The text to create an embedding for.
 
         Returns:
-            bytes: The embedding as bytes.
+            Union[List[float], bytes]: The embedding as a list of floats or bytes.
 
         Raises:
             Exception: If there is an error creating the embedding.
         """
         try:
-            response = self._make_api_call(
-                self.embedding_client.embeddings.create,
+            # For OpenAI and compatible providers, use the provider's embedding method
+            if hasattr(self.provider_client, 'create_embedding'):
+                return self.provider_client.create_embedding(text, "text-embedding-3-small")
+            
+            # Fallback to OpenAI embeddings for other providers
+            response = self.embedding_client.embeddings.create(
+
                 input=text,
                 model="text-embedding-3-small"
             )
@@ -235,14 +290,11 @@ class LLM(object):
             raise ValueError("API key is not initialized or invalid.")
         try:
             return self.get_response(prompt, system_prompt)
-        except OpenAIError as e:
-            self.logger.error(f"OpenAI API error: {str(e)}")
-            raise Exception(f"OpenAI API error: {str(e)}")
         except Exception as e:
-            self.logger.error(f"Unexpected error during query: {str(e)}")
-            raise Exception(f"Unexpected error during query: {str(e)}")
+            self.logger.error(f"API error: {str(e)}")
+            raise Exception(f"API error: {str(e)}")
 
-    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
         """
         Generates a response from the language model based on the provided prompt and optional system prompt.
         Supports tool calling if tools_enabled is True.
@@ -252,7 +304,7 @@ class LLM(object):
             system_prompt (Optional[str]): An optional system prompt for context.
 
         Returns:
-            str: The response from the language model.
+            Optional[str]: The response from the language model, or None if streaming is enabled.
         """
         messages = self._prepare_messages(prompt, system_prompt)
 
@@ -326,36 +378,12 @@ class LLM(object):
 
         return messages
 
-    def _prepare_standard_completion_params(self, messages):
-        """
-        Prepare standard completion parameters that should work across providers.
-
-        Args:
-            messages (list): Message objects.
-
-        Returns:
-            dict: Parameters for API request.
-        """
-        # Convert messages to the standardized format
-        standardized_messages = [
-            Message(role=msg["role"], content=msg["content"], name=msg.get("name"))
-            for msg in messages
-        ]
-
-        return self.provider.prepare_completion_params(
-            messages=standardized_messages,
-            temperature=self.temperature,
-            max_tokens=self.max_tokens,
-            top_p=self.top_p,
-            stop_sequences=self.stop_sequences
-        )
-
     def _prepare_tools(self):
         """
         Prepare tool definitions for the API call.
 
         Returns:
-            list: List of standardized tool definitions
+            list: List of tool definitions in the format expected by the provider
         """        
         # Map tool names to their respective classes
         tool_classes = {
@@ -513,33 +541,64 @@ class LLM(object):
             str: Response text.
         """
         try:
-            # Make a low-token request to see if the model will use tools
-            preview_params = self._prepare_standard_completion_params(messages)
-            preview_params["max_tokens"] = 10  # Just enough to detect tool usage
+            # Check for real-time queries that might benefit from tools
+            is_real_time_query = False
+            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
             
-            if tools_param:
-                preview_params["tools"] = tools_param
-                preview_params["tool_choice"] = "auto"
-                
-            preview_response = self._make_api_call(
-                self.client.chat.completions.create,
-                **preview_params
-            )
+            # Extract just the user's question without any context annotations
+            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
             
-            # Check if model wants to use tools
-            if (tools_param and hasattr(preview_response.choices[0].message, "tool_calls") 
-                and preview_response.choices[0].message.tool_calls):
-                # Model wants to use tools, use non-streaming
+            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
+                is_real_time_query = True
+            
+            if is_real_time_query and tools_param:
+                # Use non-streaming for real-time queries
                 console = Console()
-                console.print("\n[yellow]Using tools to answer this question...[/yellow]")
+                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
                 return self._handle_non_streaming_response(messages, tools_param)
-            else:
-                # Model doesn't need tools, use streaming
+            
+            # For non-real-time queries or if no tools available, make a small preview request
+            # to see if tools would be used anyway
+            try:
+                # Make a low-token request to see if the model will use tools
+                params = {
+                    "messages": messages,
+                    "model": self.model,
+                    "temperature": self.temperature,
+                    "max_tokens": 10,  # Just enough to detect tool usage
+                    "top_p": self.top_p,
+                    "stop_sequences": self.stop_sequences if self.stop_sequences else None
+                }
+                
+                if tools_param:
+                    params["tools"] = tools_param
+                    
+                # Use the provider client to make the request
+                preview_response = self.provider_client.get_completion(**params)
+                
+                # Check if the model wants to use tools - this is provider-specific
+                tool_calls = []
+                if self.provider.lower() == "openai" and tools_param:
+                    if hasattr(preview_response.choices[0].message, "tool_calls"):
+                        tool_calls = preview_response.choices[0].message.tool_calls
+                elif self.provider.lower() == "anthropic" and tools_param:
+                    tool_calls = preview_response.get("tool_calls", [])
+                
+                if tool_calls:
+                    # Model wants to use tools, use non-streaming
+                    console = Console()
+                    console.print("\n[yellow]Using tools to answer this question...[/yellow]")
+                    return self._handle_non_streaming_response(messages, tools_param)
+                else:
+                    # Model doesn't need tools, use streaming
+                    return self._handle_streaming_response(messages)
+            except Exception as e:
+                self.logger.warning(f"Preview request failed: {str(e)}")
+                # Fall back to streaming without tool detection
                 return self._handle_streaming_response(messages)
-              
+                
         except Exception as e:
-            self.logger.warning(f"Streaming with tool detection failed: {str(e)}")
-            # Fall back to streaming without tool detection
+            self.logger.warning(f"Tool detection request failed: {str(e)}")
             return self._handle_streaming_response(messages)
 
     def _handle_streaming_response(self, messages):
@@ -553,38 +612,71 @@ class LLM(object):
             str: Concatenated response text
         """
         try:
-            # Convert messages to the standardized format
-            standardized_messages = [
-                Message(role=msg["role"], content=msg["content"], name=msg.get("name"))
-                for msg in messages
-            ]
-
-            # Get parameters for the API request
-            params = self._prepare_standard_completion_params(messages)
-
-            params["stream"] = True
-            
-            response = self._make_api_call(
-                self.client.chat.completions.create,
-                **params
+            # Use the provider client to get a streaming response
+            response = self.provider_client.get_streaming_completion(
+                messages=messages,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences if self.stop_sequences else None
             )
             
             console = Console()
             response_text = ""
             print()
             
-            with Live(console=console, refresh_per_second=10) as live:
-                for chunk in response:
-                    if chunk.choices[0].delta.content:
-                        response_text += chunk.choices[0].delta.content
-                        md = Markdown(f"\nAI: {response_text}", style="green")
-                        live.update(md)
-
+            # Handle the streaming response based on the provider
+            if self.provider.lower() == "openai":
+                with Live(console=console, refresh_per_second=10) as live:
+                    for chunk in response:
+                        if hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta.content:
+                            response_text += chunk.choices[0].delta.content
+                            md = Markdown(f"\nAI: {response_text}", style="green")
+                            live.update(md)
+            elif self.provider.lower() == "anthropic":
+                with Live(console=console, refresh_per_second=10) as live:
+                    for line in response:
+                        if line:
+                            try:
+                                chunk = json.loads(line.decode('utf-8').strip())
+                                if chunk.get("type") == "content_block_delta" and chunk.get("delta", {}).get("text"):
+                                    response_text += chunk["delta"]["text"]
+                                    md = Markdown(f"\nAI: {response_text}", style="green")
+                                    live.update(md)
+                            except Exception as e:
+                                self.logger.debug(f"Error parsing streaming chunk: {str(e)}")
+            else:
+                # Generic fallback for other providers
+                with Live(console=console, refresh_per_second=10) as live:
+                    for chunk in response:
+                        chunk_text = self._extract_text_from_chunk(chunk)
+                        if chunk_text:
+                            response_text += chunk_text
+                            md = Markdown(f"\nAI: {response_text}", style="green")
+                            live.update(md)
+            
             return response_text
-
         except Exception as e:
             self.logger.error(f"Streaming error: {str(e)}")
             raise Exception(f"Error getting streaming response: {str(e)}")
+            
+    def _extract_text_from_chunk(self, chunk):
+        """Extract text from a streaming chunk based on provider-specific format."""
+        if self.provider.lower() == "openai":
+            if hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta.content:
+                return chunk.choices[0].delta.content
+        elif self.provider.lower() == "anthropic":
+            try:
+                if isinstance(chunk, bytes):
+                    chunk = json.loads(chunk.decode('utf-8').strip())
+                if chunk.get("type") == "content_block_delta" and chunk.get("delta", {}).get("text"):
+                    return chunk["delta"]["text"]
+            except Exception:
+                pass
+        
+        # If we can't extract text in any known way, return empty string
+        return ""
 
     def _handle_non_streaming_response(self, messages, tools_param=None):
         """
@@ -597,36 +689,138 @@ class LLM(object):
         Returns:
             str: Response text.
         """
-
-        try:            
-            # Prepare API call parameters
-            completion_params = self._prepare_standard_completion_params(messages)
+        try:
+            # Check for real-time queries that might benefit from direct tool execution
+            is_real_time_query = False
+            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
             
-            # Add tools if available
-            if tools_param:
-                completion_params["tools"] = tools_param
-                completion_params["tool_choice"] = "auto"
-                
-            response = self._make_api_call(
-                self.client.chat.completions.create,
-                **completion_params
-            )
-                       
-            # Check if the model wants to use a tool
-            if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
-                return self._process_tool_calls(messages, response.choices[0].message)
-            else:
-                response_text = response.choices[0].message.content
-                
-                # Display the response
+            # Extract just the user's question without any context annotations
+            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
+            
+            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
+                is_real_time_query = True
+            
+            if is_real_time_query and tools_param and self.tools_enabled:
+                # Directly execute web search for real-time queries
                 console = Console()
-                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown("\nAI:" + response_text, style="green")
-                    console.print(md)
+                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
+                
+                # Create a web search directly
+                web_search = WebSearch()
+                web_search_args = {
+                    "query": actual_query,
+                    "max_results": 5
+                }
+                
+                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
+                console.print("[yellow]Function:[/yellow] web_search")
+                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
+                
+                # Execute the search
+                search_results = web_search.execute(**web_search_args)
+                
+                # Display a short version of the result
+                result_str = str(search_results)
+                if len(result_str) > 200:
+                    display_result = result_str[:200] + "..."
                 else:
-                    console.print("\nAI:" + response_text, style="green")
+                    display_result = result_str
+                console.print(f"[yellow]Result:[/yellow] {display_result}")
+                
+                # Convert search results to a readable format
+                readable_results = ""
+                if isinstance(search_results, dict) and "results" in search_results:
+                    for i, result in enumerate(search_results.get("results", [])[:3]):
+                        readable_results += f"Source {i+1}: {result.get('title', 'No title')}\n"
+                        readable_results += f"Summary: {result.get('snippet', 'No information')}\n\n"
+                
+                # Create a new message with the search results
+                user_msg_with_results = f"{actual_query}\n\nHere are some search results I found:\n\n{readable_results}\n\nPlease summarize this information in a helpful, conversational way."
+                
+                # Replace the last user message with our enhanced version
+                for i in range(len(messages)-1, -1, -1):
+                    if messages[i]["role"] == "user":
+                        messages[i]["content"] = user_msg_with_results
+                        break
+                
+                # Send a new request without tools to get a response based on the search results
+                try:
+                    response = self.provider_client.get_completion(
+                        messages=messages,
+                        model=self.model,
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens,
+                        top_p=self.top_p,
+                        stop_sequences=self.stop_sequences if self.stop_sequences else None
+                    )
                     
-                return response_text
+                    # Get the response text based on the provider
+                    if self.provider.lower() == "openai":
+                        response_text = response.choices[0].message.content
+                    elif self.provider.lower() == "anthropic":
+                        response_text = response.get("content", [{"text": "No response generated."}])[0]["text"]
+                    else:
+                        response_text = str(response)
+                    
+                    # Display the response
+                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                        md = Markdown("\nAI:" + response_text, style="green")
+                        console.print(md)
+                    else:
+                        console.print("\nAI:" + response_text, style="green")
+                    
+                    return response_text
+                except Exception as e:
+                    self.logger.warning(f"Final response generation failed: {str(e)}")
+                    # Create a direct response using the search results
+                    if readable_results:
+                        response_text = f"Based on my search for '{actual_query}', I found:\n\n{readable_results}\n\nI couldn't generate a summary, but these are the relevant search results."
+                    else:
+                        response_text = f"I tried to search for information about '{actual_query}', but couldn't find relevant results or generate a summary. Could you try rephrasing your question?"
+                    
+                    console.print("\nAI:" + response_text, style="green")
+                    return response_text
+            
+            # For non-real-time queries or providers without special handling
+            # Use the provider client to get a completion
+            response = self.provider_client.get_completion(
+                messages=messages,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences if self.stop_sequences else None,
+                tools=tools_param
+            )
+            
+            # Check if the model wants to use tools - this is provider-specific
+            if self.provider.lower() == "openai" and tools_param:
+                if hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+                    return self._process_tool_calls(messages, response.choices[0].message)
+            elif self.provider.lower() == "anthropic" and tools_param:
+                if "tool_calls" in response:
+                    # Format the Anthropic tool calls to our standard format
+                    tool_calls = self.provider_client.format_tool_calls(response.get("tool_calls", []))
+                    # Process the tool calls with our standard method
+                    return self._process_tool_calls(messages, {"content": response.get("content", ""), "tool_calls": tool_calls})
+            
+            # Get the response text based on the provider
+            if self.provider.lower() == "openai":
+                response_text = response.choices[0].message.content
+            elif self.provider.lower() == "anthropic":
+                response_text = response.get("content", [{"text": "No response generated."}])[0]["text"]
+            else:
+                response_text = str(response)
+            
+            # Display the response
+            console = Console()
+            if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                md = Markdown("\nAI:" + response_text, style="green")
+                console.print(md)
+            else:
+                console.print("\nAI:" + response_text, style="green")
+            
+            return response_text
                 
         except Exception as e:
             self.logger.error(f"Non-streaming error: {str(e)}")
@@ -635,7 +829,6 @@ class LLM(object):
     def _process_tool_calls(self, messages, model_message, max_iterations=5):
         """
         Process tool calls from the model and get the final response.
-
         Args:
             messages (list): List of message objects.
             model_message: The model's message containing tool calls.
@@ -644,57 +837,157 @@ class LLM(object):
         Returns:
             str: Final response text.
         """
-        # Convert messages to the standardized format
-        standardized_messages = [
-            Message(role=msg["role"], content=msg["content"], name=msg.get("name"))
-            for msg in messages
-        ]
-
-        # Define a function to execute tools that will be passed to the provider
-        def execute_tool_func(tool_name, tool_args):
-            return self._execute_tool(tool_name, tool_args)
-
-        # Use the provider's implementation
-        try:
-            # For Google, filter out any messages with null content
-            if self.provider == 'google':
-                clean_messages = [m for m in messages if m.get("content") is not None]
-                for i, m in enumerate(clean_messages):
-                    # Ensure content is always a string, never None
-                    if m.get("content") is None:
-                        clean_messages[i]["content"] = ""
-                    
-                params = self._prepare_standard_completion_params(clean_messages)
-            else:
-                params = self._prepare_standard_completion_params(messages)
+        if max_iterations <= 0:
+            return "Maximum tool call iterations reached. Unable to complete the request."
+            
+        console = Console()
+        console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
+        
+        # Ensure content is never null
+        message_content = model_message.content if hasattr(model_message, "content") else model_message.get("content", "")
+        
+        # Format the tool calls to a standardized format
+        if hasattr(model_message, "tool_calls"):
+            tool_calls = self.provider_client.format_tool_calls(model_message.tool_calls)
+        else:
+            tool_calls = model_message.get("tool_calls", [])
+        
+        # Add the assistant's message with tool calls to conversation
+        messages.append({
+            "role": "assistant",
+            "content": message_content,
+            "tool_calls": tool_calls
+        })
+        
+        # Process each tool call
+        for tool_call in tool_calls:
+            function_name = tool_call.get("function", {}).get("name")
+            function_args_str = tool_call.get("function", {}).get("arguments")
+            tool_call_id = tool_call.get("id")
+            
+            try:
+                function_args = json.loads(function_args_str)
+            except (json.JSONDecodeError, TypeError):
+                function_args = {}
                 
-            next_response = self._make_api_call(
-                self.client.chat.completions.create,
-                **params
+            console.print(f"[yellow]Function:[/yellow] {function_name}")
+            console.print(f"[yellow]Arguments:[/yellow] {function_args_str}")
+            
+            # Execute the tool
+            tool_result = self._execute_tool(function_name, function_args)
+            
+            # Format the result for display (truncated if too long)
+            result_str = str(tool_result)
+            if len(result_str) > 200:
+                display_result = result_str[:200] + "..."
+            else:
+                display_result = result_str
+                
+            console.print(f"[yellow]Result:[/yellow] {display_result}")
+            
+            # Add the tool result to conversation with formatting instructions
+            tool_content = json.dumps(tool_result) if isinstance(tool_result, (list, dict)) else str(tool_result)
+            
+            # Add to messages
+            tool_result_msg = {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "content": tool_content,
+                "name": function_name  # For Anthropic compatibility
+            }
+            
+            messages.append(tool_result_msg)
+            
+            # For web search, add instructions for formatting
+            if function_name == "web_search":
+                messages.append({
+                    "role": "user",
+                    "content": "Please summarize these search results in a natural, conversational way. Highlight the most important points and present them as if you're having a conversation with me."
+                })
+        
+        # Get the next response from the model
+        try:
+            # Use the provider client to get a completion
+            next_response = self.provider_client.get_completion(
+                messages=messages,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences if self.stop_sequences else None,
+                tools=self._prepare_tools() if self.tools_enabled and self.tools else None
             )
             
-            next_message = next_response.choices[0].message
+            # Check if we need more tool calls - provider-specific handling
+            if self.provider.lower() == "openai":
+                if hasattr(next_response.choices[0].message, "tool_calls") and next_response.choices[0].message.tool_calls:
+                    # Recursive call for next round of tool calls
+                    return self._process_tool_calls(messages, next_response.choices[0].message, max_iterations - 1)
+            elif self.provider.lower() == "anthropic":
+                if "tool_calls" in next_response:
+                    # Format the Anthropic tool calls to our standard format
+                    tool_calls = self.provider_client.format_tool_calls(next_response.get("tool_calls", []))
+                    if tool_calls:
+                        # Process the tool calls with our standard method
+                        return self._process_tool_calls(messages, {"content": next_response.get("content", ""), "tool_calls": tool_calls}, max_iterations - 1)
             
-            # Check if we need more tool calls
-            if hasattr(next_message, "tool_calls") and next_message.tool_calls:
-                # Recursive call for next round of tool calls
-                return self._process_tool_calls(messages, next_message, max_iterations - 1)
+            # We have our final text response - extract based on provider
+            if self.provider.lower() == "openai":
+                response_text = next_response.choices[0].message.content
+            elif self.provider.lower() == "anthropic":
+                response_text = next_response.get("content", [{"text": "No response generated."}])[0]["text"]
             else:
-                # We have our final text response
-                response_text = next_message.content
+                response_text = str(next_response)
+            
+            # Display the final response
+            if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                md = Markdown("\nAI:" + response_text, style="green")
+                console.print(md)
+            else:
+                console.print("\nAI:" + response_text, style="green")
                 
-                # Display the final response
-                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown("\nAI:" + response_text, style="green")
-                    console.print(md)
-                else:
-                    console.print("\nAI:" + response_text, style="green")
-                    
-                return response_text
+            return response_text
                 
         except Exception as e:
-            self.logger.error(f"Error processing tool calls: {str(e)}")
-            raise Exception(f"Error processing tool calls: {str(e)}")
+            self.logger.error(f"Error processing tool calls: {str(e)}")           
+            # Attempt to create a direct response based on the tool results
+            try:
+                # Collect the tool results we already have
+                tool_results_summary = ""
+                for msg in messages:
+                    if msg.get("role") == "tool" and msg.get("content"):
+                        tool_name = msg.get("name", "unknown tool")
+                        
+                        # Format the result information
+                        if tool_name == "web_search":
+                            # Parse the search results
+                            try:
+                                search_data = json.loads(msg.get("content"))
+                                tool_results_summary += "\nSearch results:\n"
+                                
+                                if isinstance(search_data, dict) and "results" in search_data:
+                                    for i, result in enumerate(search_data.get("results", [])[:3]):
+                                        tool_results_summary += f"- {result.get('title', 'No title')}: {result.get('snippet', 'No information')}\n"
+                            except Exception:
+                                tool_results_summary += f"\n{tool_name} results: {msg.get('content')[:200]}...\n"
+                        else:
+                            tool_results_summary += f"\n{tool_name} results: {msg.get('content')[:200]}...\n"
+                
+                # Create a helpful response
+                response_text = (
+                    f"I found some information for you, but encountered a technical issue when trying to formulate a complete response. "
+                    f"Here's what I found:{tool_results_summary}\n\n"
+                    f"Could you please ask your question again or try a different approach?"
+                )
+                
+                console.print("\nAI:" + response_text, style="green")
+                return response_text
+                
+            except Exception:
+                # If even our fallback fails, return a generic message
+                response_text = "I encountered a technical issue while processing the tool results. Please try your question again or phrase it differently."
+                console.print("\nAI:" + response_text, style="green")
+                return response_text
 
     def _execute_tool(self, tool_name, tool_args):
         """
@@ -932,8 +1225,8 @@ class LLM(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Clean up resources when exiting context manager."""
-        if hasattr(self, 'client'):
-            self.client.close()
+        if hasattr(self, 'provider_client'):
+            self.provider_client.close()
         if hasattr(self, 'embedding_client'):
             self.embedding_client.close()
 
@@ -960,7 +1253,8 @@ class OpenAIGPT(LLM):
         api_key (str): The API key for accessing OpenAI's services.
     """
     def __init__(self, config_path: str, api_key: str) -> None:
-        self.provider = "openai"  # Set provider before super() to ensure correct initialization
+
+        self.provider = "openai"
         super().__init__(config_path, api_key)
 
 class DeepSeek(LLM):
@@ -981,7 +1275,8 @@ class DeepSeek(LLM):
             api_key (str): The API key for authentication.
         """
     def __init__(self, config_path: str, api_key: str) -> None:
-        self.provider = 'deepseek'  # Set provider before super() to ensure correct initialization
+
+        self.provider = 'deepseek'
         super().__init__(config_path, api_key)
 
 class MistralAI(LLM):
@@ -995,24 +1290,101 @@ class MistralAI(LLM):
         __init__(config_path: str, api_key: str) -> None:
             Initializes the MistralAI instance with the given configuration path and API key.
     """
-    def __init__(self, config_path: str, api_key: str) -> None:
-        self.provider = 'mistral'  # Set provider before super() to ensure correct initialization
-        super().__init__(config_path, api_key)
 
+    def __init__(self, config_path: str, api_key: str) -> None:
+        self.provider = 'mistral'
+        super().__init__(config_path, api_key)
+    
 class GoogleGemini(LLM):
     """
     GoogleGemini is a specialized class for interacting with Google's Gemini models
     through their OpenAI-compatible interface.
-
-    Attributes:
-        provider_name (str): The name of the AI provider, set to 'google'.
-
-    Methods:
-        __init__(config_path: str, api_key: str) -> None:
-            Initializes the GoogleGemini instance with the given configuration path and API key.
+    
+    This class uses a provider-based approach to interact with Google's Gemini models.
     """
     def __init__(self, config_path: str, api_key: str) -> None:
         """Initialize with Google-specific settings"""
         # Set provider before super() to ensure correct initialization
         self.provider = 'google'
         super().__init__(config_path, api_key)
+
+
+class AnthropicAI(LLM):
+    """
+    AnthropicAI class for interacting with Anthropic's Claude models.
+    
+    This is a wrapper that uses the OpenAI-compatible API endpoint for Claude
+    while abstracting away the provider-specific details.
+    
+    Attributes:
+        provider (str): The name of the AI provider, set to 'anthropic'.
+    
+    Methods:
+        __init__(config_path: str, api_key: str) -> None:
+            Initializes the AnthropicAI instance with the given configuration path and API key.
+    """
+    
+    # Real-time query keywords - similar to other models
+    real_time_keywords = [
+        # Weather and natural phenomena
+        "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
+        "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
+        "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
+        
+        # News and current events
+        "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
+        "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
+        "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
+        
+        # Sports and entertainment
+        "score", "game", "match", "tournament", "championship", "playoff", "standings", 
+        "leaderboard", "box office", "premiere", "release", "concert", "performance", 
+        "episode", "ratings", "award", "nominations", "season", "show", "event",
+        
+        # Time-specific queries
+        "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
+        "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
+        "scheduled", "real-time", "live", "happening", "occurring", "next"
+    ]
+    
+    def __init__(self, config_path: str, api_key: str) -> None:
+        """
+        Initialize the AnthropicAI instance.
+        
+        Args:
+            config_path (str): Path to YAML configuration file
+            api_key (str): Anthropic API key
+        """
+        self.provider = 'anthropic'
+        super().__init__(config_path, api_key)
+        
+        # For backward compatibility, we'll use the OpenAI client since 
+        # we're assuming an OpenAI-compatible endpoint for Anthropic
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url or "https://api.anthropic.com/v1"
+        )
+    
+    def _prepare_standard_completion_params(self, messages):
+        """
+        Override to prepare parameters compatible with Anthropic's API requirements.
+        
+        Args:
+            messages (list): Message objects.
+            
+        Returns:
+            dict: Parameters for API request with Anthropic-specific adjustments.
+        """
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "top_p": self.top_p,
+        }
+        
+        # Only add stop parameter if it contains actual stop sequences
+        if self.stop_sequences and len(self.stop_sequences) > 0:
+            params["stop"] = self.stop_sequences
+            
+        return params
