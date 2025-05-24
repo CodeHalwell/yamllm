@@ -1,5 +1,5 @@
-from typing import List, Optional
-from pydantic import BaseModel
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel, Field
 import yaml
 
 class ProviderSettings(BaseModel):
@@ -7,6 +7,7 @@ class ProviderSettings(BaseModel):
     model: str
     api_key: None
     base_url: Optional[str] = None
+    extra_settings: Optional[Dict[str, Any]] = Field(default_factory=dict)
 
 class ModelSettings(BaseModel):
     temperature: float = 0.7

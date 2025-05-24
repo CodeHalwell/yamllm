@@ -13,6 +13,13 @@ import json
 from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
 import concurrent.futures
 
+# Import provider interfaces for backwards compatibility
+try:
+    from yamllm.core.providers import BaseProvider, OpenAIProvider, AnthropicProvider
+except ImportError:
+    # Provider interfaces not available
+    pass
+
 
 dotenv.load_dotenv()
 
@@ -1551,3 +1558,84 @@ class GoogleGemini(LLM):
             # Make sure we're using original messages without any null content
             clean_messages = [m for m in messages if m.get("content") is not None]
             return self._handle_streaming_response(clean_messages)
+
+
+class AnthropicAI(LLM):
+    """
+    AnthropicAI class for interacting with Anthropic's Claude models.
+    
+    This is a wrapper that uses the OpenAI-compatible API endpoint for Claude
+    while abstracting away the provider-specific details.
+    
+    Attributes:
+        provider (str): The name of the AI provider, set to 'anthropic'.
+    
+    Methods:
+        __init__(config_path: str, api_key: str) -> None:
+            Initializes the AnthropicAI instance with the given configuration path and API key.
+    """
+    
+    # Real-time query keywords - similar to other models
+    real_time_keywords = [
+        # Weather and natural phenomena
+        "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
+        "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
+        "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
+        
+        # News and current events
+        "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
+        "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
+        "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
+        
+        # Sports and entertainment
+        "score", "game", "match", "tournament", "championship", "playoff", "standings", 
+        "leaderboard", "box office", "premiere", "release", "concert", "performance", 
+        "episode", "ratings", "award", "nominations", "season", "show", "event",
+        
+        # Time-specific queries
+        "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
+        "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
+        "scheduled", "real-time", "live", "happening", "occurring", "next"
+    ]
+    
+    def __init__(self, config_path: str, api_key: str) -> None:
+        """
+        Initialize the AnthropicAI instance.
+        
+        Args:
+            config_path (str): Path to YAML configuration file
+            api_key (str): Anthropic API key
+        """
+        self.provider = 'anthropic'
+        super().__init__(config_path, api_key)
+        
+        # For backward compatibility, we'll use the OpenAI client since 
+        # we're assuming an OpenAI-compatible endpoint for Anthropic
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=self.base_url or "https://api.anthropic.com/v1"
+        )
+    
+    def _prepare_standard_completion_params(self, messages):
+        """
+        Override to prepare parameters compatible with Anthropic's API requirements.
+        
+        Args:
+            messages (list): Message objects.
+            
+        Returns:
+            dict: Parameters for API request with Anthropic-specific adjustments.
+        """
+        params = {
+            "model": self.model,
+            "messages": messages,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
+            "top_p": self.top_p,
+        }
+        
+        # Only add stop parameter if it contains actual stop sequences
+        if self.stop_sequences and len(self.stop_sequences) > 0:
+            params["stop"] = self.stop_sequences
+            
+        return params
