@@ -4,7 +4,7 @@ import dotenv
 
 dotenv.load_dotenv()
 
-root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..",))
 config_path = os.path.join(root_dir, ".config_examples", "google_config.yaml")
 
 # Initialize LLM with config

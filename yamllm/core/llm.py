@@ -5,12 +5,11 @@ from typing import Optional, Dict, Any, Union, Type, List
 import os
 import logging
 import dotenv
-from rich.live import Live
-from rich.markdown import Markdown
-from rich.console import Console 
 import json
 from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
 import concurrent.futures
+from yamllm.providers.factory import ProviderFactory
+from yamllm.providers.base import Message, ToolDefinition
 
 # Import provider interfaces
 from yamllm.core.providers import BaseProvider, OpenAIProvider, AnthropicProvider
@@ -38,24 +37,24 @@ def setup_logging(config):
     # Set logging level for httpx and urllib3 to WARNING to suppress INFO messages
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    
+
     # Disable propagation to root logger
     logging.getLogger('yamllm').propagate = False
-    
+
     # Get or create yamllm logger
     logger = logging.getLogger('yamllm')
     logger.setLevel(getattr(logging, config.logging.level))
-    
+
     # Remove any existing handlers
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-    
+
     # Create file handler
     file_handler = logging.FileHandler(config.logging.file)
     formatter = logging.Formatter(config.logging.format)
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    
+
     return logger
 
 
@@ -97,7 +96,7 @@ class LLM(object):
         self.logger = setup_logging(self.config)
 
         # Provider settings
-        self.provider = self.config.provider.name if not hasattr(self, 'provider') else self.provider
+        self.provider_name = self.config.provider.name if not hasattr(self, 'provider') else self.provider
         self.model = self.config.provider.model
         self.base_url = self.config.provider.base_url
         self.extra_settings = getattr(self.config.provider, 'extra_settings', {})
@@ -232,13 +231,15 @@ class LLM(object):
             
             # Fallback to OpenAI embeddings for other providers
             response = self.embedding_client.embeddings.create(
+
                 input=text,
                 model="text-embedding-3-small"
             )
             return response.data[0].embedding
+
         except Exception as e:
             self.logger.error(f"Error creating embedding: {str(e)}")
-            raise Exception(f"Error creating embedding: {str(e)}")      
+            raise Exception(f"Error creating embedding: {str(e)}")
 
     def find_similar_messages(self, query: str, k: int) -> List[Dict[str, Any]]:
         """
@@ -301,12 +302,12 @@ class LLM(object):
         Args:
             prompt (str): The prompt to send to the model.
             system_prompt (Optional[str]): An optional system prompt for context.
-            
+
         Returns:
             Optional[str]: The response from the language model, or None if streaming is enabled.
         """
         messages = self._prepare_messages(prompt, system_prompt)
-        
+
         # Prepare tools if enabled
         tools_param = self._prepare_tools() if self.tools_enabled and self.tools else None
 
@@ -325,23 +326,23 @@ class LLM(object):
     def _prepare_messages(self, prompt: str, system_prompt: Optional[str] = None) -> List[Dict[str, str]]:
         """
         Prepare messages for the API request.
-        
+
         Args:
             prompt (str): The user prompt.
             system_prompt (Optional[str]): An optional system prompt.
-            
+
         Returns:
             List[Dict[str, str]]: Formatted messages for the API request.
         """
         messages = []
-        
+
         # Add system prompt if provided
         if system_prompt or self.system_prompt:
             messages.append({
                 "role": "system",
                 "content": system_prompt or self.system_prompt
             })
-        
+
         # Add memory context if enabled
         if self.memory_enabled:           
             # Get conversation history
@@ -349,10 +350,10 @@ class LLM(object):
                 session_id=self.session_id, 
                 limit=self.memory_max_messages
             )
-            
+
             # Add history messages
             messages.extend(history)
-            
+
             # Find similar messages
             similar_context = ""
             try:
@@ -362,7 +363,7 @@ class LLM(object):
                         "\n".join([f"{m['role']}: {m['content']}" for m in similar_results])
             except Exception as e:
                 self.logger.debug(f"Error finding similar messages: {str(e)}")
-            
+
             # Add current prompt with context
             messages.append({
                 "role": "user", 
@@ -374,13 +375,13 @@ class LLM(object):
                 "role": "user",
                 "content": str(prompt)
             })
-            
+
         return messages
 
     def _prepare_tools(self):
         """
         Prepare tool definitions for the API call.
-        
+
         Returns:
             list: List of tool definitions in the format expected by the provider
         """        
@@ -393,16 +394,16 @@ class LLM(object):
             "weather": WeatherTool,
             "web_scraper": WebScraper
         }
-        
+
         tool_definitions = []
-        
+
         for tool_name in self.tools:
             if tool_name not in tool_classes:
                 self.logger.warning(f"Tool '{tool_name}' not found in available tools")
                 continue
-                
+
             tool_class = tool_classes[tool_name]
-            
+
             if tool_name == "weather":
                 weather_api_key = os.environ.get("WEATHER_API_KEY")
                 if not weather_api_key:
@@ -410,30 +411,28 @@ class LLM(object):
                 tool_instance = tool_class(api_key=weather_api_key)
             else:
                 tool_instance = tool_class()
-                    
+
             # Define parameters schema based on the tool
             parameters_schema = self._get_tool_parameters(tool_name)
-            
-            tool_definition = {
-                "type": "function",
-                "function": {
-                    "name": tool_instance.name,
-                    "description": tool_instance.description,
-                    "parameters": parameters_schema
-                }
-            }
-            
+
+            # Create a standardized tool definition
+            tool_definition = ToolDefinition(
+                name=tool_instance.name,
+                description=tool_instance.description,
+                parameters=parameters_schema
+            )
+
             tool_definitions.append(tool_definition)
-            
+
         return tool_definitions
 
     def _get_tool_parameters(self, tool_name):
         """
         Get parameters schema for a specific tool.
-        
+
         Args:
             tool_name (str): Name of the tool
-            
+
         Returns:
             dict: Parameters schema for the tool
         """
@@ -524,20 +523,20 @@ class LLM(object):
                 "required": ["url"]
             }
         }
-        
+
         return tool_parameters.get(tool_name, {"type": "object", "properties": {}})
 
     def _handle_streaming_with_tool_detection(self, messages, tools_param=None):
         """
         Handle streaming with tool detection.
-        
+
         First checks if tools are needed with a small preview request, then
         either processes tools or streams the response.
-        
+
         Args:
             messages (list): List of message objects.
             tools_param (list, optional): Tool definitions.
-            
+
         Returns:
             str: Response text.
         """
@@ -605,10 +604,10 @@ class LLM(object):
     def _handle_streaming_response(self, messages):
         """
         Handle streaming response from the model.
-        
+
         Args:
             messages (list): List of message objects
-            
+
         Returns:
             str: Concatenated response text
         """
@@ -658,7 +657,6 @@ class LLM(object):
                             live.update(md)
             
             return response_text
-            
         except Exception as e:
             self.logger.error(f"Streaming error: {str(e)}")
             raise Exception(f"Error getting streaming response: {str(e)}")
@@ -683,11 +681,11 @@ class LLM(object):
     def _handle_non_streaming_response(self, messages, tools_param=None):
         """
         Handle non-streaming response from the model, with optional tool calling.
-        
+
         Args:
             messages (list): List of message objects.
             tools_param (list, optional): Tool definitions.
-            
+
         Returns:
             str: Response text.
         """
@@ -831,12 +829,11 @@ class LLM(object):
     def _process_tool_calls(self, messages, model_message, max_iterations=5):
         """
         Process tool calls from the model and get the final response.
-        
         Args:
             messages (list): List of message objects.
             model_message: The model's message containing tool calls.
             max_iterations (int): Maximum number of tool call iterations.
-            
+
         Returns:
             str: Final response text.
         """
@@ -952,8 +949,7 @@ class LLM(object):
             return response_text
                 
         except Exception as e:
-            self.logger.error(f"Error processing tool calls: {str(e)}")
-            
+            self.logger.error(f"Error processing tool calls: {str(e)}")           
             # Attempt to create a direct response based on the tool results
             try:
                 # Collect the tool results we already have
@@ -996,11 +992,11 @@ class LLM(object):
     def _execute_tool(self, tool_name, tool_args):
         """
         Execute a tool with the provided arguments.
-        
+
         Args:
             tool_name (str): Name of the tool to execute
             tool_args (dict): Arguments for the tool
-            
+
         Returns:
             Any: The result of the tool execution
         """
@@ -1013,10 +1009,10 @@ class LLM(object):
             "weather": WeatherTool,
             "web_scraper": WebScraper
         }
-        
+
         if tool_name not in tool_classes:
             return f"Error: Tool '{tool_name}' not found"
-            
+
         # Initialize the tool
         try:
             if tool_name == "weather":
@@ -1026,7 +1022,7 @@ class LLM(object):
                 tool = tool_classes[tool_name](api_key=weather_api_key)
             else:
                 tool = tool_classes[tool_name]()
-                
+
             # Execute the tool with timeout
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 future = executor.submit(tool.execute, **tool_args)
@@ -1035,7 +1031,7 @@ class LLM(object):
                     return result
                 except concurrent.futures.TimeoutError:
                     return f"Error: Tool execution timed out after {self.tools_timeout} seconds"
-                    
+
         except Exception as e:
             self.logger.error(f"Error executing tool '{tool_name}': {str(e)}")
             return f"Error executing tool: {str(e)}"
@@ -1043,7 +1039,7 @@ class LLM(object):
     def _store_memory(self, prompt: str, response_text: str, session_id: str, tool_interactions=None) -> None:
         """
         Store the conversation in memory.
-        
+
         Args:
             prompt (str): User's prompt
             response_text (str): Model's response
@@ -1052,7 +1048,7 @@ class LLM(object):
         """
         if not self.memory_enabled:
             return
-            
+
         try:
             # Store user message
             message_id = self.memory.add_message(
@@ -1067,7 +1063,7 @@ class LLM(object):
                 content=prompt,
                 role="user"
             )
-            
+
             # Store assistant response 
             response_id = self.memory.add_message(
                 session_id=session_id, 
@@ -1081,7 +1077,7 @@ class LLM(object):
                 content=response_text,
                 role="assistant"
             )
-            
+
             # Store tool interactions if provided
             if tool_interactions:
                 for interaction in tool_interactions:
@@ -1090,9 +1086,59 @@ class LLM(object):
                         role="tool",
                         content=json.dumps(interaction)
                     )
-                    
+
         except Exception as e:
             self.logger.error(f"Error storing memory: {str(e)}")
+    
+    # Define a type variable for the return type
+    T = TypeVar('T')
+    
+    def _make_api_call(self, api_func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """
+        Make an API call with retry and exponential backoff for transient failures.
+        
+        Args:
+            api_func: The API function to call
+            *args: Positional arguments to pass to the API function
+            **kwargs: Keyword arguments to pass to the API function
+            
+        Returns:
+            The result of the API function call
+            
+        Raises:
+            Exception: If all retry attempts fail
+        """
+        attempts = 0
+        max_attempts = self.retry_max_attempts
+        initial_delay = self.retry_initial_delay
+        backoff_factor = self.retry_backoff_factor
+        last_exception = None
+        
+        while attempts < max_attempts:
+            try:
+                return api_func(*args, **kwargs)
+            except (ConnectionError, TimeoutError, OpenAIError) as e:
+                attempts += 1
+                last_exception = e
+                
+                # If this was the last attempt, re-raise the exception
+                if attempts >= max_attempts:
+                    self.logger.error(f"API call failed after {max_attempts} attempts: {str(e)}")
+                    raise
+                
+                # Calculate delay with exponential backoff
+                delay = initial_delay * (backoff_factor ** (attempts - 1))
+                self.logger.warning(f"API call attempt {attempts} failed: {str(e)}. Retrying in {delay} seconds...")
+                
+                # Sleep before the next attempt
+                time.sleep(delay)
+        
+        # This should never happen, but just in case
+        if last_exception:
+            raise last_exception
+        
+        # This line should never be reached but is needed for type checking
+        return cast(T, None)
 
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
         """
@@ -1194,7 +1240,7 @@ class OpenAIGPT(LLM):
     A class to interact with OpenAI's GPT models.
 
     Attributes:
-        provider (str): The name of the provider, set to "openai".
+        provider_name (str): The name of the provider, set to "openai".
 
     Methods:
         __init__(config_path: str, api_key: str) -> None:
@@ -1207,6 +1253,7 @@ class OpenAIGPT(LLM):
         api_key (str): The API key for accessing OpenAI's services.
     """
     def __init__(self, config_path: str, api_key: str) -> None:
+
         self.provider = "openai"
         super().__init__(config_path, api_key)
 
@@ -1215,7 +1262,7 @@ class DeepSeek(LLM):
     DeepSeek is a subclass of LLM that initializes a connection to the DeepSeek provider.
 
     Attributes:
-        provider (str): The name of the provider, set to 'deepseek'.
+        provider_name (str): The name of the provider, set to 'deepseek'.
 
     Methods:
         __init__(config_path: str, api_key: str) -> None:
@@ -1228,20 +1275,22 @@ class DeepSeek(LLM):
             api_key (str): The API key for authentication.
         """
     def __init__(self, config_path: str, api_key: str) -> None:
+
         self.provider = 'deepseek'
         super().__init__(config_path, api_key)
 
 class MistralAI(LLM):
     """
     MistralAI class for interacting with the Mistral language model.
-    
+
     Attributes:
-        provider (str): The name of the AI provider, set to 'mistral'.
-    
+        provider_name (str): The name of the AI provider, set to 'mistral'.
+
     Methods:
         __init__(config_path: str, api_key: str) -> None:
             Initializes the MistralAI instance with the given configuration path and API key.
     """
+
     def __init__(self, config_path: str, api_key: str) -> None:
         self.provider = 'mistral'
         super().__init__(config_path, api_key)
