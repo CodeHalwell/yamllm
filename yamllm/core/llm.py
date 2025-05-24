@@ -1,8 +1,9 @@
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.memory import ConversationStore, VectorStore
-from openai import OpenAIError
-from typing import Optional, Dict, Any
+from openai import OpenAI, OpenAIError
+from typing import Optional, Dict, Any, Callable, TypeVar, cast
 import os
+import time
 from typing import List
 import logging
 import dotenv
@@ -174,7 +175,13 @@ class LLM(object):
             Exception: If there is an error creating the embedding.
         """
         try:
-            return self.provider.create_embedding(text)
+            response = self._make_api_call(
+                self.embedding_client.embeddings.create,
+                input=text,
+                model="text-embedding-3-small"
+            )
+            return response.data[0].embedding
+
         except Exception as e:
             self.logger.error(f"Error creating embedding: {str(e)}")
             raise Exception(f"Error creating embedding: {str(e)}")
@@ -506,21 +513,30 @@ class LLM(object):
             str: Response text.
         """
         try:
-            # Convert messages to the standardized format
-            standardized_messages = [
-                Message(role=msg["role"], content=msg["content"], name=msg.get("name"))
-                for msg in messages
-            ]
-
-            # Get parameters for the API request
-            params = self._prepare_standard_completion_params(messages)
-
-            # Use the provider's implementation
-            return self.provider.handle_streaming_with_tool_detection(
-                messages=standardized_messages,
-                params=params,
-                tools=tools_param
+            # Make a low-token request to see if the model will use tools
+            preview_params = self._prepare_standard_completion_params(messages)
+            preview_params["max_tokens"] = 10  # Just enough to detect tool usage
+            
+            if tools_param:
+                preview_params["tools"] = tools_param
+                preview_params["tool_choice"] = "auto"
+                
+            preview_response = self._make_api_call(
+                self.client.chat.completions.create,
+                **preview_params
             )
+            
+            # Check if model wants to use tools
+            if (tools_param and hasattr(preview_response.choices[0].message, "tool_calls") 
+                and preview_response.choices[0].message.tool_calls):
+                # Model wants to use tools, use non-streaming
+                console = Console()
+                console.print("\n[yellow]Using tools to answer this question...[/yellow]")
+                return self._handle_non_streaming_response(messages, tools_param)
+            else:
+                # Model doesn't need tools, use streaming
+                return self._handle_streaming_response(messages)
+              
         except Exception as e:
             self.logger.warning(f"Streaming with tool detection failed: {str(e)}")
             # Fall back to streaming without tool detection
@@ -546,11 +562,26 @@ class LLM(object):
             # Get parameters for the API request
             params = self._prepare_standard_completion_params(messages)
 
-            # Use the provider's implementation
-            return self.provider.handle_streaming_response(
-                messages=standardized_messages,
-                params=params
+            params["stream"] = True
+            
+            response = self._make_api_call(
+                self.client.chat.completions.create,
+                **params
             )
+            
+            console = Console()
+            response_text = ""
+            print()
+            
+            with Live(console=console, refresh_per_second=10) as live:
+                for chunk in response:
+                    if chunk.choices[0].delta.content:
+                        response_text += chunk.choices[0].delta.content
+                        md = Markdown(f"\nAI: {response_text}", style="green")
+                        live.update(md)
+
+            return response_text
+
         except Exception as e:
             self.logger.error(f"Streaming error: {str(e)}")
             raise Exception(f"Error getting streaming response: {str(e)}")
@@ -566,29 +597,37 @@ class LLM(object):
         Returns:
             str: Response text.
         """
-        try:
-            # Convert messages to the standardized format
-            standardized_messages = [
-                Message(role=msg["role"], content=msg["content"], name=msg.get("name"))
-                for msg in messages
-            ]
 
-            # Get parameters for the API request
-            params = self._prepare_standard_completion_params(messages)
-
-            # Use the provider's implementation
-            response = self.provider.handle_non_streaming_response(
-                messages=standardized_messages,
-                params=params,
-                tools=tools_param
+        try:            
+            # Prepare API call parameters
+            completion_params = self._prepare_standard_completion_params(messages)
+            
+            # Add tools if available
+            if tools_param:
+                completion_params["tools"] = tools_param
+                completion_params["tool_choice"] = "auto"
+                
+            response = self._make_api_call(
+                self.client.chat.completions.create,
+                **completion_params
             )
-
-            # If the response is a model message with tool calls, process them
-            if hasattr(response, 'tool_calls') and response.tool_calls:
-                return self._process_tool_calls(messages, response)
-
-            return response
-
+                       
+            # Check if the model wants to use a tool
+            if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+                return self._process_tool_calls(messages, response.choices[0].message)
+            else:
+                response_text = response.choices[0].message.content
+                
+                # Display the response
+                console = Console()
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown("\nAI:" + response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print("\nAI:" + response_text, style="green")
+                    
+                return response_text
+                
         except Exception as e:
             self.logger.error(f"Non-streaming error: {str(e)}")
             raise Exception(f"Error getting non-streaming response: {str(e)}")
@@ -617,12 +656,42 @@ class LLM(object):
 
         # Use the provider's implementation
         try:
-            return self.provider.process_tool_calls(
-                messages=standardized_messages,
-                model_message=model_message,
-                execute_tool_func=execute_tool_func,
-                max_iterations=max_iterations
+            # For Google, filter out any messages with null content
+            if self.provider == 'google':
+                clean_messages = [m for m in messages if m.get("content") is not None]
+                for i, m in enumerate(clean_messages):
+                    # Ensure content is always a string, never None
+                    if m.get("content") is None:
+                        clean_messages[i]["content"] = ""
+                    
+                params = self._prepare_standard_completion_params(clean_messages)
+            else:
+                params = self._prepare_standard_completion_params(messages)
+                
+            next_response = self._make_api_call(
+                self.client.chat.completions.create,
+                **params
             )
+            
+            next_message = next_response.choices[0].message
+            
+            # Check if we need more tool calls
+            if hasattr(next_message, "tool_calls") and next_message.tool_calls:
+                # Recursive call for next round of tool calls
+                return self._process_tool_calls(messages, next_message, max_iterations - 1)
+            else:
+                # We have our final text response
+                response_text = next_message.content
+                
+                # Display the final response
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown("\nAI:" + response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print("\nAI:" + response_text, style="green")
+                    
+                return response_text
+                
         except Exception as e:
             self.logger.error(f"Error processing tool calls: {str(e)}")
             raise Exception(f"Error processing tool calls: {str(e)}")
@@ -727,6 +796,56 @@ class LLM(object):
 
         except Exception as e:
             self.logger.error(f"Error storing memory: {str(e)}")
+    
+    # Define a type variable for the return type
+    T = TypeVar('T')
+    
+    def _make_api_call(self, api_func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+        """
+        Make an API call with retry and exponential backoff for transient failures.
+        
+        Args:
+            api_func: The API function to call
+            *args: Positional arguments to pass to the API function
+            **kwargs: Keyword arguments to pass to the API function
+            
+        Returns:
+            The result of the API function call
+            
+        Raises:
+            Exception: If all retry attempts fail
+        """
+        attempts = 0
+        max_attempts = self.retry_max_attempts
+        initial_delay = self.retry_initial_delay
+        backoff_factor = self.retry_backoff_factor
+        last_exception = None
+        
+        while attempts < max_attempts:
+            try:
+                return api_func(*args, **kwargs)
+            except (ConnectionError, TimeoutError, OpenAIError) as e:
+                attempts += 1
+                last_exception = e
+                
+                # If this was the last attempt, re-raise the exception
+                if attempts >= max_attempts:
+                    self.logger.error(f"API call failed after {max_attempts} attempts: {str(e)}")
+                    raise
+                
+                # Calculate delay with exponential backoff
+                delay = initial_delay * (backoff_factor ** (attempts - 1))
+                self.logger.warning(f"API call attempt {attempts} failed: {str(e)}. Retrying in {delay} seconds...")
+                
+                # Sleep before the next attempt
+                time.sleep(delay)
+        
+        # This should never happen, but just in case
+        if last_exception:
+            raise last_exception
+        
+        # This line should never be reached but is needed for type checking
+        return cast(T, None)
 
     def update_settings(self, **kwargs: Dict[str, Any]) -> None:
         """
