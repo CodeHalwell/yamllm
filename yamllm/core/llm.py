@@ -1,9 +1,8 @@
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.memory import ConversationStore, VectorStore
 from openai import OpenAI, OpenAIError
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union, Type, List
 import os
-from typing import List
 import logging
 import dotenv
 from rich.live import Live
@@ -13,12 +12,8 @@ import json
 from yamllm.tools.utility_tools import WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
 import concurrent.futures
 
-# Import provider interfaces for backwards compatibility
-try:
-    from yamllm.core.providers import BaseProvider, OpenAIProvider, AnthropicProvider
-except ImportError:
-    # Provider interfaces not available
-    pass
+# Import provider interfaces
+from yamllm.core.providers import BaseProvider, OpenAIProvider, AnthropicProvider
 
 
 dotenv.load_dotenv()
@@ -70,7 +65,7 @@ class LLM(object):
 
     This class handles configuration loading and API interactions
     with language models. It serves as a base class for provider-specific
-    implementations.
+    implementations and supports a provider-agnostic interface.
 
     Args:
         config_path (str): Path to YAML configuration file
@@ -80,6 +75,13 @@ class LLM(object):
         >>> llm = LLM(config_path = "config.yaml", api_key = "your-api-key")
         >>> response = llm.query("Hello, world!")
     """
+    # Provider mapping
+    PROVIDER_MAP = {
+        "openai": OpenAIProvider,
+        "anthropic": AnthropicProvider,
+        # Will add more providers as they're implemented
+    }
+    
     def __init__(self, config_path: str, api_key: str) -> None:
         """
         Initialize the LLM instance with the given configuration path.
@@ -98,6 +100,7 @@ class LLM(object):
         self.provider = self.config.provider.name if not hasattr(self, 'provider') else self.provider
         self.model = self.config.provider.model
         self.base_url = self.config.provider.base_url
+        self.extra_settings = getattr(self.config.provider, 'extra_settings', {})
 
         # Model settings
         self.temperature = self.config.model_settings.temperature
@@ -138,15 +141,12 @@ class LLM(object):
         self.max_requests_per_minute = self.config.safety.max_requests_per_minute
         self.sensitive_keywords = self.config.safety.sensitive_keywords
 
-        # Initialize OpenAI client for regular requests
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
+        # Initialize provider client
+        self.provider_client = self._initialize_provider()
 
-        # Initialize OpenAI client for embeddings
+        # Initialize OpenAI client for embeddings (to be used across providers)
         self.embedding_client = OpenAI(
-            api_key=os.environ.get("OPENAI_API_KEY"),
+            api_key=os.environ.get("OPENAI_API_KEY") or self.api_key,
         )
 
         # Initialize memory and vector store if enabled
@@ -154,6 +154,54 @@ class LLM(object):
         self.vector_store = None
         if self.memory_enabled:
             self._initialize_memory()
+            
+        # Add real-time keywords for providers that need them
+        self.real_time_keywords = [
+            # Weather and natural phenomena
+            "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
+            "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
+            "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
+            
+            # News and current events
+            "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
+            "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
+            "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
+            
+            # Sports and entertainment
+            "score", "game", "match", "tournament", "championship", "playoff", "standings", 
+            "leaderboard", "box office", "premiere", "release", "concert", "performance", 
+            "episode", "ratings", "award", "nominations", "season", "show", "event",
+            
+            # Time-specific queries
+            "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
+            "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
+            "scheduled", "real-time", "live", "happening", "occurring", "next"
+        ]
+
+    def _initialize_provider(self) -> BaseProvider:
+        """
+        Initialize the provider based on configuration.
+        
+        Returns:
+            BaseProvider: The initialized provider client
+        """
+        # For direct subclasses like OpenAIGPT, we want to use the specific provider
+        provider_name = self.provider.lower()
+        provider_class = self.PROVIDER_MAP.get(provider_name)
+        
+        if not provider_class:
+            if provider_name == "openai" or self.__class__.__name__ == "LLM":
+                # Default to OpenAI provider for base LLM class or explicit OpenAI provider
+                provider_class = OpenAIProvider
+            else:
+                raise ValueError(f"Unsupported provider: {self.provider}. Supported providers: {', '.join(self.PROVIDER_MAP.keys())}")
+        
+        # Initialize the provider with our settings
+        return provider_class(
+            api_key=self.api_key,
+            base_url=self.base_url,
+            **self.extra_settings
+        )
 
     def _initialize_memory(self):
         """Initialize memory and vector store"""
@@ -164,20 +212,25 @@ class LLM(object):
         if not self.memory.db_exists():
             self.memory.create_db()
 
-    def create_embedding(self, text: str) -> bytes:
+    def create_embedding(self, text: str) -> Union[List[float], bytes]:
         """
-        Create an embedding for the given text using OpenAI's API.
+        Create an embedding for the given text.
 
         Args:
             text (str): The text to create an embedding for.
 
         Returns:
-            bytes: The embedding as bytes.
+            Union[List[float], bytes]: The embedding as a list of floats or bytes.
 
         Raises:
             Exception: If there is an error creating the embedding.
         """
         try:
+            # For OpenAI and compatible providers, use the provider's embedding method
+            if hasattr(self.provider_client, 'create_embedding'):
+                return self.provider_client.create_embedding(text, "text-embedding-3-small")
+            
+            # Fallback to OpenAI embeddings for other providers
             response = self.embedding_client.embeddings.create(
                 input=text,
                 model="text-embedding-3-small"
@@ -236,14 +289,11 @@ class LLM(object):
             raise ValueError("API key is not initialized or invalid.")
         try:
             return self.get_response(prompt, system_prompt)
-        except OpenAIError as e:
-            self.logger.error(f"OpenAI API error: {str(e)}")
-            raise Exception(f"OpenAI API error: {str(e)}")
         except Exception as e:
-            self.logger.error(f"Unexpected error during query: {str(e)}")
-            raise Exception(f"Unexpected error during query: {str(e)}")
+            self.logger.error(f"API error: {str(e)}")
+            raise Exception(f"API error: {str(e)}")
 
-    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> str:
+    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
         """
         Generates a response from the language model based on the provided prompt and optional system prompt.
         Supports tool calling if tools_enabled is True.
@@ -253,7 +303,7 @@ class LLM(object):
             system_prompt (Optional[str]): An optional system prompt for context.
             
         Returns:
-            str: The response from the language model.
+            Optional[str]: The response from the language model, or None if streaming is enabled.
         """
         messages = self._prepare_messages(prompt, system_prompt)
         
@@ -327,31 +377,12 @@ class LLM(object):
             
         return messages
 
-    def _prepare_standard_completion_params(self, messages):
-        """
-        Prepare standard completion parameters that should work across providers.
-        
-        Args:
-            messages (list): Message objects.
-            
-        Returns:
-            dict: Parameters for API request.
-        """
-        return {
-            "model": self.model,
-            "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "top_p": self.top_p,
-            "stop": self.stop_sequences or None
-        }
-
     def _prepare_tools(self):
         """
         Prepare tool definitions for the API call.
         
         Returns:
-            list: List of tool definitions in the format expected by the OpenAI API
+            list: List of tool definitions in the format expected by the provider
         """        
         # Map tool names to their respective classes
         tool_classes = {
@@ -511,29 +542,64 @@ class LLM(object):
             str: Response text.
         """
         try:
-            # Make a low-token request to see if the model will use tools
-            preview_params = self._prepare_standard_completion_params(messages)
-            preview_params["max_tokens"] = 10  # Just enough to detect tool usage
+            # Check for real-time queries that might benefit from tools
+            is_real_time_query = False
+            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
             
-            if tools_param:
-                preview_params["tools"] = tools_param
-                preview_params["tool_choice"] = "auto"
-                
-            preview_response = self.client.chat.completions.create(**preview_params)
+            # Extract just the user's question without any context annotations
+            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
             
-            # Check if model wants to use tools
-            if (tools_param and hasattr(preview_response.choices[0].message, "tool_calls") 
-                and preview_response.choices[0].message.tool_calls):
-                # Model wants to use tools, use non-streaming
+            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
+                is_real_time_query = True
+            
+            if is_real_time_query and tools_param:
+                # Use non-streaming for real-time queries
                 console = Console()
-                console.print("\n[yellow]Using tools to answer this question...[/yellow]")
+                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
                 return self._handle_non_streaming_response(messages, tools_param)
-            else:
-                # Model doesn't need tools, use streaming
+            
+            # For non-real-time queries or if no tools available, make a small preview request
+            # to see if tools would be used anyway
+            try:
+                # Make a low-token request to see if the model will use tools
+                params = {
+                    "messages": messages,
+                    "model": self.model,
+                    "temperature": self.temperature,
+                    "max_tokens": 10,  # Just enough to detect tool usage
+                    "top_p": self.top_p,
+                    "stop_sequences": self.stop_sequences if self.stop_sequences else None
+                }
+                
+                if tools_param:
+                    params["tools"] = tools_param
+                    
+                # Use the provider client to make the request
+                preview_response = self.provider_client.get_completion(**params)
+                
+                # Check if the model wants to use tools - this is provider-specific
+                tool_calls = []
+                if self.provider.lower() == "openai" and tools_param:
+                    if hasattr(preview_response.choices[0].message, "tool_calls"):
+                        tool_calls = preview_response.choices[0].message.tool_calls
+                elif self.provider.lower() == "anthropic" and tools_param:
+                    tool_calls = preview_response.get("tool_calls", [])
+                
+                if tool_calls:
+                    # Model wants to use tools, use non-streaming
+                    console = Console()
+                    console.print("\n[yellow]Using tools to answer this question...[/yellow]")
+                    return self._handle_non_streaming_response(messages, tools_param)
+                else:
+                    # Model doesn't need tools, use streaming
+                    return self._handle_streaming_response(messages)
+            except Exception as e:
+                self.logger.warning(f"Preview request failed: {str(e)}")
+                # Fall back to streaming without tool detection
                 return self._handle_streaming_response(messages)
+                
         except Exception as e:
-            self.logger.warning(f"Preview request failed: {str(e)}")
-            # Fall back to streaming without tool detection
+            self.logger.warning(f"Tool detection request failed: {str(e)}")
             return self._handle_streaming_response(messages)
 
     def _handle_streaming_response(self, messages):
@@ -547,26 +613,72 @@ class LLM(object):
             str: Concatenated response text
         """
         try:
-            params = self._prepare_standard_completion_params(messages)
-            params["stream"] = True
-            
-            response = self.client.chat.completions.create(**params)
+            # Use the provider client to get a streaming response
+            response = self.provider_client.get_streaming_completion(
+                messages=messages,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences if self.stop_sequences else None
+            )
             
             console = Console()
             response_text = ""
             print()
             
-            with Live(console=console, refresh_per_second=10) as live:
-                for chunk in response:
-                    if chunk.choices[0].delta.content:
-                        response_text += chunk.choices[0].delta.content
-                        md = Markdown(f"\nAI: {response_text}", style="green")
-                        live.update(md)
-
+            # Handle the streaming response based on the provider
+            if self.provider.lower() == "openai":
+                with Live(console=console, refresh_per_second=10) as live:
+                    for chunk in response:
+                        if hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta.content:
+                            response_text += chunk.choices[0].delta.content
+                            md = Markdown(f"\nAI: {response_text}", style="green")
+                            live.update(md)
+            elif self.provider.lower() == "anthropic":
+                with Live(console=console, refresh_per_second=10) as live:
+                    for line in response:
+                        if line:
+                            try:
+                                chunk = json.loads(line.decode('utf-8').strip())
+                                if chunk.get("type") == "content_block_delta" and chunk.get("delta", {}).get("text"):
+                                    response_text += chunk["delta"]["text"]
+                                    md = Markdown(f"\nAI: {response_text}", style="green")
+                                    live.update(md)
+                            except Exception as e:
+                                self.logger.debug(f"Error parsing streaming chunk: {str(e)}")
+            else:
+                # Generic fallback for other providers
+                with Live(console=console, refresh_per_second=10) as live:
+                    for chunk in response:
+                        chunk_text = self._extract_text_from_chunk(chunk)
+                        if chunk_text:
+                            response_text += chunk_text
+                            md = Markdown(f"\nAI: {response_text}", style="green")
+                            live.update(md)
+            
             return response_text
+            
         except Exception as e:
             self.logger.error(f"Streaming error: {str(e)}")
             raise Exception(f"Error getting streaming response: {str(e)}")
+            
+    def _extract_text_from_chunk(self, chunk):
+        """Extract text from a streaming chunk based on provider-specific format."""
+        if self.provider.lower() == "openai":
+            if hasattr(chunk.choices[0], "delta") and chunk.choices[0].delta.content:
+                return chunk.choices[0].delta.content
+        elif self.provider.lower() == "anthropic":
+            try:
+                if isinstance(chunk, bytes):
+                    chunk = json.loads(chunk.decode('utf-8').strip())
+                if chunk.get("type") == "content_block_delta" and chunk.get("delta", {}).get("text"):
+                    return chunk["delta"]["text"]
+            except Exception:
+                pass
+        
+        # If we can't extract text in any known way, return empty string
+        return ""
 
     def _handle_non_streaming_response(self, messages, tools_param=None):
         """
@@ -579,32 +691,138 @@ class LLM(object):
         Returns:
             str: Response text.
         """
-        try:            
-            # Prepare API call parameters
-            completion_params = self._prepare_standard_completion_params(messages)
+        try:
+            # Check for real-time queries that might benefit from direct tool execution
+            is_real_time_query = False
+            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
             
-            # Add tools if available
-            if tools_param:
-                completion_params["tools"] = tools_param
-                completion_params["tool_choice"] = "auto"
-                
-            response = self.client.chat.completions.create(**completion_params)
-                       
-            # Check if the model wants to use a tool
-            if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
-                return self._process_tool_calls(messages, response.choices[0].message)
-            else:
-                response_text = response.choices[0].message.content
-                
-                # Display the response
+            # Extract just the user's question without any context annotations
+            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
+            
+            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
+                is_real_time_query = True
+            
+            if is_real_time_query and tools_param and self.tools_enabled:
+                # Directly execute web search for real-time queries
                 console = Console()
-                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown("\nAI:" + response_text, style="green")
-                    console.print(md)
+                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
+                
+                # Create a web search directly
+                web_search = WebSearch()
+                web_search_args = {
+                    "query": actual_query,
+                    "max_results": 5
+                }
+                
+                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
+                console.print("[yellow]Function:[/yellow] web_search")
+                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
+                
+                # Execute the search
+                search_results = web_search.execute(**web_search_args)
+                
+                # Display a short version of the result
+                result_str = str(search_results)
+                if len(result_str) > 200:
+                    display_result = result_str[:200] + "..."
                 else:
-                    console.print("\nAI:" + response_text, style="green")
+                    display_result = result_str
+                console.print(f"[yellow]Result:[/yellow] {display_result}")
+                
+                # Convert search results to a readable format
+                readable_results = ""
+                if isinstance(search_results, dict) and "results" in search_results:
+                    for i, result in enumerate(search_results.get("results", [])[:3]):
+                        readable_results += f"Source {i+1}: {result.get('title', 'No title')}\n"
+                        readable_results += f"Summary: {result.get('snippet', 'No information')}\n\n"
+                
+                # Create a new message with the search results
+                user_msg_with_results = f"{actual_query}\n\nHere are some search results I found:\n\n{readable_results}\n\nPlease summarize this information in a helpful, conversational way."
+                
+                # Replace the last user message with our enhanced version
+                for i in range(len(messages)-1, -1, -1):
+                    if messages[i]["role"] == "user":
+                        messages[i]["content"] = user_msg_with_results
+                        break
+                
+                # Send a new request without tools to get a response based on the search results
+                try:
+                    response = self.provider_client.get_completion(
+                        messages=messages,
+                        model=self.model,
+                        temperature=self.temperature,
+                        max_tokens=self.max_tokens,
+                        top_p=self.top_p,
+                        stop_sequences=self.stop_sequences if self.stop_sequences else None
+                    )
                     
-                return response_text
+                    # Get the response text based on the provider
+                    if self.provider.lower() == "openai":
+                        response_text = response.choices[0].message.content
+                    elif self.provider.lower() == "anthropic":
+                        response_text = response.get("content", [{"text": "No response generated."}])[0]["text"]
+                    else:
+                        response_text = str(response)
+                    
+                    # Display the response
+                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                        md = Markdown("\nAI:" + response_text, style="green")
+                        console.print(md)
+                    else:
+                        console.print("\nAI:" + response_text, style="green")
+                    
+                    return response_text
+                except Exception as e:
+                    self.logger.warning(f"Final response generation failed: {str(e)}")
+                    # Create a direct response using the search results
+                    if readable_results:
+                        response_text = f"Based on my search for '{actual_query}', I found:\n\n{readable_results}\n\nI couldn't generate a summary, but these are the relevant search results."
+                    else:
+                        response_text = f"I tried to search for information about '{actual_query}', but couldn't find relevant results or generate a summary. Could you try rephrasing your question?"
+                    
+                    console.print("\nAI:" + response_text, style="green")
+                    return response_text
+            
+            # For non-real-time queries or providers without special handling
+            # Use the provider client to get a completion
+            response = self.provider_client.get_completion(
+                messages=messages,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences if self.stop_sequences else None,
+                tools=tools_param
+            )
+            
+            # Check if the model wants to use tools - this is provider-specific
+            if self.provider.lower() == "openai" and tools_param:
+                if hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+                    return self._process_tool_calls(messages, response.choices[0].message)
+            elif self.provider.lower() == "anthropic" and tools_param:
+                if "tool_calls" in response:
+                    # Format the Anthropic tool calls to our standard format
+                    tool_calls = self.provider_client.format_tool_calls(response.get("tool_calls", []))
+                    # Process the tool calls with our standard method
+                    return self._process_tool_calls(messages, {"content": response.get("content", ""), "tool_calls": tool_calls})
+            
+            # Get the response text based on the provider
+            if self.provider.lower() == "openai":
+                response_text = response.choices[0].message.content
+            elif self.provider.lower() == "anthropic":
+                response_text = response.get("content", [{"text": "No response generated."}])[0]["text"]
+            else:
+                response_text = str(response)
+            
+            # Display the response
+            console = Console()
+            if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                md = Markdown("\nAI:" + response_text, style="green")
+                console.print(md)
+            else:
+                console.print("\nAI:" + response_text, style="green")
+            
+            return response_text
                 
         except Exception as e:
             self.logger.error(f"Non-streaming error: {str(e)}")
@@ -613,7 +831,6 @@ class LLM(object):
     def _process_tool_calls(self, messages, model_message, max_iterations=5):
         """
         Process tool calls from the model and get the final response.
-        Special handling for Google Gemini which can't handle null content values.
         
         Args:
             messages (list): List of message objects.
@@ -629,35 +846,35 @@ class LLM(object):
         console = Console()
         console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
         
-        # For Google, ensure content is never null
-        message_content = model_message.content or ""
+        # Ensure content is never null
+        message_content = model_message.content if hasattr(model_message, "content") else model_message.get("content", "")
+        
+        # Format the tool calls to a standardized format
+        if hasattr(model_message, "tool_calls"):
+            tool_calls = self.provider_client.format_tool_calls(model_message.tool_calls)
+        else:
+            tool_calls = model_message.get("tool_calls", [])
         
         # Add the assistant's message with tool calls to conversation
         messages.append({
             "role": "assistant",
-            "content": message_content,  # Ensure content is never null
-            "tool_calls": [
-                {
-                    "id": tool_call.id,
-                    "type": "function",
-                    "function": {
-                        "name": tool_call.function.name,
-                        "arguments": tool_call.function.arguments
-                    }
-                } for tool_call in model_message.tool_calls
-            ]
+            "content": message_content,
+            "tool_calls": tool_calls
         })
         
         # Process each tool call
-        for tool_call in model_message.tool_calls:
-            function_name = tool_call.function.name
+        for tool_call in tool_calls:
+            function_name = tool_call.get("function", {}).get("name")
+            function_args_str = tool_call.get("function", {}).get("arguments")
+            tool_call_id = tool_call.get("id")
+            
             try:
-                function_args = json.loads(tool_call.function.arguments)
-            except json.JSONDecodeError:
+                function_args = json.loads(function_args_str)
+            except (json.JSONDecodeError, TypeError):
                 function_args = {}
                 
             console.print(f"[yellow]Function:[/yellow] {function_name}")
-            console.print(f"[yellow]Arguments:[/yellow] {tool_call.function.arguments}")
+            console.print(f"[yellow]Arguments:[/yellow] {function_args_str}")
             
             # Execute the tool
             tool_result = self._execute_tool(function_name, function_args)
@@ -674,116 +891,107 @@ class LLM(object):
             # Add the tool result to conversation with formatting instructions
             tool_content = json.dumps(tool_result) if isinstance(tool_result, (list, dict)) else str(tool_result)
             
-            # Add natural language instruction for the model
+            # Add to messages
+            tool_result_msg = {
+                "role": "tool",
+                "tool_call_id": tool_call_id,
+                "content": tool_content,
+                "name": function_name  # For Anthropic compatibility
+            }
+            
+            messages.append(tool_result_msg)
+            
+            # For web search, add instructions for formatting
             if function_name == "web_search":
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": tool_content
-                })
-                
-                # Add a user message with formatting instructions
                 messages.append({
                     "role": "user",
                     "content": "Please summarize these search results in a natural, conversational way. Highlight the most important points and present them as if you're having a conversation with me."
                 })
-            else:
-                # For other tools, just add the result
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": tool_content
-                })
         
         # Get the next response from the model
         try:
-            # For Google, filter out any messages with null content
-            if self.provider == 'google':
-                clean_messages = [m for m in messages if m.get("content") is not None]
-                for i, m in enumerate(clean_messages):
-                    # Ensure content is always a string, never None
-                    if m.get("content") is None:
-                        clean_messages[i]["content"] = ""
-                    
-                params = self._prepare_standard_completion_params(clean_messages)
-            else:
-                params = self._prepare_standard_completion_params(messages)
-                
-            next_response = self.client.chat.completions.create(**params)
+            # Use the provider client to get a completion
+            next_response = self.provider_client.get_completion(
+                messages=messages,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences if self.stop_sequences else None,
+                tools=self._prepare_tools() if self.tools_enabled and self.tools else None
+            )
             
-            next_message = next_response.choices[0].message
+            # Check if we need more tool calls - provider-specific handling
+            if self.provider.lower() == "openai":
+                if hasattr(next_response.choices[0].message, "tool_calls") and next_response.choices[0].message.tool_calls:
+                    # Recursive call for next round of tool calls
+                    return self._process_tool_calls(messages, next_response.choices[0].message, max_iterations - 1)
+            elif self.provider.lower() == "anthropic":
+                if "tool_calls" in next_response:
+                    # Format the Anthropic tool calls to our standard format
+                    tool_calls = self.provider_client.format_tool_calls(next_response.get("tool_calls", []))
+                    if tool_calls:
+                        # Process the tool calls with our standard method
+                        return self._process_tool_calls(messages, {"content": next_response.get("content", ""), "tool_calls": tool_calls}, max_iterations - 1)
             
-            # Check if we need more tool calls
-            if hasattr(next_message, "tool_calls") and next_message.tool_calls:
-                # Recursive call for next round of tool calls
-                return self._process_tool_calls(messages, next_message, max_iterations - 1)
+            # We have our final text response - extract based on provider
+            if self.provider.lower() == "openai":
+                response_text = next_response.choices[0].message.content
+            elif self.provider.lower() == "anthropic":
+                response_text = next_response.get("content", [{"text": "No response generated."}])[0]["text"]
             else:
-                # We have our final text response
-                response_text = next_message.content
+                response_text = str(next_response)
+            
+            # Display the final response
+            if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                md = Markdown("\nAI:" + response_text, style="green")
+                console.print(md)
+            else:
+                console.print("\nAI:" + response_text, style="green")
                 
-                # Display the final response
-                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown("\nAI:" + response_text, style="green")
-                    console.print(md)
-                else:
-                    console.print("\nAI:" + response_text, style="green")
-                    
-                return response_text
+            return response_text
                 
         except Exception as e:
             self.logger.error(f"Error processing tool calls: {str(e)}")
             
-            # Special handling for Google's empty text parameter error
-            if self.provider == 'google' and "empty text parameter" in str(e):
-                # Attempt to create a direct response based on the tool results
-                try:
-                    # Collect the tool results we already have
-                    tool_results_summary = ""
-                    for msg in messages:
-                        if msg.get("role") == "tool" and msg.get("content"):
-                            tool_name = "unknown tool"
-                            # Try to find the related tool call to get its name
-                            tool_call_id = msg.get("tool_call_id")
-                            for m in messages:
-                                if m.get("role") == "assistant" and m.get("tool_calls"):
-                                    for tc in m.get("tool_calls", []):
-                                        if tc.get("id") == tool_call_id and tc.get("function", {}).get("name"):
-                                            tool_name = tc.get("function", {}).get("name")
-                                            break
-                            
-                            # Format the result information
-                            if tool_name == "web_search":
-                                # Parse the search results
-                                try:
-                                    search_data = json.loads(msg.get("content"))
-                                    tool_results_summary += "\nSearch results:\n"
-                                    
-                                    if isinstance(search_data, dict) and "results" in search_data:
-                                        for i, result in enumerate(search_data.get("results", [])[:3]):
-                                            tool_results_summary += f"- {result.get('title', 'No title')}: {result.get('snippet', 'No information')}\n"
-                                except Exception:
-                                    tool_results_summary += f"\n{tool_name} results: {msg.get('content')[:200]}...\n"
-                            else:
+            # Attempt to create a direct response based on the tool results
+            try:
+                # Collect the tool results we already have
+                tool_results_summary = ""
+                for msg in messages:
+                    if msg.get("role") == "tool" and msg.get("content"):
+                        tool_name = msg.get("name", "unknown tool")
+                        
+                        # Format the result information
+                        if tool_name == "web_search":
+                            # Parse the search results
+                            try:
+                                search_data = json.loads(msg.get("content"))
+                                tool_results_summary += "\nSearch results:\n"
+                                
+                                if isinstance(search_data, dict) and "results" in search_data:
+                                    for i, result in enumerate(search_data.get("results", [])[:3]):
+                                        tool_results_summary += f"- {result.get('title', 'No title')}: {result.get('snippet', 'No information')}\n"
+                            except Exception:
                                 tool_results_summary += f"\n{tool_name} results: {msg.get('content')[:200]}...\n"
-                    
-                    # Create a helpful response
-                    response_text = (
-                        f"I found some information for you, but encountered a technical issue when trying to formulate a complete response. "
-                        f"Here's what I found:{tool_results_summary}\n\n"
-                        f"Could you please ask your question again or try a different approach?"
-                    )
-                    
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-                    
-                except Exception:
-                    # If even our fallback fails, return a generic message
-                    response_text = "I encountered a technical issue while processing the tool results. Please try your question again or phrase it differently."
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-            else:
-                # For other errors, re-raise
-                raise Exception(f"Error processing tool calls: {str(e)}")
+                        else:
+                            tool_results_summary += f"\n{tool_name} results: {msg.get('content')[:200]}...\n"
+                
+                # Create a helpful response
+                response_text = (
+                    f"I found some information for you, but encountered a technical issue when trying to formulate a complete response. "
+                    f"Here's what I found:{tool_results_summary}\n\n"
+                    f"Could you please ask your question again or try a different approach?"
+                )
+                
+                console.print("\nAI:" + response_text, style="green")
+                return response_text
+                
+            except Exception:
+                # If even our fallback fails, return a generic message
+                response_text = "I encountered a technical issue while processing the tool results. Please try your question again or phrase it differently."
+                console.print("\nAI:" + response_text, style="green")
+                return response_text
 
     def _execute_tool(self, tool_name, tool_args):
         """
@@ -971,8 +1179,8 @@ class LLM(object):
 
     def __exit__(self, exc_type, exc_value, traceback):
         """Clean up resources when exiting context manager."""
-        if hasattr(self, 'client'):
-            self.client.close()
+        if hasattr(self, 'provider_client'):
+            self.provider_client.close()
         if hasattr(self, 'embedding_client'):
             self.embedding_client.close()
 
@@ -999,8 +1207,8 @@ class OpenAIGPT(LLM):
         api_key (str): The API key for accessing OpenAI's services.
     """
     def __init__(self, config_path: str, api_key: str) -> None:
-        super().__init__(config_path, api_key)
         self.provider = "openai"
+        super().__init__(config_path, api_key)
 
 class DeepSeek(LLM):
     """
@@ -1020,8 +1228,8 @@ class DeepSeek(LLM):
             api_key (str): The API key for authentication.
         """
     def __init__(self, config_path: str, api_key: str) -> None:
-        super().__init__(config_path, api_key)
         self.provider = 'deepseek'
+        super().__init__(config_path, api_key)
 
 class MistralAI(LLM):
     """
@@ -1033,531 +1241,23 @@ class MistralAI(LLM):
     Methods:
         __init__(config_path: str, api_key: str) -> None:
             Initializes the MistralAI instance with the given configuration path and API key.
-        get_response(prompt: str, system_prompt: Optional[str] = None) -> str:
-            Generates a response from the Mistral language model based on the given prompt and optional system prompt.
     """
-    # Real-time query keywords - similar to GoogleGemini implementation
-    real_time_keywords = [
-        # Weather and natural phenomena
-        "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
-        "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
-        "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
-        
-        # News and current events
-        "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
-        "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
-        "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
-        
-        # Sports and entertainment
-        "score", "game", "match", "tournament", "championship", "playoff", "standings", 
-        "leaderboard", "box office", "premiere", "release", "concert", "performance", 
-        "episode", "ratings", "award", "nominations", "season", "show", "event",
-        
-        # Time-specific queries
-        "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
-        "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
-        "scheduled", "real-time", "live", "happening", "occurring", "next"
-    ]
-    
     def __init__(self, config_path: str, api_key: str) -> None:
-        super().__init__(config_path, api_key)
         self.provider = 'mistral'
-    
-    def _prepare_standard_completion_params(self, messages):
-        """
-        Override to prepare parameters compatible with Mistral's API requirements.
-        
-        Args:
-            messages (list): Message objects.
-            
-        Returns:
-            dict: Parameters for API request with Mistral-specific adjustments.
-        """
-        params = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "top_p": self.top_p,
-        }
-        # Only add stop parameter if it contains actual stop sequences
-        if self.stop_sequences and len(self.stop_sequences) > 0:
-            params["stop"] = self.stop_sequences
-        return params
-    
-    def _handle_streaming_with_tool_detection(self, messages, tools_param=None):
-        """
-        Override to handle streaming with tool detection for Mistral's API.
-        
-        Args:
-            messages (list): List of message objects.
-            tools_param (list, optional): Tool definitions.
-            
-        Returns:
-            str: Response text.
-        """
-        try:
-            # Get the last user message and extract a clean query
-            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-
-            is_real_time_query = any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and ("web_search" in self.tools)
-            
-            if is_real_time_query and tools_param and self.tools_enabled:
-                # Use non-streaming path with tools if it's a real-time query
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
-                return self._handle_non_streaming_response(messages, tools_param)
-            else:
-                # Otherwise, use streaming response
-                return self._handle_streaming_response(messages)
-        except Exception as e:
-            self.logger.warning(f"Tool detection request failed: {str(e)}")
-            return self._handle_streaming_response(messages)
-    
-    def _handle_non_streaming_response(self, messages, tools_param=None):
-        """
-        Handle non-streaming response with Mistral-specific tool handling.
-        
-        For real-time queries, bypass model tool selection by directly executing web search.
-        For other messages, include tool definitions in the API request.
-        
-        Args:
-            messages (list): List of message objects.
-            tools_param (list, optional): Tool definitions.
-            
-        Returns:
-            str: Response text.
-        """
-        try:
-            # Get the last user message and extract the actual query text
-            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-
-            is_real_time_query = any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and ("web_search" in self.tools)
-
-            if is_real_time_query and tools_param and self.tools_enabled:
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
-                # Directly execute web search
-                web_search = WebSearch()
-                web_search_args = {
-                    "query": actual_query,
-                    "max_results": 5
-                }
-                
-                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
-                console.print("[yellow]Function:[/yellow] web_search")
-                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
-                
-                search_results = web_search.execute(**web_search_args)
-                result_str = str(search_results)
-                display_result = result_str[:200] + "..." if len(result_str) > 200 else result_str
-                console.print(f"[yellow]Result:[/yellow] {display_result}")
-                
-                if isinstance(search_results, dict) and "error" in search_results:
-                    error_msg = search_results.get("error", "Unknown search error")
-                    console.print(f"[red]Search error: {error_msg}[/red]")
-                    response_text = (f"I tried to search for information about '{actual_query}', but encountered a search error. "
-                                     f"Could you please try a different query?")
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-                
-                # Convert search results to a readable format
-                readable_results = ""
-                if isinstance(search_results, dict) and "results" in search_results:
-                    for i, result in enumerate(search_results.get("results", [])[:3]):
-                        readable_results += f"Source {i+1}: {result.get('title', 'No title')}\n"
-                        readable_results += f"Summary: {result.get('snippet', 'No information')}\n\n"
-                
-                # Enhance the user prompt with the search results
-                final_user_msg = (f"{actual_query}\n\nHere are some search results I found:\n\n{readable_results}"
-                                  f"\n\nPlease summarize this information in a helpful, conversational way.")
-                
-                new_messages = []
-                for m in messages:
-                    if m["role"] == "user" and m["content"] == last_user_msg:
-                        new_messages.append({"role": "user", "content": final_user_msg})
-                    else:
-                        new_messages.append(m)
-                
-                try:
-                    params = self._prepare_standard_completion_params(new_messages)
-                    final_response = self.client.chat.completions.create(**params)
-                    response_text = final_response.choices[0].message.content
-                    
-                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                        md = Markdown("\nAI:" + response_text, style="green")
-                        console.print(md)
-                    else:
-                        console.print("\nAI:" + response_text, style="green")
-                    return response_text
-                except Exception as e:
-                    self.logger.warning(f"Final response generation failed: {str(e)}")
-                    if readable_results:
-                        response_text = (f"Based on my search for '{actual_query}', I found:\n\n{readable_results}\n\n"
-                                         f"I couldn't generate a summary, but these are the relevant search results.")
-                    else:
-                        response_text = (f"I tried to search for information about '{actual_query}', but couldn't generate a complete response. "
-                                         f"Please try rephrasing your question.")
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-            else:
-                # For non-real-time queries, include tool definitions if available
-                completion_params = self._prepare_standard_completion_params(messages)
-                if tools_param and self.tools_enabled:
-                    completion_params["tools"] = tools_param
-                    completion_params["tool_choice"] = "auto"
-                    self.logger.debug(f"Sending tools to Mistral API: {json.dumps(tools_param)}")
-                
-                console = Console()
-                console.print("\n[yellow]Sending request with tools enabled...[/yellow]")
-                response = self.client.chat.completions.create(**completion_params)
-                
-                if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
-                    return self._process_tool_calls(messages, response.choices[0].message)
-                else:
-                    response_text = response.choices[0].message.content
-                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                        md = Markdown("\nAI:" + response_text, style="green")
-                        console.print(md)
-                    else:
-                        console.print("\nAI:" + response_text, style="green")
-                    return response_text
-        except Exception as e:
-            self.logger.error(f"Non-streaming error: {str(e)}")
-            raise Exception(f"Error getting non-streaming response: {str(e)}")
+        super().__init__(config_path, api_key)
     
 class GoogleGemini(LLM):
     """
     GoogleGemini is a specialized class for interacting with Google's Gemini models
     through their OpenAI-compatible interface.
     
-    This class explicitly avoids using parameters that Google's API doesn't support,
-    such as frequency_penalty and presence_penalty.
+    This class uses a provider-based approach to interact with Google's Gemini models.
     """
-
-    real_time_keywords = [
-    # Weather and natural phenomena
-    "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
-    "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
-    "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
-    
-    # News and current events
-    "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
-    "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
-    "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture"
-    
-    # Sports and entertainment
-    "score", "game", "match", "tournament", "championship", "playoff", "standings", 
-    "leaderboard", "box office", "premiere", "release", "concert", "performance", 
-    "episode", "ratings", "award", "nominations", "season", "show", "event",
-    
-    # Time-specific queries
-    "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
-    "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
-    "scheduled", "real-time", "live", "happening", "occurring", "next"
-]
-
     def __init__(self, config_path: str, api_key: str) -> None:
         """Initialize with Google-specific settings"""
         # Set provider before super() to ensure correct initialization
         self.provider = 'google'
         super().__init__(config_path, api_key)
-        
-        
-        # Re-initialize the client with the correct base URL
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
-
-    def _prepare_standard_completion_params(self, messages):
-        """
-        Override to prepare parameters compatible with Google's API requirements.
-        
-        Args:
-            messages (list): Message objects.
-            
-        Returns:
-            dict: Parameters for API request with Google-specific adjustments.
-        """
-        params = {
-            "model": self.model,
-            "messages": messages,
-            "temperature": self.temperature,
-            "max_tokens": self.max_tokens,
-            "top_p": self.top_p,
-        }
-        
-        # Only add stop parameter if it contains actual stop sequences
-        if self.stop_sequences and len(self.stop_sequences) > 0:
-            params["stop"] = self.stop_sequences
-            
-        return params
-        
-    def _handle_non_streaming_response(self, messages, tools_param=None):
-        """
-        Handle non-streaming response from the model with Google-specific tool handling.
-        
-        Args:
-            messages (list): List of message objects.
-            tools_param (list, optional): Tool definitions.
-            
-        Returns:
-            str: Response text.
-        """
-        try:            
-            # For Google Gemini, check if this is a real-time query that should use web_search
-            is_real_time_query = False
-            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-            
-            # Extract just the user's question without any context annotations
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-            
-            real_time_keywords = self.real_time_keywords
-            if any(keyword in actual_query.lower() for keyword in real_time_keywords) and "web_search" in self.tools:
-                is_real_time_query = True
-            
-            if is_real_time_query and tools_param and self.tools_enabled:
-                # Force web search for real-time queries
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
-                
-                # Create a web search directly instead of going through the API
-                web_search = WebSearch()
-                web_search_args = {
-                    "query": actual_query,  # Use the clean query without context annotations
-                    "max_results": 5
-                }
-                
-                # Display tool call information
-                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
-                console.print("[yellow]Function:[/yellow] web_search")
-                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
-                
-                # Execute the search directly
-                search_results = web_search.execute(**web_search_args)
-                
-                # Display a short version of the result
-                result_str = str(search_results)
-                if len(result_str) > 200:
-                    display_result = result_str[:200] + "..."
-                else:
-                    display_result = result_str
-                console.print(f"[yellow]Result:[/yellow] {display_result}")
-                
-                # Handle search failures gracefully
-                if isinstance(search_results, dict) and "error" in search_results:
-                    error_msg = search_results.get("error", "Unknown search error")
-                    console.print(f"[red]Search error: {error_msg}[/red]")
-                    
-                    # Give a helpful response about the search failure
-                    response_text = (f"I tried to search for information about '{actual_query}', but encountered "
-                                    f"a search error. Could you please be more specific?")
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-                
-                # Create clean new messages without any null content
-                clean_messages = [m for m in messages if m.get("content") is not None]
-                
-                # Convert search results to a readable format
-                readable_results = ""
-                if isinstance(search_results, dict) and "results" in search_results:
-                    for i, result in enumerate(search_results.get("results", [])[:3]):
-                        readable_results += f"Source {i+1}: {result.get('title', 'No title')}\n"
-                        readable_results += f"Summary: {result.get('snippet', 'No information')}\n\n"
-                
-                # Create a new user message with the search results
-                final_user_msg = f"{actual_query}\n\nHere are some search results I found:\n\n{readable_results}\n\nPlease summarize this information in a helpful, conversational way."
-                
-                # Replace the last user message with our enhanced version
-                for i in range(len(clean_messages)-1, -1, -1):
-                    if clean_messages[i]["role"] == "user":
-                        clean_messages[i]["content"] = final_user_msg
-                        break
-                
-                # Send a new request with clean messages
-                try:
-                    # Use non-streaming for final response
-                    params = self._prepare_standard_completion_params(clean_messages)
-                    params["tools"] = [] # No tools for the final response
-                    
-                    final_response = self.client.chat.completions.create(**params)
-                    response_text = final_response.choices[0].message.content
-                    
-                    # Display the final response
-                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                        md = Markdown("\nAI:" + response_text, style="green")
-                        console.print(md)
-                    else:
-                        console.print("\nAI:" + response_text, style="green")
-                    
-                    return response_text
-                    
-                except Exception as e:
-                    self.logger.warning(f"Final response generation failed: {str(e)}")
-                    # Create a direct response using the search results
-                    if readable_results:
-                        response_text = f"Based on my search for '{actual_query}', I found:\n\n{readable_results}\n\nI couldn't generate a summary, but these are the relevant search results."
-                    else:
-                        response_text = f"I tried to search for information about '{actual_query}', but couldn't find relevant results or generate a summary. Could you try rephrasing your question?"
-                    
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-            else:
-                # Standard non-streaming response for non-real-time queries
-                # Prepare API call parameters
-                completion_params = self._prepare_standard_completion_params(messages)
-                
-                # Add tools if available - using Google's expected format
-                if tools_param and self.tools_enabled:
-                    completion_params["tools"] = tools_param
-                    completion_params["tool_choice"] = "auto"
-                    
-                response = self.client.chat.completions.create(**completion_params)
-                        
-                # Check if the model wants to use a tool
-                if tools_param and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
-                    return self._process_tool_calls(messages, response.choices[0].message)
-                else:
-                    response_text = response.choices[0].message.content
-                    
-                    # Display the response
-                    console = Console()
-                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                        md = Markdown("\nAI:" + response_text, style="green")
-                        console.print(md)
-                    else:
-                        console.print("\nAI:" + response_text, style="green")
-                        
-                    return response_text
-                
-        except Exception as e:
-            self.logger.error(f"Non-streaming error: {str(e)}")
-            raise Exception(f"Error getting non-streaming response: {str(e)}")
-            
-    def _handle_streaming_with_tool_detection(self, messages, tools_param=None):
-        """
-        Override to handle streaming with tool detection for Google's API.
-        
-        Args:
-            messages (list): List of message objects.
-            tools_param (list, optional): Tool definitions.
-            
-        Returns:
-            str: Response text.
-        """
-        try:
-            # For Google, directly check if this is a weather/current info query
-            is_real_time_query = False
-            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-            
-            # Extract just the user's question without any context annotations
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-            
-            real_time_keywords = self.real_time_keywords
-            if any(keyword in actual_query.lower() for keyword in real_time_keywords) and "web_search" in self.tools:
-                is_real_time_query = True
-            
-            if is_real_time_query and tools_param:
-                # Use non-streaming with tools for real-time queries
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
-                
-                # Create a web search directly instead of going through the API
-                web_search = WebSearch()
-                web_search_args = {
-                    "query": actual_query,  # Use the clean query without context annotations
-                    "max_results": 5
-                }
-                
-                # Display tool call information
-                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
-                console.print("[yellow]Function:[/yellow] web_search")
-                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
-                
-                # Execute the search directly
-                search_results = web_search.execute(**web_search_args)
-                
-                # Display a short version of the result
-                result_str = str(search_results)
-                if len(result_str) > 200:
-                    display_result = result_str[:200] + "..."
-                else:
-                    display_result = result_str
-                console.print(f"[yellow]Result:[/yellow] {display_result}")
-                
-                # Handle search failures gracefully
-                if isinstance(search_results, dict) and "error" in search_results:
-                    error_msg = search_results.get("error", "Unknown search error")
-                    console.print(f"[red]Search error: {error_msg}[/red]")
-                    
-                    # Give a helpful response about the search failure
-                    response_text = (f"I tried to search for information about '{actual_query}', but encountered "
-                                    f"a search error. Could you please be more specific about which recent earthquake "
-                                    f"you're interested in? For example, mention the location or approximate date.")
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-                
-                # Create clean new messages without any null content
-                clean_messages = [m for m in messages if m.get("content") is not None]
-                
-                # Convert search results to a readable format
-                readable_results = ""
-                if isinstance(search_results, dict) and "results" in search_results:
-                    for i, result in enumerate(search_results.get("results", [])[:3]):
-                        readable_results += f"Source {i+1}: {result.get('title', 'No title')}\n"
-                        readable_results += f"Summary: {result.get('snippet', 'No information')}\n\n"
-                
-                # Create a new user message with the search results, but maintain conversation context
-                final_user_msg = f"{actual_query}\n\nHere are some search results I found:\n\n{readable_results}\n\nPlease summarize this information in a helpful, conversational way."
-                
-                # Replace the last user message with our enhanced version
-                for i in range(len(clean_messages)-1, -1, -1):
-                    if clean_messages[i]["role"] == "user":
-                        clean_messages[i]["content"] = final_user_msg
-                        break
-                
-                # Send a new request with clean messages
-                try:
-                    # Use non-streaming for final response
-                    params = self._prepare_standard_completion_params(clean_messages)
-                    params["tools"] = [] # No tools for the final response
-                    
-                    final_response = self.client.chat.completions.create(**params)
-                    response_text = final_response.choices[0].message.content
-                    
-                    # Display the final response
-                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                        md = Markdown("\nAI:" + response_text, style="green")
-                        console.print(md)
-                    else:
-                        console.print("\nAI:" + response_text, style="green")
-                    
-                    return response_text
-                    
-                except Exception as e:
-                    self.logger.warning(f"Final response generation failed: {str(e)}")
-                    # Create a direct response using the search results
-                    if readable_results:
-                        response_text = f"Based on my search for '{actual_query}', I found:\n\n{readable_results}\n\nI couldn't generate a summary, but these are the relevant search results."
-                    else:
-                        response_text = f"I tried to search for information about '{actual_query}', but couldn't find relevant results or generate a summary. Could you try rephrasing your question?"
-                    
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-            else:
-                # For non-real-time queries, use normal streaming
-                # Make sure we're using original messages without any null content
-                clean_messages = [m for m in messages if m.get("content") is not None]
-                return self._handle_streaming_response(clean_messages)
-                
-        except Exception as e:
-            self.logger.warning(f"Tool detection request failed: {str(e)}")
-            # Make sure we're using original messages without any null content
-            clean_messages = [m for m in messages if m.get("content") is not None]
-            return self._handle_streaming_response(clean_messages)
 
 
 class AnthropicAI(LLM):

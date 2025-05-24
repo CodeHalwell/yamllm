@@ -1,14 +1,14 @@
 import os
 import dotenv
 from rich.console import Console
-from yamllm.core.llm_v2 import LLMv2
+from yamllm.core.llm import AnthropicAI
 
 """
 This script initializes a language model (LLM) using a configuration file and an API key, 
 then enters a loop where it takes user input, queries the LLM with the input, and prints the response.
 The LLM is configured to use tools like web search and calculator when appropriate.
 
-This example demonstrates the use of Anthropic's Claude model through the new provider interface.
+This example demonstrates the use of Anthropic's Claude model with the provider-based LLM interface.
 """
 
 # Initialize console and load environment variables
@@ -20,7 +20,7 @@ root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 config_path = os.path.join(root_dir, ".config_examples", "anthropic_config.yaml")
 
 # Initialize the LLM with config
-llm = LLMv2(config_path=config_path, api_key=os.environ.get("ANTHROPIC_API_KEY"))
+llm = AnthropicAI(config_path=config_path, api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 # Display settings including tools configuration
 llm.print_settings()
@@ -48,11 +48,10 @@ while True:
         if response is None:
             continue
         
-    except FileNotFoundError as e:
-        console.print(f"[red]Configuration file not found:[/red] {e}")
-    except ValueError as e:
-        console.print(f"[red]Configuration error:[/red] {e}")
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Exiting...[/yellow]")
+        break
     except Exception as e:
-        console.print(f"[red]An error occurred:[/red] {str(e)}")
-        import traceback
-        console.print(traceback.format_exc())
+        console.print(f"\n[red]Error: {str(e)}[/red]")
+
+console.print("\n[green]Goodbye![/green]")
