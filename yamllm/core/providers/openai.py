@@ -138,8 +138,8 @@ class OpenAIProvider(BaseProvider):
             Iterator of OpenAI ChatCompletionChunk objects
         """
         try:
-            # Set stream=True and call get_completion to get a streaming response
-            return self.get_completion(
+            # Create streaming request
+            stream = self.get_completion(
                 messages=messages,
                 model=model,
                 temperature=temperature,
@@ -150,6 +150,32 @@ class OpenAIProvider(BaseProvider):
                 stream=True,
                 **kwargs
             )
+            
+            # Enhanced stream processor with tool call handling
+            def process_stream():
+                for chunk in stream:
+                    # Handle different chunk types
+                    if hasattr(chunk.choices[0], "delta"):
+                        delta = chunk.choices[0].delta
+                        
+                        # Handle content
+                        if hasattr(delta, "content") and delta.content is not None:
+                            yield chunk
+                        
+                        # Handle tool calls
+                        if hasattr(delta, "tool_calls") and delta.tool_calls:
+                            yield chunk
+                        
+                        # Handle role changes
+                        if hasattr(delta, "role") and delta.role:
+                            yield chunk
+                    
+                    # Handle finish reason
+                    if hasattr(chunk.choices[0], "finish_reason") and chunk.choices[0].finish_reason:
+                        yield chunk
+            
+            return process_stream()
+                
         except OpenAIError as e:
             logger.error(f"OpenAI API streaming error: {str(e)}")
             # Re-raise with more context
@@ -360,6 +386,127 @@ class OpenAIProvider(BaseProvider):
             formatted_results.append(formatted_result)
         
         return formatted_results
+        
+    def process_streaming_tool_calls(self,
+                               messages: List[Dict[str, Any]],
+                               model: str,
+                               temperature: float,
+                               max_tokens: int,
+                               top_p: float,
+                               tools: List[Dict[str, Any]],
+                               tool_executor: Callable[[List[Dict[str, Any]]], List[Dict[str, Any]]],
+                               stop_sequences: Optional[List[str]] = None,
+                               max_iterations: int = 10,
+                               **kwargs) -> Iterator[Union[Dict[str, Any], ChatCompletionChunk]]:
+        """
+        Process tool calls with streaming support using the Responses API pattern.
+        
+        This method implements the interactive tool usage pattern with streaming,
+        where the model can call tools, receive results, and continue the conversation
+        based on those results, streaming the final response.
+        
+        Args:
+            messages: List of message objects with role and content
+            model: OpenAI model identifier
+            temperature: Sampling temperature
+            max_tokens: Maximum number of tokens to generate
+            top_p: Nucleus sampling parameter
+            tools: List of tool definitions
+            tool_executor: Function to execute tool calls and return results
+            stop_sequences: Optional list of stop sequences
+            max_iterations: Maximum number of tool call iterations
+            **kwargs: Additional OpenAI-specific parameters
+            
+        Returns:
+            Iterator that yields status updates during tool calls and then streams
+            the final response as ChatCompletionChunk objects
+        """
+        current_messages = messages.copy()
+        iterations = 0
+        
+        # First phase: tool calling (non-streaming)
+        while iterations < max_iterations:
+            iterations += 1
+            
+            # Yield a status update
+            yield {"status": "processing", "iteration": iterations, "max_iterations": max_iterations}
+            
+            try:
+                # Request completion with tools (non-streaming)
+                response = self.get_completion(
+                    messages=current_messages,
+                    model=model,
+                    temperature=temperature,
+                    max_tokens=max_tokens,
+                    top_p=top_p,
+                    stop_sequences=stop_sequences,
+                    tools=tools,
+                    stream=False,
+                    **kwargs
+                )
+                
+                # Get the assistant message
+                assistant_message = response.choices[0].message
+                
+                # Add the assistant message to the conversation
+                current_messages.append({
+                    "role": "assistant",
+                    "content": assistant_message.content,
+                    **({"tool_calls": assistant_message.tool_calls} if assistant_message.tool_calls else {})
+                })
+                
+                # Check if there are tool calls to process
+                if not assistant_message.tool_calls:
+                    # No tool calls, proceed to streaming the response
+                    break
+                
+                # Format tool calls for execution
+                formatted_tool_calls = self.format_tool_calls(assistant_message.tool_calls)
+                
+                # Yield information about the tool calls
+                yield {"status": "tool_calls", "tool_calls": formatted_tool_calls}
+                
+                # Execute the tools
+                tool_results = tool_executor(formatted_tool_calls)
+                
+                # Yield information about the tool results
+                yield {"status": "tool_results", "tool_results": tool_results}
+                
+                # Format the results for OpenAI
+                formatted_results = self.format_tool_results(tool_results)
+                
+                # Add the tool results to the conversation
+                current_messages.extend(formatted_results)
+                
+            except OpenAIError as e:
+                logger.error(f"OpenAI API error during streaming tool processing: {str(e)}")
+                yield {"status": "error", "error": str(e)}
+                raise OpenAIError(f"Error processing tool calls with OpenAI API: {str(e)}")
+        
+        # Second phase: stream the final response
+        try:
+            # Indicate we're starting to stream the final response
+            yield {"status": "streaming"}
+            
+            # Stream the final response
+            stream = self.get_streaming_completion(
+                messages=current_messages,
+                model=model,
+                temperature=temperature,
+                max_tokens=max_tokens,
+                top_p=top_p,
+                stop_sequences=stop_sequences,
+                **kwargs
+            )
+            
+            # Forward all streaming chunks
+            for chunk in stream:
+                yield chunk
+                
+        except OpenAIError as e:
+            logger.error(f"OpenAI API error during final streaming: {str(e)}")
+            yield {"status": "error", "error": str(e)}
+            raise OpenAIError(f"Error streaming final response: {str(e)}")
     
     def close(self):
         """
