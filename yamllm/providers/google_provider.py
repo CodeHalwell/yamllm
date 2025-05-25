@@ -74,6 +74,64 @@ class GoogleGeminiProvider(BaseProvider):
         self.tools = kwargs.get('tools', [])
         self.tools_enabled = kwargs.get('tools_enabled', False)
     
+    def _convert_messages_to_google_format(self, messages: List[Message]) -> List[Dict[str, Any]]:
+        """
+        Convert YAMLLM messages to Google's format.
+        
+        Args:
+            messages (List[Message]): The messages to convert.
+            
+        Returns:
+            List[Dict[str, Any]]: The messages in Google's format.
+        """
+        processed_messages = []
+        
+        # First, look for system messages and combine them if there are multiple
+        system_content = []
+        for message in messages:
+            if message.role == "system":
+                system_content.append(message.content)
+        
+        # Add combined system message at the beginning if there were any
+        if system_content:
+            combined_system = "System instructions:\n" + "\n".join(system_content)
+            processed_messages.append({
+                "role": "user",
+                "parts": [{"text": combined_system}]
+            })
+            
+            # Add a model response to acknowledge the system instructions
+            processed_messages.append({
+                "role": "model",
+                "parts": [{"text": "I'll follow these instructions."}]
+            })
+        
+        # Process the rest of the messages
+        for message in messages:
+            role = message.role
+            
+            # Skip system messages as they're already handled
+            if role == "system":
+                continue
+                
+            elif role == "user":
+                processed_messages.append({
+                    "role": "user",
+                    "parts": [{"text": message.content}]
+                })
+                
+            elif role == "assistant":
+                processed_messages.append({
+                    "role": "model",
+                    "parts": [{"text": message.content}]
+                })
+                
+            elif role == "tool":
+                # Tool messages will be handled separately in process_tool_calls
+                continue
+                
+        return processed_messages
+
     def prepare_completion_params(self, messages: List[Message], temperature: float, max_tokens: int, 
                                  top_p: float, stop_sequences: Optional[List[str]] = None) -> Dict[str, Any]:
         """
@@ -90,29 +148,7 @@ class GoogleGeminiProvider(BaseProvider):
             Dict[str, Any]: The parameters for the API request.
         """
         # Convert messages to Google's format
-        processed_messages = []
-        for message in messages:
-            role = message.role
-            # Map roles to Google Gemini format
-            if role == "system":
-                # For system messages, we'll add them to user messages with a special prefix
-                processed_messages.append({
-                    "role": "user",
-                    "parts": [{"text": f"System instruction: {message.content}"}]
-                })
-            elif role == "user":
-                processed_messages.append({
-                    "role": "user",
-                    "parts": [{"text": message.content}]
-                })
-            elif role == "assistant":
-                processed_messages.append({
-                    "role": "model",
-                    "parts": [{"text": message.content}]
-                })
-            elif role == "tool":
-                # Tool messages will be handled in process_tool_calls
-                continue
+        processed_messages = self._convert_messages_to_google_format(messages)
         
         # Build generation config
         generation_config = {
@@ -370,30 +406,7 @@ class GoogleGeminiProvider(BaseProvider):
         iteration = 0
         
         # Convert messages to Google's format for the conversation history
-        processed_messages = []
-        for message in messages:
-            role = message.role
-            # Map roles to Google Gemini format
-            if role == "system":
-                processed_messages.append({
-                    "role": "user",
-                    "parts": [{"text": f"System instruction: {message.content}"}]
-                })
-            elif role == "user":
-                processed_messages.append({
-                    "role": "user",
-                    "parts": [{"text": message.content}]
-                })
-            elif role == "assistant":
-                processed_messages.append({
-                    "role": "model",
-                    "parts": [{"text": message.content}]
-                })
-            elif role == "tool":
-                # Tool messages will be handled separately
-                continue
-        
-        current_messages = processed_messages.copy()
+        current_messages = self._convert_messages_to_google_format(messages)
         
         while iteration < max_iterations:
             iteration += 1
@@ -477,7 +490,7 @@ class GoogleGeminiProvider(BaseProvider):
             try:
                 # Convert tools to Google's format for the next iteration
                 google_tools = []
-                for tool in [tool for tool in messages if isinstance(tool, ToolDefinition)]:
+                for tool in [t for t in messages if isinstance(t, ToolDefinition)]:
                     google_tools.append({
                         "function_declarations": [{
                             "name": tool.name,
