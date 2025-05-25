@@ -3,7 +3,7 @@ provider:
   name: "google"  # supported: openai, google, deepseek and mistralai supported.
   model: "gemini-1.5-flash"  # model identifier
   api_key: # api key goes here, besy practice to put into dotenv
-  base_url: "https://generativelanguage.googleapis.com/v1beta/openai/" # optional: for custom endpoints
+  base_url: null # optional: for custom endpoints, e.g. "https://generativelanguage.googleapis.com/v1"
 
 # Model Configuration
 model_settings:
