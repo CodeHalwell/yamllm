@@ -6,7 +6,7 @@ This module provides an implementation of the BaseProvider interface for Google 
 
 from typing import Dict, List, Any, Optional
 import json
-from openai import OpenAI
+import google.generativeai as genai
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
@@ -59,11 +59,15 @@ class GoogleGeminiProvider(BaseProvider):
         self.model = model
         self.base_url = base_url
         
-        # Initialize OpenAI client (Google uses OpenAI-compatible API)
-        self.client = OpenAI(
-            api_key=self.api_key,
-            base_url=self.base_url
-        )
+        # Configure the Google GenAI client
+        genai.configure(api_key=self.api_key)
+        
+        # Set custom API endpoint if provided
+        if self.base_url:
+            genai.configure(transport="rest", client_options={"api_endpoint": self.base_url})
+        
+        # Initialize the model
+        self.client = genai.GenerativeModel(model_name=self.model)
         
         # Store additional parameters
         self.logger = kwargs.get('logger')
@@ -85,20 +89,46 @@ class GoogleGeminiProvider(BaseProvider):
         Returns:
             Dict[str, Any]: The parameters for the API request.
         """
-        # Convert Message objects to dictionaries
-        message_dicts = [message.to_dict() for message in messages]
+        # Convert messages to Google's format
+        processed_messages = []
+        for message in messages:
+            role = message.role
+            # Map roles to Google Gemini format
+            if role == "system":
+                # For system messages, we'll add them to user messages with a special prefix
+                processed_messages.append({
+                    "role": "user",
+                    "parts": [{"text": f"System instruction: {message.content}"}]
+                })
+            elif role == "user":
+                processed_messages.append({
+                    "role": "user",
+                    "parts": [{"text": message.content}]
+                })
+            elif role == "assistant":
+                processed_messages.append({
+                    "role": "model",
+                    "parts": [{"text": message.content}]
+                })
+            elif role == "tool":
+                # Tool messages will be handled in process_tool_calls
+                continue
         
-        params = {
-            "model": self.model,
-            "messages": message_dicts,
+        # Build generation config
+        generation_config = {
             "temperature": temperature,
-            "max_tokens": max_tokens,
+            "max_output_tokens": max_tokens,
             "top_p": top_p,
         }
         
-        # Only add stop parameter if it contains actual stop sequences
+        # Add stop sequences if provided
         if stop_sequences and len(stop_sequences) > 0:
-            params["stop"] = stop_sequences
+            generation_config["stop_sequences"] = stop_sequences
+            
+        params = {
+            "contents": processed_messages,
+            "generation_config": generation_config
+        }
             
         return params
     
@@ -114,19 +144,21 @@ class GoogleGeminiProvider(BaseProvider):
             str: The concatenated response text.
         """
         try:
-            # Enable streaming
-            params["stream"] = True
-            
-            response = self.client.chat.completions.create(**params)
-            
             console = Console()
             response_text = ""
             print()
             
+            # Start streaming with the Google Gemini API
+            stream = self.client.generate_content(
+                contents=params["contents"],
+                generation_config=params["generation_config"],
+                stream=True
+            )
+            
             with Live(console=console, refresh_per_second=10) as live:
-                for chunk in response:
-                    if chunk.choices[0].delta.content:
-                        response_text += chunk.choices[0].delta.content
+                for chunk in stream:
+                    if hasattr(chunk, "text") and chunk.text:
+                        response_text += chunk.text
                         md = Markdown(f"\nAI: {response_text}", style="green")
                         live.update(md)
             
@@ -191,29 +223,48 @@ class GoogleGeminiProvider(BaseProvider):
                 # Add the search results to the messages
                 search_context = f"Here are the search results for '{actual_query}':\n\n{search_results}"
                 
-                # Create a new list of messages with the search results
-                updated_messages = [m.to_dict() for m in messages]
-                updated_messages.append({
-                    "role": "system",
-                    "content": search_context
-                })
-                
-                # Update the params with the new messages
-                params["messages"] = updated_messages
+                # Add search context to the contents
+                search_system_msg = {
+                    "role": "user",
+                    "parts": [{"text": f"System information: {search_context}"}]
+                }
+                params["contents"].append(search_system_msg)
             
             # Add tools if available and not a real-time query
             if tools and not is_real_time_query:
-                params["tools"] = [tool.to_dict() for tool in tools]
-                params["tool_choice"] = "auto"
-            
-            response = self.client.chat.completions.create(**params)
+                # Convert tools to Google's format and add them to the model
+                google_tools = []
+                for tool in tools:
+                    google_tools.append({
+                        "function_declarations": [{
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters
+                        }]
+                    })
+                
+                # Use tools with Google GenAI
+                response = self.client.generate_content(
+                    contents=params["contents"],
+                    generation_config=params["generation_config"],
+                    tools=google_tools
+                )
+            else:
+                # Regular response without tools
+                response = self.client.generate_content(
+                    contents=params["contents"],
+                    generation_config=params["generation_config"]
+                )
             
             # Check if the model wants to use a tool
-            if tools and not is_real_time_query and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+            if tools and not is_real_time_query and hasattr(response, "candidates") and \
+                response.candidates[0].content.parts and \
+                hasattr(response.candidates[0].content.parts[0], "function_call"):
                 # Return the model message for tool processing
-                return response.choices[0].message
+                return response
             else:
-                response_text = response.choices[0].message.content
+                # Get the text response
+                response_text = response.text
                 
                 # Display the response
                 console = Console()
@@ -259,23 +310,41 @@ class GoogleGeminiProvider(BaseProvider):
             
             # Make a low-token request to see if the model will use tools
             preview_params = params.copy()
-            preview_params["max_tokens"] = 10  # Just enough to detect tool usage
+            preview_params["generation_config"] = preview_params["generation_config"].copy()
+            preview_params["generation_config"]["max_output_tokens"] = 10  # Just enough to detect tool usage
             
             if tools:
-                preview_params["tools"] = [tool.to_dict() for tool in tools]
-                preview_params["tool_choice"] = "auto"
+                # Convert tools to Google's format
+                google_tools = []
+                for tool in tools:
+                    google_tools.append({
+                        "function_declarations": [{
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters
+                        }]
+                    })
                 
-            preview_response = self.client.chat.completions.create(**preview_params)
-            
-            # Check if model wants to use tools
-            if (tools and hasattr(preview_response.choices[0].message, "tool_calls") 
-                and preview_response.choices[0].message.tool_calls):
-                # Model wants to use tools, use non-streaming
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this question...[/yellow]")
-                return self.handle_non_streaming_response(messages, params, tools)
+                # Make a preview request with tools
+                preview_response = self.client.generate_content(
+                    contents=preview_params["contents"],
+                    generation_config=preview_params["generation_config"],
+                    tools=google_tools
+                )
+                
+                # Check if model wants to use tools
+                if (hasattr(preview_response, "candidates") and 
+                    preview_response.candidates[0].content.parts and 
+                    hasattr(preview_response.candidates[0].content.parts[0], "function_call")):
+                    # Model wants to use tools, use non-streaming
+                    console = Console()
+                    console.print("\n[yellow]Using tools to answer this question...[/yellow]")
+                    return self.handle_non_streaming_response(messages, params, tools)
+                else:
+                    # Model doesn't need tools, use streaming
+                    return self.handle_streaming_response(messages, params)
             else:
-                # Model doesn't need tools, use streaming
+                # No tools available, use streaming
                 return self.handle_streaming_response(messages, params)
         except Exception as e:
             if self.logger:
@@ -299,31 +368,63 @@ class GoogleGeminiProvider(BaseProvider):
         """
         console = Console()
         iteration = 0
-        current_messages = [message.to_dict() for message in messages]
+        
+        # Convert messages to Google's format for the conversation history
+        processed_messages = []
+        for message in messages:
+            role = message.role
+            # Map roles to Google Gemini format
+            if role == "system":
+                processed_messages.append({
+                    "role": "user",
+                    "parts": [{"text": f"System instruction: {message.content}"}]
+                })
+            elif role == "user":
+                processed_messages.append({
+                    "role": "user",
+                    "parts": [{"text": message.content}]
+                })
+            elif role == "assistant":
+                processed_messages.append({
+                    "role": "model",
+                    "parts": [{"text": message.content}]
+                })
+            elif role == "tool":
+                # Tool messages will be handled separately
+                continue
+        
+        current_messages = processed_messages.copy()
         
         while iteration < max_iterations:
             iteration += 1
             
-            # Add the model's message to the conversation
+            # Extract function call from the model response
+            if hasattr(model_message, "candidates") and model_message.candidates:
+                function_calls = []
+                for candidate in model_message.candidates:
+                    if hasattr(candidate.content, "parts"):
+                        for part in candidate.content.parts:
+                            if hasattr(part, "function_call"):
+                                function_calls.append(part.function_call)
+            else:
+                # No function calls found, break the loop
+                if hasattr(model_message, "text"):
+                    return model_message.text
+                else:
+                    return "No response from the model."
+            
+            # Add the model's response to the conversation
+            # We'll add the function calls later after processing
+            model_response_text = model_message.text if hasattr(model_message, "text") else ""
             current_messages.append({
-                "role": "assistant",
-                "content": model_message.content,
-                "tool_calls": [
-                    {
-                        "id": tool_call.id,
-                        "type": "function",
-                        "function": {
-                            "name": tool_call.function.name,
-                            "arguments": tool_call.function.arguments
-                        }
-                    } for tool_call in model_message.tool_calls
-                ]
+                "role": "model",
+                "parts": [{"text": model_response_text}]  # Will be updated with function calls
             })
             
-            # Process each tool call
-            for tool_call in model_message.tool_calls:
-                tool_name = tool_call.function.name
-                tool_args = json.loads(tool_call.function.arguments)
+            # Process each function call
+            for function_call in function_calls:
+                tool_name = function_call.name
+                tool_args = json.loads(function_call.args)
                 
                 # Display tool call information
                 console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
@@ -344,10 +445,15 @@ class GoogleGeminiProvider(BaseProvider):
                     
                     # Add the tool result to the conversation
                     current_messages.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": tool_name,
-                        "content": str(tool_result)
+                        "role": "user",
+                        "parts": [{
+                            "function_response": {
+                                "name": tool_name,
+                                "response": {
+                                    "content": str(tool_result)
+                                }
+                            }
+                        }]
                     })
                 except Exception as e:
                     error_message = f"Error executing tool {tool_name}: {str(e)}"
@@ -356,28 +462,52 @@ class GoogleGeminiProvider(BaseProvider):
                     
                     # Add the error message to the conversation
                     current_messages.append({
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": tool_name,
-                        "content": error_message
+                        "role": "user",
+                        "parts": [{
+                            "function_response": {
+                                "name": tool_name,
+                                "response": {
+                                    "content": error_message
+                                }
+                            }
+                        }]
                     })
             
             # Get the model's response to the tool results
             try:
-                response = self.client.chat.completions.create(
-                    model=self.model,
-                    messages=current_messages
+                # Convert tools to Google's format for the next iteration
+                google_tools = []
+                for tool in [tool for tool in messages if isinstance(tool, ToolDefinition)]:
+                    google_tools.append({
+                        "function_declarations": [{
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters
+                        }]
+                    })
+                
+                # Get response with the updated conversation
+                model_message = self.client.generate_content(
+                    contents=current_messages,
+                    tools=google_tools
                 )
                 
-                model_message = response.choices[0].message
-                
                 # Check if the model wants to use more tools
-                if hasattr(model_message, "tool_calls") and model_message.tool_calls:
+                has_function_call = False
+                if hasattr(model_message, "candidates") and model_message.candidates:
+                    for candidate in model_message.candidates:
+                        if hasattr(candidate.content, "parts"):
+                            for part in candidate.content.parts:
+                                if hasattr(part, "function_call"):
+                                    has_function_call = True
+                                    break
+                
+                if has_function_call:
                     # Continue the loop with the new tool calls
                     continue
                 else:
                     # Model has finished using tools, return the final response
-                    response_text = model_message.content
+                    response_text = model_message.text
                     
                     # Display the final response
                     console.print("\n[bold blue]Final Response:[/bold blue]")
@@ -395,8 +525,8 @@ class GoogleGeminiProvider(BaseProvider):
                 raise Exception(error_message)
         
         # If we've reached the maximum number of iterations, return the last model message
-        if hasattr(model_message, "content") and model_message.content:
-            return model_message.content
+        if hasattr(model_message, "text"):
+            return model_message.text
         else:
             return "Maximum tool call iterations reached without a final response."
     
@@ -404,7 +534,7 @@ class GoogleGeminiProvider(BaseProvider):
         """
         Create an embedding for the given text.
         
-        For Google Gemini, we use OpenAI's embedding API as a fallback.
+        Uses Google's embedding model to create embeddings.
         
         Args:
             text (str): The text to create an embedding for.
@@ -413,19 +543,32 @@ class GoogleGeminiProvider(BaseProvider):
             bytes: The embedding as bytes.
         """
         try:
-            # Use OpenAI's embedding API as a fallback
-            # In a real implementation, this would use Google's embedding API
-            embedding_client = OpenAI(api_key=self.api_key)
-            response = embedding_client.embeddings.create(
-                model="text-embedding-ada-002",
-                input=text
+            # Use Google's embedding model
+            embedding_model = genai.get_model("models/embedding-001")
+            result = embedding_model.embed_content(
+                content=text,
+                task_type="retrieval_document"
             )
             
             # Convert the embedding to bytes
             import numpy as np
-            embedding = np.array(response.data[0].embedding, dtype=np.float32)
+            embedding = np.array(result.embedding, dtype=np.float32)
             return embedding.tobytes()
         except Exception as e:
             if self.logger:
                 self.logger.error(f"Error creating embedding: {str(e)}")
-            raise Exception(f"Error creating embedding: {str(e)}")
+            # Fall back to OpenAI embedding as a backup
+            try:
+                import openai
+                client = openai.OpenAI(api_key=self.api_key)
+                response = client.embeddings.create(
+                    model="text-embedding-ada-002",
+                    input=text
+                )
+                
+                embedding = np.array(response.data[0].embedding, dtype=np.float32)
+                return embedding.tobytes()
+            except Exception as fallback_error:
+                if self.logger:
+                    self.logger.error(f"Fallback embedding error: {str(fallback_error)}")
+                raise Exception(f"Error creating embedding: {str(e)}, Fallback error: {str(fallback_error)}")

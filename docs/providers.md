@@ -68,10 +68,12 @@ Configuration:
 ```yaml
 provider:
   name: "google"
-  model: "gemini-pro"  # model identifier
+  model: "gemini-1.5-flash"  # model identifier
   api_key: # api key goes here, best practice to put into dotenv
-  base_url: "https://generativelanguage.googleapis.com/v1"
+  base_url: null  # optional: for custom endpoints, e.g. "https://generativelanguage.googleapis.com/v1"
 ```
+
+The GoogleGeminiProvider now uses the native Google GenAI SDK for improved performance, better access to Gemini-specific features (especially tool use), and alignment with Google's recommended practices.
 
 ## Mistral and DeepSeek
 
