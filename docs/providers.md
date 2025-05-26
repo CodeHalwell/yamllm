@@ -102,7 +102,7 @@ The MistralProvider uses the official mistralai Python SDK for improved performa
 
 ## DeepSeek
 
-DeepSeek is supported through an OpenAI-compatible endpoint.
+DeepSeek is supported through an OpenAI-compatible endpoint with some specific optimizations.
 
 ```python
 from yamllm.core.llm import DeepSeek
@@ -115,6 +115,22 @@ llm = DeepSeek(config_path="config.yaml", api_key="your-api-key")
 # Using new provider interface
 llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
 ```
+
+Configuration:
+```yaml
+provider:
+  name: "deepseek"
+  model: "deepseek-chat"  # model identifier
+  api_key: # api key goes here, best practice to put into dotenv
+  base_url: "https://api.deepseek.com" # optional: for custom endpoints
+  extra_settings:
+    headers:
+      User-Agent: "YAMLLM/1.0"  # optional: custom user agent
+    cache_enabled: true         # optional: enable request caching if supported
+    cache_ttl: 3600             # optional: time-to-live for cached requests (seconds)
+```
+
+**Note on Embeddings**: DeepSeek may not support embeddings through their OpenAI-compatible API, or may use different embedding models. The current implementation falls back to OpenAI's embedding model, which may not be optimal for DeepSeek.
 
 ## Provider Interface
 

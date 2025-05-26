@@ -7,6 +7,11 @@ from yamllm.core.llm import DeepSeek
 This script initializes a language model (LLM) using a configuration file and an API key, 
 then enters a loop where it takes user input, queries the LLM with the input, and prints the response.
 The LLM is configured to use tools like web search and calculator when appropriate.
+
+The DeepSeek provider has been enhanced with:
+- Support for custom request headers
+- Optional request caching for improved performance
+- Documentation about embedding model limitations
 """
 
 # Initialize console and load environment variables
