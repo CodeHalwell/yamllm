@@ -144,6 +144,34 @@ class LLM(object):
 
         # Initialize provider client
         self.provider_client = self._initialize_provider()
+        
+        # Initialize MCP client if MCP connectors are configured
+        self.mcp_client = None
+        if self.config.tools.mcp_connectors:
+            try:
+                from yamllm.mcp.client import MCPClient
+                from yamllm.mcp.connector import MCPConnector
+                
+                self.mcp_client = MCPClient()
+                
+                # Register all configured MCP connectors
+                for connector_config in self.config.tools.mcp_connectors:
+                    if not connector_config.enabled:
+                        continue
+                        
+                    connector = MCPConnector(
+                        name=connector_config.name,
+                        url=connector_config.url,
+                        authentication=connector_config.authentication,
+                        description=connector_config.description,
+                        tool_prefix=connector_config.tool_prefix
+                    )
+                    
+                    self.mcp_client.register_connector(connector)
+                    self.logger.info(f"Registered MCP connector: {connector_config.name}")
+            except Exception as e:
+                self.logger.error(f"Error initializing MCP client: {str(e)}")
+                self.mcp_client = None
 
         # Initialize OpenAI client for embeddings (to be used across providers)
         self.embedding_client = OpenAI(
@@ -399,6 +427,7 @@ class LLM(object):
 
         tool_definitions = []
 
+        # Add local tools
         for tool_name in self.tools:
             if tool_name not in tool_classes:
                 self.logger.warning(f"Tool '{tool_name}' not found in available tools")
@@ -425,6 +454,15 @@ class LLM(object):
             )
 
             tool_definitions.append(tool_definition)
+            
+        # Add MCP tools if any are configured
+        if hasattr(self, 'mcp_client') and self.mcp_client:
+            try:
+                mcp_tools = self.mcp_client.convert_mcp_tools_to_definitions()
+                tool_definitions.extend(mcp_tools)
+                self.logger.debug(f"Added {len(mcp_tools)} tools from MCP connectors")
+            except Exception as e:
+                self.logger.error(f"Error adding MCP tools: {str(e)}")
 
         return tool_definitions
 
@@ -1002,6 +1040,23 @@ class LLM(object):
         Returns:
             Any: The result of the tool execution
         """
+        # Check if this is an MCP tool
+        if hasattr(self, 'mcp_client') and self.mcp_client:
+            # Try to find the tool in the MCP tool definitions
+            try:
+                mcp_tools = self.mcp_client.convert_mcp_tools_to_definitions()
+                for tool in mcp_tools:
+                    if tool.name == tool_name:
+                        # This is an MCP tool, execute it via the MCP client
+                        return self.mcp_client.execute_tool(
+                            connector_name=tool.mcp_connector_name,
+                            tool_id=tool.mcp_tool_id,
+                            parameters=tool_args
+                        )
+            except Exception as e:
+                self.logger.error(f"Error checking MCP tools: {str(e)}")
+                # Continue with local tool execution
+        
         # Map tool names to their respective classes
         tool_classes = {
             "web_search": WebSearch,

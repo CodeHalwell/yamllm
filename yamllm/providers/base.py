@@ -84,6 +84,11 @@ class ToolDefinition:
         self.name = name
         self.description = description
         self.parameters = parameters
+        
+        # MCP-specific fields
+        self.is_mcp_tool = False
+        self.mcp_connector_name = None
+        self.mcp_tool_id = None
     
     def to_dict(self) -> Dict[str, Any]:
         """

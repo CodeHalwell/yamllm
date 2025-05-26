@@ -1,4 +1,4 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
 from pydantic import BaseModel, Field
 import yaml
 
@@ -8,6 +8,19 @@ class ProviderSettings(BaseModel):
     api_key: None
     base_url: Optional[str] = None
     extra_settings: Optional[Dict[str, Any]] = Field(default_factory=dict)
+
+class MCPConnectorSettings(BaseModel):
+    """
+    Settings for an MCP (Model Context Protocol) connector.
+    
+    MCP allows integration with external tools and services in a standardized way.
+    """
+    name: str
+    url: str  # MCP server endpoint URL
+    authentication: Optional[str] = None  # Can be an environment variable reference like ${MCP_API_KEY}
+    description: Optional[str] = None
+    tool_prefix: Optional[str] = None  # Prefix for tool names from this connector
+    enabled: bool = True
 
 class ModelSettings(BaseModel):
     temperature: float = 0.7
@@ -60,7 +73,8 @@ class SafetySettings(BaseModel):
 class Tools(BaseModel):
     enabled: bool = True
     tool_timeout: int = 30
-    tool_list: List[str] = [] 
+    tool_list: List[str] = []
+    mcp_connectors: List[MCPConnectorSettings] = Field(default_factory=list)
 
 class YamlLMConfig(BaseModel):
     provider: ProviderSettings
