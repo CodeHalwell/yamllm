@@ -371,3 +371,68 @@ class MistralProvider(BaseProvider):
         """
         # Using mistralai's utils function to close clients
         from mistralai import close_clients
+        
+    def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
+        """
+        Format Mistral tool calls to standardized format.
+        
+        Args:
+            tool_calls: Mistral tool calls object
+            
+        Returns:
+            List of standardized tool call objects
+        """
+        if not tool_calls:
+            return []
+        
+        formatted_calls = []
+        for tool_call in tool_calls:
+            # Mistral uses OpenAI-compatible format for tool calls
+            if hasattr(tool_call, 'function') and hasattr(tool_call, 'id'):
+                formatted_call = {
+                    "id": tool_call.id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.function.name,
+                        "arguments": tool_call.function.arguments
+                    }
+                }
+            elif isinstance(tool_call, dict):
+                # Handle dictionary format
+                formatted_call = {
+                    "id": tool_call.get("id", f"call_{len(formatted_calls)}"),
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.get("function", {}).get("name"),
+                        "arguments": tool_call.get("function", {}).get("arguments")
+                    }
+                }
+            else:
+                # Skip unrecognized formats
+                continue
+            
+            formatted_calls.append(formatted_call)
+        
+        return formatted_calls
+    
+    def format_tool_results(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Format tool results for Mistral.
+        
+        Args:
+            tool_results: List of standardized tool result objects
+            
+        Returns:
+            List of Mistral-compatible tool result objects
+        """
+        formatted_results = []
+        for result in tool_results:
+            formatted_result = {
+                "tool_call_id": result.get("tool_call_id"),
+                "role": "tool",
+                "name": result.get("name"),
+                "content": result.get("content")
+            }
+            formatted_results.append(formatted_result)
+        
+        return formatted_results

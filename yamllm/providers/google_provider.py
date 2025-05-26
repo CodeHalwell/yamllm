@@ -585,3 +585,93 @@ class GoogleGeminiProvider(BaseProvider):
                 if self.logger:
                     self.logger.error(f"Fallback embedding error: {str(fallback_error)}")
                 raise Exception(f"Error creating embedding: {str(e)}, Fallback error: {str(fallback_error)}")
+    
+    def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
+        """
+        Format Google Gemini tool calls to standardized format.
+        
+        Args:
+            tool_calls: Google Gemini tool/function calls object
+            
+        Returns:
+            List of standardized tool call objects
+        """
+        if not tool_calls:
+            return []
+        
+        formatted_calls = []
+        for i, tool_call in enumerate(tool_calls):
+            # Handle Google's function_call format
+            if hasattr(tool_call, 'function_call'):
+                # Extract function name and arguments
+                function_name = tool_call.function_call.name
+                # Arguments in Google's format might be a string
+                try:
+                    if isinstance(tool_call.function_call.args, str):
+                        arguments = tool_call.function_call.args
+                    else:
+                        arguments = json.dumps(tool_call.function_call.args)
+                except Exception:
+                    arguments = "{}"
+                
+                formatted_call = {
+                    "id": f"call_{i}",  # Google doesn't provide IDs, so we create them
+                    "type": "function",
+                    "function": {
+                        "name": function_name,
+                        "arguments": arguments
+                    }
+                }
+            elif isinstance(tool_call, dict) and 'function_call' in tool_call:
+                # Handle dictionary-like object with function_call key
+                function_name = tool_call['function_call'].get('name')
+                try:
+                    if isinstance(tool_call['function_call'].get('args'), str):
+                        arguments = tool_call['function_call'].get('args')
+                    else:
+                        arguments = json.dumps(tool_call['function_call'].get('args', {}))
+                except Exception:
+                    arguments = "{}"
+                
+                formatted_call = {
+                    "id": f"call_{i}",
+                    "type": "function",
+                    "function": {
+                        "name": function_name,
+                        "arguments": arguments
+                    }
+                }
+            else:
+                # Skip unrecognized formats
+                continue
+            
+            formatted_calls.append(formatted_call)
+        
+        return formatted_calls
+    
+    def format_tool_results(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Format tool results for Google Gemini.
+        
+        Args:
+            tool_results: List of standardized tool result objects
+            
+        Returns:
+            List of Google Gemini-compatible tool result objects
+        """
+        formatted_results = []
+        for result in tool_results:
+            formatted_result = {
+                "role": "user",
+                "parts": [{
+                    "function_response": {
+                        "name": result.get("name"),
+                        "response": {
+                            "content": result.get("content")
+                        }
+                    }
+                }]
+            }
+            formatted_results.append(formatted_result)
+        
+        return formatted_results

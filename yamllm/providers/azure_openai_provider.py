@@ -7,11 +7,12 @@ This module provides an implementation of the BaseProvider interface for Azure O
 from typing import Dict, List, Any, Optional
 import json
 from openai import AzureOpenAI
+from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.live import Live
 
-from yamllm.providers.base import BaseProvider, Message, ToolDefinition
+from yamllm.providers.base import BaseProvider, Message, ToolDefinition, ToolCall
 
 
 class AzureOpenAIProvider(BaseProvider):
@@ -348,3 +349,64 @@ class AzureOpenAIProvider(BaseProvider):
             if self.logger:
                 self.logger.error(f"Error creating embedding: {str(e)}")
             raise Exception(f"Error creating embedding: {str(e)}")
+            
+    def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
+        """
+        Format Azure OpenAI tool calls to standardized format.
+        
+        Args:
+            tool_calls: Azure OpenAI tool calls object
+            
+        Returns:
+            List of standardized tool call objects
+        """
+        if not tool_calls:
+            return []
+        
+        formatted_calls = []
+        for tool_call in tool_calls:
+            # Handle both ChatCompletionMessageToolCall objects and raw dict formats
+            if hasattr(tool_call, 'function') and hasattr(tool_call, 'id'):
+                formatted_call = {
+                    "id": tool_call.id,
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.function.name,
+                        "arguments": tool_call.function.arguments
+                    }
+                }
+            else:
+                # Assume it's already a dict-like structure
+                formatted_call = {
+                    "id": tool_call.get("id", f"call_{len(formatted_calls)}"),
+                    "type": "function",
+                    "function": {
+                        "name": tool_call.get("function", {}).get("name"),
+                        "arguments": tool_call.get("function", {}).get("arguments")
+                    }
+                }
+            
+            formatted_calls.append(formatted_call)
+        
+        return formatted_calls
+    
+    def format_tool_results(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Format tool results for Azure OpenAI.
+        
+        Args:
+            tool_results: List of standardized tool result objects
+            
+        Returns:
+            List of Azure OpenAI-compatible tool result objects
+        """
+        formatted_results = []
+        for result in tool_results:
+            formatted_result = {
+                "role": "tool",
+                "tool_call_id": result.get("tool_call_id"),
+                "content": result.get("content")
+            }
+            formatted_results.append(formatted_result)
+        
+        return formatted_results
