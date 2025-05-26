@@ -1,24 +1,29 @@
 """
 MistralAI provider implementation for YAMLLM.
 
-This module provides an implementation of the BaseProvider interface for MistralAI.
+This module provides an implementation of the BaseProvider interface for MistralAI
+using the official mistralai Python SDK.
 """
 
 from typing import Dict, List, Any, Optional
+import json
+import numpy as np
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.live import Live
 
-from yamllm.providers.base import Message, ToolDefinition
-from yamllm.providers.openai_provider import OpenAIProvider
+from mistralai.sdk import Mistral
+from mistralai.models.chat_completion import ChatCompletionResponse
+
+from yamllm.providers.base import BaseProvider, Message, ToolDefinition, ToolCall
 
 
-class MistralProvider(OpenAIProvider):
+class MistralProvider(BaseProvider):
     """
     MistralAI provider implementation.
     
-    This class implements the BaseProvider interface for MistralAI.
-    Since MistralAI uses an OpenAI-compatible API with some differences,
-    it inherits from OpenAIProvider and overrides specific methods.
+    This class implements the BaseProvider interface for MistralAI
+    using the official mistralai Python SDK.
     """
     
     # Real-time query keywords - similar to GoogleGemini implementation
@@ -54,12 +59,23 @@ class MistralProvider(OpenAIProvider):
             base_url (str, optional): The base URL for the MistralAI API.
             **kwargs: Additional provider-specific parameters.
         """
-        super().__init__(api_key, model, base_url, **kwargs)
-    
+        self.api_key = api_key
+        self.model = model
+        self.base_url = base_url
+        
+        # Initialize Mistral client
+        self.client = Mistral(
+            api_key=self.api_key,
+            server_url=self.base_url
+        )
+        
+        # Store additional parameters
+        self.logger = kwargs.get('logger')
+        
     def prepare_completion_params(self, messages: List[Message], temperature: float, max_tokens: int, 
                                  top_p: float, stop_sequences: Optional[List[str]] = None) -> Dict[str, Any]:
         """
-        Override to prepare parameters compatible with Mistral's API requirements.
+        Prepare completion parameters for Mistral's API.
         
         Args:
             messages (List[Message]): The messages to send to the model.
@@ -88,10 +104,99 @@ class MistralProvider(OpenAIProvider):
             
         return params
     
+    def handle_streaming_response(self, messages: List[Message], params: Dict[str, Any]) -> str:
+        """
+        Handle streaming response from Mistral.
+        
+        Args:
+            messages (List[Message]): The messages sent to the model.
+            params (Dict[str, Any]): The parameters for the API request.
+            
+        Returns:
+            str: The concatenated response text.
+        """
+        try:
+            # Enable streaming
+            params["stream"] = True
+            
+            # Use the chat.complete method with streaming
+            response_stream = self.client.chat.complete(**params)
+            
+            console = Console()
+            response_text = ""
+            print()
+            
+            with Live(console=console, refresh_per_second=10) as live:
+                for chunk in response_stream:
+                    if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
+                        delta_content = chunk.choices[0].delta.content
+                        response_text += delta_content
+                        md = Markdown(f"\nAI: {response_text}", style="green")
+                        live.update(md)
+            
+            return response_text
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Streaming error: {str(e)}")
+            raise Exception(f"Error getting streaming response: {str(e)}")
+    
+    def handle_non_streaming_response(self, messages: List[Message], params: Dict[str, Any], 
+                                     tools: Optional[List[ToolDefinition]] = None) -> str:
+        """
+        Handle non-streaming response from Mistral.
+        
+        Args:
+            messages (List[Message]): The messages sent to the model.
+            params (Dict[str, Any]): The parameters for the API request.
+            tools (List[ToolDefinition], optional): Tool definitions.
+            
+        Returns:
+            str: The response text.
+        """
+        try:
+            # Add tools if available
+            if tools:
+                formatted_tools = []
+                for tool in tools:
+                    formatted_tools.append({
+                        "type": "function",
+                        "function": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "parameters": tool.parameters
+                        }
+                    })
+                params["tools"] = formatted_tools
+                params["tool_choice"] = "auto"
+            
+            # Use the chat.complete method
+            response = self.client.chat.complete(**params)
+            
+            # Check if the model wants to use a tool
+            if tools and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+                # Return the model message for tool processing
+                return response.choices[0].message
+            else:
+                response_text = response.choices[0].message.content
+                
+                # Display the response
+                console = Console()
+                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                    md = Markdown("\nAI:" + response_text, style="green")
+                    console.print(md)
+                else:
+                    console.print("\nAI:" + response_text, style="green")
+                    
+                return response_text
+        except Exception as e:
+            if self.logger:
+                self.logger.error(f"Non-streaming error: {str(e)}")
+            raise Exception(f"Error getting non-streaming response: {str(e)}")
+    
     def handle_streaming_with_tool_detection(self, messages: List[Message], params: Dict[str, Any], 
                                            tools: Optional[List[ToolDefinition]] = None) -> str:
         """
-        Override to handle streaming with tool detection for Mistral's API.
+        Handle streaming with tool detection for Mistral.
         
         Args:
             messages (List[Message]): The messages sent to the model.
@@ -116,44 +221,153 @@ class MistralProvider(OpenAIProvider):
             # Fall back to streaming without tool detection
             return self.handle_streaming_response(messages, params)
     
-    def handle_non_streaming_response(self, messages: List[Message], params: Dict[str, Any], 
-                                     tools: Optional[List[ToolDefinition]] = None) -> str:
+    def process_tool_calls(self, messages: List[Message], model_message: Any, 
+                          execute_tool_func: callable, max_iterations: int = 5) -> str:
         """
-        Override to handle non-streaming response for Mistral's API.
+        Process tool calls from Mistral.
         
         Args:
             messages (List[Message]): The messages sent to the model.
-            params (Dict[str, Any]): The parameters for the API request.
-            tools (List[ToolDefinition], optional): Tool definitions.
+            model_message (Any): The message from the model containing tool calls.
+            execute_tool_func (callable): Function to execute a tool.
+            max_iterations (int, optional): Maximum number of tool call iterations.
             
         Returns:
-            str: The response text.
+            str: The final response text.
+        """
+        console = Console()
+        iteration = 0
+        current_messages = [message.to_dict() for message in messages]
+        
+        while iteration < max_iterations:
+            iteration += 1
+            
+            # Add the model's message to the conversation
+            current_messages.append({
+                "role": "assistant",
+                "content": model_message.content,
+                "tool_calls": [
+                    {
+                        "id": tool_call.id,
+                        "type": "function",
+                        "function": {
+                            "name": tool_call.function.name,
+                            "arguments": tool_call.function.arguments
+                        }
+                    } for tool_call in model_message.tool_calls
+                ]
+            })
+            
+            # Process each tool call
+            for tool_call in model_message.tool_calls:
+                tool_name = tool_call.function.name
+                tool_args = json.loads(tool_call.function.arguments)
+                
+                # Display tool call information
+                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
+                console.print(f"[yellow]Function:[/yellow] {tool_name}")
+                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(tool_args)}")
+                
+                # Execute the tool
+                try:
+                    tool_result = execute_tool_func(tool_name, tool_args)
+                    
+                    # Display tool result
+                    console.print("\n[bold green]Tool Result:[/bold green]")
+                    if isinstance(tool_result, str) and any(marker in tool_result for marker in ['###', '```', '*', '_', '-']):
+                        md = Markdown(tool_result, style="green")
+                        console.print(md)
+                    else:
+                        console.print(str(tool_result), style="green")
+                    
+                    # Add the tool result to the conversation
+                    current_messages.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": tool_name,
+                        "content": str(tool_result)
+                    })
+                except Exception as e:
+                    error_message = f"Error executing tool {tool_name}: {str(e)}"
+                    if self.logger:
+                        self.logger.error(error_message)
+                    
+                    # Add the error message to the conversation
+                    current_messages.append({
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": tool_name,
+                        "content": error_message
+                    })
+            
+            # Get the model's response to the tool results
+            try:
+                response = self.client.chat.complete(
+                    model=self.model,
+                    messages=current_messages
+                )
+                
+                model_message = response.choices[0].message
+                
+                # Check if the model wants to use more tools
+                if hasattr(model_message, "tool_calls") and model_message.tool_calls:
+                    # Continue the loop with the new tool calls
+                    continue
+                else:
+                    # Model has finished using tools, return the final response
+                    response_text = model_message.content
+                    
+                    # Display the final response
+                    console.print("\n[bold blue]Final Response:[/bold blue]")
+                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
+                        md = Markdown(response_text, style="green")
+                        console.print(md)
+                    else:
+                        console.print(response_text, style="green")
+                    
+                    return response_text
+            except Exception as e:
+                error_message = f"Error getting model response: {str(e)}"
+                if self.logger:
+                    self.logger.error(error_message)
+                raise Exception(error_message)
+        
+        # If we've reached the maximum number of iterations, return the last model message
+        if hasattr(model_message, "content") and model_message.content:
+            return model_message.content
+        else:
+            return "Maximum tool call iterations reached without a final response."
+    
+    def create_embedding(self, text: str) -> bytes:
+        """
+        Create an embedding for the given text using Mistral's embeddings API.
+        
+        Args:
+            text (str): The text to create an embedding for.
+            
+        Returns:
+            bytes: The embedding as bytes.
         """
         try:
-            # Add tools if available
-            if tools:
-                params["tools"] = [tool.to_dict() for tool in tools]
-                params["tool_choice"] = "auto"
+            # Use the embeddings.create method with mistral-embed model
+            embedding_model = "mistral-embed"
             
-            response = self.client.chat.completions.create(**params)
+            response = self.client.embeddings.create(
+                model=embedding_model,
+                inputs=text
+            )
             
-            # Check if the model wants to use a tool
-            if tools and hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
-                # Return the model message for tool processing
-                return response.choices[0].message
-            else:
-                response_text = response.choices[0].message.content
-                
-                # Display the response
-                console = Console()
-                if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown("\nAI:" + response_text, style="green")
-                    console.print(md)
-                else:
-                    console.print("\nAI:" + response_text, style="green")
-                    
-                return response_text
+            # Convert the embedding to bytes
+            embedding = np.array(response.data[0].embedding, dtype=np.float32)
+            return embedding.tobytes()
         except Exception as e:
             if self.logger:
-                self.logger.error(f"Non-streaming error: {str(e)}")
-            raise Exception(f"Error getting non-streaming response: {str(e)}")
+                self.logger.error(f"Error creating embedding: {str(e)}")
+            raise Exception(f"Error creating embedding: {str(e)}")
+            
+    def close(self):
+        """
+        Close the client and release resources.
+        """
+        # Using mistralai's utils function to close clients
+        from mistralai import close_clients
