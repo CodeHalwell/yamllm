@@ -11,6 +11,8 @@ from yamllm.providers.openai_provider import OpenAIProvider
 from yamllm.providers.deepseek_provider import DeepSeekProvider
 from yamllm.providers.mistral_provider import MistralProvider
 from yamllm.providers.google_provider import GoogleGeminiProvider
+from yamllm.providers.azure_openai_provider import AzureOpenAIProvider
+from yamllm.providers.azure_foundry_provider import AzureFoundryProvider
 
 
 class ProviderFactory:
@@ -44,7 +46,9 @@ class ProviderFactory:
             "openai": OpenAIProvider,
             "deepseek": DeepSeekProvider,
             "mistral": MistralProvider,
-            "google": GoogleGeminiProvider
+            "google": GoogleGeminiProvider,
+            "azure_openai": AzureOpenAIProvider,
+            "azure_foundry": AzureFoundryProvider
         }
         
         if provider_name.lower() not in provider_map:

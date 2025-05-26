@@ -1,0 +1,60 @@
+# Azure AI Foundry Integration Example
+#
+# This configuration demonstrates how to use Azure AI Foundry with yamllm-core.
+# Replace placeholder values with your actual Azure AI Foundry project details.
+
+provider:
+  name: "azure_foundry"
+  model: "my-gpt4-deployment"  # Your model deployment name in Azure AI Foundry
+  api_key: "default"  # Use "default" for DefaultAzureCredential or your API key
+  base_url: ${AZURE_AI_PROJECT_ENDPOINT}  # Azure AI Foundry project endpoint
+  extra_settings:
+    project_id: "my-project-id"  # Optional: your Azure AI project ID
+    embedding_deployment: "text-embedding-ada-002"  # Optional: specify embedding model
+
+model_settings:
+  temperature: 0.7
+  max_tokens: 1000
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stop_sequences: []
+
+request:
+  timeout: 30
+  retry:
+    max_attempts: 3
+    initial_delay: 1
+    backoff_factor: 2
+
+context:
+  system_prompt: "You are a helpful assistant powered by Azure AI Foundry."
+  max_context_length: 4096
+  memory:
+    enabled: false
+    max_messages: 10
+    session_id: null
+    conversation_db: null
+    vector_store:
+      index_path: null
+      metadata_path: null
+      top_k: null
+
+output:
+  format: "text"
+  stream: true
+
+logging:
+  level: "INFO"
+  file: "yamllm.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+safety:
+  content_filtering: true
+  max_requests_per_minute: 60
+  sensitive_keywords: []
+
+tools:
+  enabled: true
+  tool_timeout: 30
+  tool_list: ["web_search", "calculator", "weather"]
