@@ -106,3 +106,22 @@ class DeepSeekProvider(OpenAIProvider):
                 self.logger.error(f"Error creating embedding with DeepSeek: {str(e)}")
                 self.logger.warning("DeepSeek may not support embeddings via OpenAI-compatible API")
             raise Exception(f"Error creating embedding with DeepSeek: {str(e)}")
+    
+    def process_tool_calls(self, messages: List[Message], model_message: Any, 
+                         execute_tool_func: callable, max_iterations: int = 5) -> str:
+        """
+        Process tool calls from the model and get the final response.
+        
+        DeepSeek uses OpenAI-compatible tool calling format, so we can leverage the OpenAI implementation.
+        
+        Args:
+            messages (List[Message]): The conversation history.
+            model_message (Any): The model's message containing tool calls.
+            execute_tool_func (callable): Function to execute tools.
+            max_iterations (int, optional): Maximum number of tool call iterations. Defaults to 5.
+            
+        Returns:
+            str: The final response from the model.
+        """
+        # DeepSeek uses OpenAI-compatible tool calling format
+        return super().process_tool_calls(messages, model_message, execute_tool_func, max_iterations)
