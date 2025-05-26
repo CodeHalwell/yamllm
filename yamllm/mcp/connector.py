@@ -19,3 +19,14 @@ class MCPConnector:
         self.auth_token = self._process_auth(authentication)
         self.logger = logging.getLogger(__name__)
         self._cached_tools = None
+        
+    def _process_auth(self, auth_str):
+        """Process authentication string, resolving environment variables."""
+        if not auth_str:
+            return None
+            
+        env_var_match = re.match(r"\${(.+)}", auth_str)
+        if env_var_match:
+            env_var_name = env_var_match.group(1)
+            return os.environ.get(env_var_name)
+        return auth_str

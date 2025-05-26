@@ -256,6 +256,15 @@ tools:
     - "unit_converter"             # Convert between units
     - "weather"                    # Get weather information
     - "web_scraper"                # Scrape content from websites
+  mcp_connectors:                  # Model Context Protocol connectors
+    - name: "zapier"               # Name of the connector
+      url: "https://example.com/mcp"  # URL of the MCP server
+      authentication: "${MCP_API_KEY}" # Authentication (reference to environment variable)
+      description: "Zapier MCP connector"  # Description of the connector
+      tool_prefix: "zapier"        # Prefix for tool names from this connector
+      enabled: true                # Whether this connector is enabled
 ```
 
 All supported providers implement a standardized interface for tool use, ensuring consistent behavior across different LLM backends.
+
+For more information on MCP support, see the [MCP documentation](mcp.md).
