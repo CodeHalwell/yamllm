@@ -2,13 +2,15 @@
 Anthropic provider implementation for YAMLLM.
 
 This module implements the BaseProvider interface for Anthropic's API,
-supporting Claude models and tools.
+supporting Claude models and tools using the official Anthropic Python SDK.
 """
 
 import json
 import os
-import requests
 from typing import Dict, List, Any, Optional, Union, Tuple, Iterator
+
+from anthropic import Anthropic
+from anthropic.types import MessageParam, ToolParam
 
 from yamllm.core.providers.base import BaseProvider
 
@@ -34,12 +36,14 @@ class AnthropicProvider(BaseProvider):
         self.base_url = base_url or "https://api.anthropic.com"
         self.api_version = kwargs.get("api_version", "v1")
         
-        # Set headers used for all requests
-        self.headers = {
-            "x-api-key": self.api_key,
-            "anthropic-version": self.api_version,
-            "content-type": "application/json"
-        }
+        # Initialize the Anthropic client
+        self.client = Anthropic(
+            api_key=self.api_key,
+            base_url=self.base_url
+        )
+        
+        # Store additional parameters
+        self.timeout = kwargs.get("timeout", 600)
     
     def get_completion(self, 
                       messages: List[Dict[str, Any]], 
@@ -71,47 +75,44 @@ class AnthropicProvider(BaseProvider):
         # Convert OpenAI-style messages to Anthropic format
         anthropic_messages = self._convert_messages_to_anthropic_format(messages)
         
-        # Prepare the request payload
-        payload = {
+        # Prepare the request parameters
+        params = {
             "model": model,
             "messages": anthropic_messages,
-            "temperature": temperature,
             "max_tokens": max_tokens,
+            "temperature": temperature,
             "top_p": top_p,
-            "stream": stream
+            "stream": stream,
         }
         
         # Add optional parameters if provided
         if stop_sequences:
-            payload["stop_sequences"] = stop_sequences
+            params["stop_sequences"] = stop_sequences
         
         # Add tools if provided
         if tools:
             # Convert OpenAI-style tools to Anthropic format
             anthropic_tools = self._convert_tools_to_anthropic_format(tools)
-            payload["tools"] = anthropic_tools
+            params["tools"] = anthropic_tools
         
         # Add any additional parameters
         for key, value in kwargs.items():
-            if key not in payload:
-                payload[key] = value
+            if key not in params:
+                params[key] = value
         
-        # Make the API request
-        response = requests.post(
-            f"{self.base_url}/v1/messages",
-            headers=self.headers,
-            json=payload
-        )
+        try:
+            # Make the API request using the Anthropic SDK
+            response = self.client.messages.create(**params)
+            
+            # Return the response
+            if stream:
+                return response
+            else:
+                # Convert the response object to a dict for consistency with the rest of the codebase
+                return response.model_dump()
         
-        # Handle errors
-        if response.status_code != 200:
-            raise Exception(f"Anthropic API Error: {response.status_code} - {response.text}")
-        
-        # Parse the response
-        if stream:
-            return response.iter_lines()
-        else:
-            return response.json()
+        except Exception as e:
+            raise Exception(f"Anthropic API Error: {str(e)}")
     
     def get_streaming_completion(self, 
                                messages: List[Dict[str, Any]], 
@@ -138,18 +139,40 @@ class AnthropicProvider(BaseProvider):
         Returns:
             Iterator of Anthropic API response chunks
         """
-        # Set stream=True and call get_completion to get a streaming response
-        return self.get_completion(
-            messages=messages,
-            model=model,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p,
-            stop_sequences=stop_sequences,
-            tools=tools,
-            stream=True,
-            **kwargs
-        )
+        # Convert OpenAI-style messages to Anthropic format
+        anthropic_messages = self._convert_messages_to_anthropic_format(messages)
+        
+        # Prepare the request parameters
+        params = {
+            "model": model,
+            "messages": anthropic_messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+            "top_p": top_p,
+        }
+        
+        # Add optional parameters if provided
+        if stop_sequences:
+            params["stop_sequences"] = stop_sequences
+        
+        # Add tools if provided
+        if tools:
+            # Convert OpenAI-style tools to Anthropic format
+            anthropic_tools = self._convert_tools_to_anthropic_format(tools)
+            params["tools"] = anthropic_tools
+        
+        # Add any additional parameters
+        for key, value in kwargs.items():
+            if key not in params:
+                params[key] = value
+        
+        try:
+            # Use the Anthropic SDK's stream method
+            stream = self.client.messages.stream(**params)
+            return stream
+        
+        except Exception as e:
+            raise Exception(f"Anthropic API Error: {str(e)}")
     
     def create_embedding(self, text: str, model: str = "claude-3-haiku-20240307") -> List[float]:
         """
@@ -191,7 +214,7 @@ class AnthropicProvider(BaseProvider):
         Format Anthropic tool calls to standardized format.
         
         Args:
-            tool_calls: Anthropic tool calls object
+            tool_calls: Anthropic tool calls object from SDK response
             
         Returns:
             List of standardized tool call objects
@@ -201,6 +224,10 @@ class AnthropicProvider(BaseProvider):
         
         formatted_calls = []
         for i, tool_call in enumerate(tool_calls):
+            # Handle SDK's response format
+            if hasattr(tool_call, 'model_dump'):
+                tool_call = tool_call.model_dump()
+            
             tool_name = tool_call.get("name")
             tool_input = tool_call.get("input", {})
             
@@ -234,9 +261,6 @@ class AnthropicProvider(BaseProvider):
             except (json.JSONDecodeError, TypeError):
                 content = result.get("content")
             
-            # Find the corresponding tool call ID
-            tool_call_id = result.get("tool_call_id")
-            
             formatted_result = {
                 "role": "tool",
                 "name": result.get("name", "unknown_tool"),
@@ -264,9 +288,10 @@ class AnthropicProvider(BaseProvider):
             
             if role == "system":
                 # System messages are handled differently in Anthropic
+                # Using the Anthropic SDK's convention for system messages
                 anthropic_messages.append({
                     "role": "user",
-                    "content": f"<system>{content}</system>"
+                    "content": f"<s>{content}</s>"
                 })
             elif role == "user":
                 anthropic_messages.append({
@@ -301,7 +326,7 @@ class AnthropicProvider(BaseProvider):
                 # Convert tool results to Anthropic format
                 anthropic_messages.append({
                     "role": "tool",
-                    "name": "unknown_tool",  # We don't have the tool name, so use a default
+                    "name": message.get("name", "unknown_tool"),
                     "content": content
                 })
         
@@ -337,5 +362,5 @@ class AnthropicProvider(BaseProvider):
         """
         Close the Anthropic client and release resources.
         """
-        # Nothing to close with the requests-based implementation
-        pass
+        if hasattr(self, 'client') and self.client:
+            self.client.close()
