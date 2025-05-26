@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any, Union
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 import yaml
 
 class ProviderSettings(BaseModel):
