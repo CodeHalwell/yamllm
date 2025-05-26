@@ -75,18 +75,41 @@ provider:
 
 The GoogleGeminiProvider now uses the native Google GenAI SDK for improved performance, better access to Gemini-specific features (especially tool use), and alignment with Google's recommended practices.
 
-## Mistral and DeepSeek
-
-These providers are also supported through their OpenAI-compatible endpoints.
+## Mistral 
 
 ```python
-from yamllm.core.llm import MistralAI, DeepSeek
+from yamllm.core.llm import MistralAI
+# Or use the new interface
+from yamllm.core.llm_v2 import LLMv2
+
+# Using original class
+llm = MistralAI(config_path="config.yaml", api_key="your-api-key")
+
+# Using new provider interface
+llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
+```
+
+Configuration:
+```yaml
+provider:
+  name: "mistralai"
+  model: "mistral-small-latest"  # model identifier
+  api_key: # api key goes here, best practice to put into dotenv
+  base_url: "https://api.mistral.ai/v1/" # optional: for custom endpoints
+```
+
+The MistralProvider uses the official mistralai Python SDK for improved performance, better access to Mistral-specific features (like the mistral-embed model for embeddings), and robust tool usage support.
+
+## DeepSeek
+
+DeepSeek is supported through an OpenAI-compatible endpoint.
+
+```python
+from yamllm.core.llm import DeepSeek
 # Or use the new interface
 from yamllm.core.llm_v2 import LLMv2
 
 # Using original classes
-llm = MistralAI(config_path="config.yaml", api_key="your-api-key")
-# or
 llm = DeepSeek(config_path="config.yaml", api_key="your-api-key")
 
 # Using new provider interface

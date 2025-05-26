@@ -13,6 +13,7 @@ from yamllm.providers.base import Message, ToolDefinition
 
 # Import provider interfaces
 from yamllm.core.providers import BaseProvider, OpenAIProvider, AnthropicProvider
+from yamllm.providers.mistral_provider import MistralProvider
 
 
 dotenv.load_dotenv()
@@ -78,6 +79,7 @@ class LLM(object):
     PROVIDER_MAP = {
         "openai": OpenAIProvider,
         "anthropic": AnthropicProvider,
+        "mistralai": MistralProvider,
         # Will add more providers as they're implemented
     }
     

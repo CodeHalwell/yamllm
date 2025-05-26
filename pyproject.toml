@@ -20,6 +20,7 @@ dependencies = [
     "faiss-cpu>=1.10.0",
     "google-generativeai>=0.4.0",
     "matplotlib>=3.10.0",
+    "mistralai>=1.7.1",
     "numpy>=2.2.3",
     "openai>=1.63.0",
     "pandas>=2.2.3",
