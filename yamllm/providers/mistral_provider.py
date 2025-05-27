@@ -26,28 +26,7 @@ class MistralProvider(BaseProvider):
     using the official mistralai Python SDK.
     """
     
-    # Real-time query keywords - similar to GoogleGemini implementation
-    real_time_keywords = [
-        # Weather and natural phenomena
-        "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
-        "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
-        "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
-        
-        # News and current events
-        "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
-        "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
-        "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
-        
-        # Sports and entertainment
-        "score", "game", "match", "tournament", "championship", "playoff", "standings", 
-        "leaderboard", "box office", "premiere", "release", "concert", "performance", 
-        "episode", "ratings", "award", "nominations", "season", "show", "event",
-        
-        # Time-specific queries
-        "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
-        "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
-        "scheduled", "real-time", "live", "happening", "occurring", "next"
-    ]
+    # No longer using real-time query keywords - model will determine when to use tools
     
     def __init__(self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs):
         """
