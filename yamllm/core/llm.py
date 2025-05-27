@@ -184,28 +184,7 @@ class LLM(object):
         if self.memory_enabled:
             self._initialize_memory()
             
-        # Add real-time keywords for providers that need them
-        self.real_time_keywords = [
-            # Weather and natural phenomena
-            "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
-            "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
-            "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
-            
-            # News and current events
-            "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
-            "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
-            "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
-            
-            # Sports and entertainment
-            "score", "game", "match", "tournament", "championship", "playoff", "standings", 
-            "leaderboard", "box office", "premiere", "release", "concert", "performance", 
-            "episode", "ratings", "award", "nominations", "season", "show", "event",
-            
-            # Time-specific queries
-            "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
-            "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
-            "scheduled", "real-time", "live", "happening", "occurring", "next"
-        ]
+        # No longer using real-time keywords - models will determine when to use tools via their native SDKs
 
     def _initialize_provider(self) -> BaseProvider:
         """
@@ -581,24 +560,10 @@ class LLM(object):
             str: Response text.
         """
         try:
-            # Check for real-time queries that might benefit from tools
-            is_real_time_query = False
-            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+            # We'll now rely on the model's ability to decide when to use tools
+            # through the provider's SDK, rather than keyword matching for real-time queries
             
-            # Extract just the user's question without any context annotations
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-            
-            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
-                is_real_time_query = True
-            
-            if is_real_time_query and tools_param:
-                # Use non-streaming for real-time queries
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
-                return self._handle_non_streaming_response(messages, tools_param)
-            
-            # For non-real-time queries or if no tools available, make a small preview request
-            # to see if tools would be used anyway
+            # Make a preview request to see if the model will use tools
             try:
                 # Make a low-token request to see if the model will use tools
                 params = {
@@ -730,98 +695,9 @@ class LLM(object):
             str: Response text.
         """
         try:
-            # Check for real-time queries that might benefit from direct tool execution
-            is_real_time_query = False
-            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
+            # We'll now rely on the model's ability to decide when to use tools
+            # through the provider's SDK, rather than keyword matching for real-time queries
             
-            # Extract just the user's question without any context annotations
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-            
-            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
-                is_real_time_query = True
-            
-            if is_real_time_query and tools_param and self.tools_enabled:
-                # Directly execute web search for real-time queries
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
-                
-                # Create a web search directly
-                web_search = WebSearch()
-                web_search_args = {
-                    "query": actual_query,
-                    "max_results": 5
-                }
-                
-                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
-                console.print("[yellow]Function:[/yellow] web_search")
-                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
-                
-                # Execute the search
-                search_results = web_search.execute(**web_search_args)
-                
-                # Display a short version of the result
-                result_str = str(search_results)
-                if len(result_str) > 200:
-                    display_result = result_str[:200] + "..."
-                else:
-                    display_result = result_str
-                console.print(f"[yellow]Result:[/yellow] {display_result}")
-                
-                # Convert search results to a readable format
-                readable_results = ""
-                if isinstance(search_results, dict) and "results" in search_results:
-                    for i, result in enumerate(search_results.get("results", [])[:3]):
-                        readable_results += f"Source {i+1}: {result.get('title', 'No title')}\n"
-                        readable_results += f"Summary: {result.get('snippet', 'No information')}\n\n"
-                
-                # Create a new message with the search results
-                user_msg_with_results = f"{actual_query}\n\nHere are some search results I found:\n\n{readable_results}\n\nPlease summarize this information in a helpful, conversational way."
-                
-                # Replace the last user message with our enhanced version
-                for i in range(len(messages)-1, -1, -1):
-                    if messages[i]["role"] == "user":
-                        messages[i]["content"] = user_msg_with_results
-                        break
-                
-                # Send a new request without tools to get a response based on the search results
-                try:
-                    response = self.provider_client.get_completion(
-                        messages=messages,
-                        model=self.model,
-                        temperature=self.temperature,
-                        max_tokens=self.max_tokens,
-                        top_p=self.top_p,
-                        stop_sequences=self.stop_sequences if self.stop_sequences else None
-                    )
-                    
-                    # Get the response text based on the provider
-                    if self.provider.lower() == "openai":
-                        response_text = response.choices[0].message.content
-                    elif self.provider.lower() == "anthropic":
-                        response_text = response.get("content", [{"text": "No response generated."}])[0]["text"]
-                    else:
-                        response_text = str(response)
-                    
-                    # Display the response
-                    if any(marker in response_text for marker in ['###', '```', '*', '_', '-']):
-                        md = Markdown("\nAI:" + response_text, style="green")
-                        console.print(md)
-                    else:
-                        console.print("\nAI:" + response_text, style="green")
-                    
-                    return response_text
-                except Exception as e:
-                    self.logger.warning(f"Final response generation failed: {str(e)}")
-                    # Create a direct response using the search results
-                    if readable_results:
-                        response_text = f"Based on my search for '{actual_query}', I found:\n\n{readable_results}\n\nI couldn't generate a summary, but these are the relevant search results."
-                    else:
-                        response_text = f"I tried to search for information about '{actual_query}', but couldn't find relevant results or generate a summary. Could you try rephrasing your question?"
-                    
-                    console.print("\nAI:" + response_text, style="green")
-                    return response_text
-            
-            # For non-real-time queries or providers without special handling
             # Use the provider client to get a completion
             response = self.provider_client.get_completion(
                 messages=messages,
@@ -1381,28 +1257,7 @@ class AnthropicAI(LLM):
             Initializes the AnthropicAI instance with the given configuration path and API key.
     """
     
-    # Real-time query keywords - similar to other models
-    real_time_keywords = [
-        # Weather and natural phenomena
-        "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
-        "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
-        "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
-        
-        # News and current events
-        "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
-        "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
-        "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
-        
-        # Sports and entertainment
-        "score", "game", "match", "tournament", "championship", "playoff", "standings", 
-        "leaderboard", "box office", "premiere", "release", "concert", "performance", 
-        "episode", "ratings", "award", "nominations", "season", "show", "event",
-        
-        # Time-specific queries
-        "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
-        "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
-        "scheduled", "real-time", "live", "happening", "occurring", "next"
-    ]
+    # No longer using real-time query keywords - model will determine when to use tools
     
     def __init__(self, config_path: str, api_key: str) -> None:
         """

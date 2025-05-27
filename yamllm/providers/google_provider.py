@@ -22,28 +22,7 @@ class GoogleGeminiProvider(BaseProvider):
     This class implements the BaseProvider interface for Google Gemini.
     """
     
-    # Real-time query keywords
-    real_time_keywords = [
-        # Weather and natural phenomena
-        "weather", "forecast", "temperature", "humidity", "precipitation", "rain", "snow", "storm", 
-        "hurricane", "tornado", "earthquake", "tsunami", "typhoon", "cyclone", "flood", "drought", 
-        "wildfire", "air quality", "pollen", "uv index", "sunrise", "sunset", "climate",
-        
-        # News and current events
-        "news", "headline", "latest", "breaking", "current", "recent", "today", "yesterday",
-        "this week", "this month", "ongoing", "developing", "situation", "event", "incident", 
-        "announcement", "press release", "update", "coverage", "report", "bulletin", "fixture",
-        
-        # Sports and entertainment
-        "score", "game", "match", "tournament", "championship", "playoff", "standings", 
-        "leaderboard", "box office", "premiere", "release", "concert", "performance", 
-        "episode", "ratings", "award", "nominations", "season", "show", "event",
-        
-        # Time-specific queries
-        "now", "currently", "present", "moment", "tonight", "this morning", "this afternoon", 
-        "this evening", "upcoming", "soon", "shortly", "imminent", "expected", "anticipated", 
-        "scheduled", "real-time", "live", "happening", "occurring", "next"
-    ]
+    # No longer using real-time query keywords - model will determine when to use tools
     
     def __init__(self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs):
         """
@@ -218,56 +197,11 @@ class GoogleGeminiProvider(BaseProvider):
             str: The response text.
         """
         try:
-            # For Google Gemini, check if this is a real-time query that should use web_search
-            is_real_time_query = False
-            last_user_msg = next((m.content for m in messages if m.role == "user"), "")
+            # For Google Gemini, we'll now rely on the model's ability to decide when to use tools
+            # rather than using keyword matching for real-time queries
             
-            # Extract just the user's question without any context annotations
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-            
-            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
-                is_real_time_query = True
-            
-            if is_real_time_query and tools and self.tools_enabled:
-                # Force web search for real-time queries
-                console = Console()
-                console.print("\n[yellow]Using tools to answer this real-time question...[/yellow]")
-                
-                # Create a web search directly instead of going through the API
-                web_search = WebSearch()
-                web_search_args = {
-                    "query": actual_query,  # Use the clean query without context annotations
-                    "max_results": 5
-                }
-                
-                # Display tool call information
-                console.print("\n[bold yellow]Tool Call Requested:[/bold yellow]")
-                console.print("[yellow]Function:[/yellow] web_search")
-                console.print(f"[yellow]Arguments:[/yellow] {json.dumps(web_search_args)}")
-                
-                # Execute the search directly
-                search_results = web_search.execute(**web_search_args)
-                
-                # Display tool result
-                console.print("\n[bold green]Tool Result:[/bold green]")
-                if isinstance(search_results, str) and any(marker in search_results for marker in ['###', '```', '*', '_', '-']):
-                    md = Markdown(search_results, style="green")
-                    console.print(md)
-                else:
-                    console.print(str(search_results), style="green")
-                
-                # Add the search results to the messages
-                search_context = f"Here are the search results for '{actual_query}':\n\n{search_results}"
-                
-                # Add search context to the contents
-                search_system_msg = {
-                    "role": "user",
-                    "parts": [{"text": f"System information: {search_context}"}]
-                }
-                params["contents"].append(search_system_msg)
-            
-            # Add tools if available and not a real-time query
-            if tools and not is_real_time_query:
+            # Add tools if available
+            if tools:
                 # Convert tools to Google's format and add them to the model
                 google_tools = []
                 for tool in tools:
@@ -293,7 +227,7 @@ class GoogleGeminiProvider(BaseProvider):
                 )
             
             # Check if the model wants to use a tool
-            if tools and not is_real_time_query and hasattr(response, "candidates") and \
+            if tools and hasattr(response, "candidates") and \
                 response.candidates[0].content.parts and \
                 hasattr(response.candidates[0].content.parts[0], "function_call"):
                 # Return the model message for tool processing
@@ -330,19 +264,8 @@ class GoogleGeminiProvider(BaseProvider):
             str: The response text.
         """
         try:
-            # For Google Gemini, check if this is a real-time query that should use web_search
-            is_real_time_query = False
-            last_user_msg = next((m.content for m in messages if m.role == "user"), "")
-            
-            # Extract just the user's question without any context annotations
-            actual_query = last_user_msg.split("\nRelevant context from previous conversations:")[0].strip()
-            
-            if any(keyword in actual_query.lower() for keyword in self.real_time_keywords) and "web_search" in self.tools:
-                is_real_time_query = True
-            
-            if is_real_time_query and tools and self.tools_enabled:
-                # For real-time queries, use non-streaming with web search
-                return self.handle_non_streaming_response(messages, params, tools)
+            # For Google Gemini, we'll now rely on the model's ability to decide when to use tools
+            # rather than using keyword matching for real-time queries
             
             # Make a low-token request to see if the model will use tools
             preview_params = params.copy()
