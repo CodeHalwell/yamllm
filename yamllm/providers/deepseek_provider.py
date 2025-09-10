@@ -9,6 +9,7 @@ from typing import Dict, List, Any, Optional
 from openai import OpenAI
 
 from yamllm.providers.openai_provider import OpenAIProvider
+from yamllm.providers.base import Message
 
 
 class DeepSeekProvider(OpenAIProvider):

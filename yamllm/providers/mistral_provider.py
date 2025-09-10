@@ -13,7 +13,15 @@ from rich.markdown import Markdown
 from rich.live import Live
 
 from mistralai.sdk import Mistral
-from mistralai.models.chat_completion import ChatCompletionResponse
+try:
+    from mistralai.models.chat_completion import ChatCompletionResponse
+except ImportError:
+    # Handle newer mistralai SDK versions
+    try:
+        from mistralai.models import ChatCompletionResponse
+    except ImportError:
+        # Fallback for compatibility
+        ChatCompletionResponse = object
 
 from yamllm.providers.base import BaseProvider, Message, ToolDefinition, ToolCall
 

@@ -54,11 +54,18 @@ class ConversationStore:
             - content: A text field that is not null.
             - timestamp: A datetime field that defaults to the current timestamp.
 
+        Critical database indexes are also created for performance optimization:
+            - Index on session_id for fast session-based queries
+            - Composite index on (session_id, timestamp) for ordered retrieval
+            - Index on timestamp for time-based queries
+
         The connection to the database is closed after the table is created.
         """
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
+            
+            # Create the messages table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS messages (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -68,6 +75,32 @@ class ConversationStore:
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
+            
+            # Create critical indexes for performance
+            # Index on session_id for fast session-based queries
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_messages_session_id 
+                ON messages(session_id)
+            ''')
+            
+            # Composite index on (session_id, timestamp) for ordered retrieval
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_messages_session_timestamp 
+                ON messages(session_id, timestamp)
+            ''')
+            
+            # Index on timestamp for time-based queries and cleanup operations
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_messages_timestamp 
+                ON messages(timestamp)
+            ''')
+            
+            # Index on role for filtering by message type
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_messages_role 
+                ON messages(role)
+            ''')
+            
             conn.commit()
         finally:
             conn.close()
