@@ -397,7 +397,7 @@ P2 — Developer experience and testing
 - [x] Adopt ProviderFactory for async in LLM
 - [x] Add tests for streaming+tools path (stub provider)
 - [x] Harmonize exceptions and retry surfaces across providers
-- [ ] Trim unused heavy deps to optional extras
+- [x] Trim unused heavy deps to optional extras
 
 P2 — Performance and resilience
 - [ ] Cache embeddings per request; reduce duplicate calls

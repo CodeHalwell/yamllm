@@ -71,18 +71,28 @@ You can view your conversation history using the ConversationStore class. This w
 
 ```python
 from yamllm import ConversationStore
-import pandas as pd
-from tabulate import tabulate
+# Optional: install extras `viz` to use pandas/tabulate output
+try:
+    import pandas as pd
+    from tabulate import tabulate
+except Exception:  # pragma: no cover - docs example
+    pd = None
+    tabulate = None
 
 # Initialize the conversation store
 history = ConversationStore("yamllm/memory/conversation_history.db")
 
-# Retrieve messages and create a DataFrame
+# Retrieve messages
 messages = history.get_messages()
-df = pd.DataFrame(messages)
 
-# Display messages in tabular format
-print(tabulate(df, headers='keys', tablefmt='psql'))
+# Pretty print if optional deps available
+if pd and tabulate:
+    df = pd.DataFrame(messages)
+    print(tabulate(df, headers='keys', tablefmt='psql'))
+else:
+    # Fallback: simple print
+    for m in messages:
+        print(f"{m['role']}: {m['content']}")
 ```
 
 ## Working with Vector Store
