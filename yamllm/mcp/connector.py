@@ -44,7 +44,11 @@ class MCPConnector:
         self._connection = None
         self._process = None
         self._connected = False
-        self._http_client = httpx.AsyncClient(headers=self._get_headers(), timeout=10)
+        # Enable HTTP/2 and connection reuse for lower overhead on repeated calls
+        self._http_client = httpx.AsyncClient(headers=self._get_headers(), timeout=10, http2=True)
+        # Reconnection/backoff settings
+        self._max_reconnect_attempts = 3
+        self._base_backoff = 0.5
 
     def _process_auth(self, auth_str):
         """Process authentication string, resolving environment variables."""
@@ -71,19 +75,31 @@ class MCPConnector:
 
     # Connection Management -----------------------------------------------
     async def connect(self) -> None:
-        """Establish connection based on transport type."""
+        """Establish connection based on transport type with retries/backoff."""
         try:
-            if self.transport == MCPTransportType.WEBSOCKET:
-                await self._connect_websocket()
-            elif self.transport == MCPTransportType.HTTP:
-                await self._connect_http()
-            elif self.transport == MCPTransportType.STDIO:
-                await self._connect_stdio()
-            else:
-                raise MCPError(f"Unsupported transport: {self.transport}")
-            
-            self._connected = True
-            self.logger.info(f"Connected to MCP server {self.name} via {self.transport.value}")
+            attempts = 0
+            while True:
+                try:
+                    if self.transport == MCPTransportType.WEBSOCKET:
+                        await self._connect_websocket()
+                    elif self.transport == MCPTransportType.HTTP:
+                        await self._connect_http()
+                    elif self.transport == MCPTransportType.STDIO:
+                        await self._connect_stdio()
+                    else:
+                        raise MCPError(f"Unsupported transport: {self.transport}")
+                    self._connected = True
+                    self.logger.info(f"Connected to MCP server {self.name} via {self.transport.value}")
+                    return
+                except Exception as e:
+                    attempts += 1
+                    if attempts > self._max_reconnect_attempts:
+                        raise e
+                    backoff = self._base_backoff * (2 ** (attempts - 1))
+                    self.logger.warning(
+                        f"Connect attempt {attempts} failed for {self.name}: {e}; retrying in {backoff:.2f}s"
+                    )
+                    await asyncio.sleep(backoff)
         except Exception as e:
             raise MCPError(f"Failed to connect to {self.name}: {e}") from e
     
@@ -208,7 +224,15 @@ class MCPConnector:
             response = await asyncio.wait_for(self._connection.recv(), timeout=30)
             return json.loads(response)
         except (ConnectionClosed, asyncio.TimeoutError) as e:
-            raise MCPError(f"WebSocket communication failed: {e}") from e
+            # Try to reconnect once and resend
+            self.logger.warning(f"WebSocket communication error for {self.name}: {e}; attempting reconnect")
+            await self._reconnect_ws()
+            try:
+                await self._connection.send(json.dumps(message))
+                response = await asyncio.wait_for(self._connection.recv(), timeout=30)
+                return json.loads(response)
+            except Exception as e2:
+                raise MCPError(f"WebSocket communication failed after reconnect: {e2}") from e2
     
     async def _send_stdio_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Send message via stdio and return response."""
@@ -228,7 +252,17 @@ class MCPConnector:
             )
             return json.loads(response_line.decode())
         except (asyncio.TimeoutError, json.JSONDecodeError) as e:
-            raise MCPError(f"Stdio communication failed: {e}") from e
+            # Try to reconnect once and resend
+            self.logger.warning(f"Stdio communication error for {self.name}: {e}; attempting reconnect")
+            await self._reconnect_stdio()
+            try:
+                message_str = json.dumps(message) + "\n"
+                self._process.stdin.write(message_str.encode())
+                await self._process.stdin.drain()
+                response_line = await asyncio.wait_for(self._process.stdout.readline(), timeout=30)
+                return json.loads(response_line.decode())
+            except Exception as e2:
+                raise MCPError(f"Stdio communication failed after reconnect: {e2}") from e2
 
     # Execution ------------------------------------------------------------
     async def execute_tool(self, tool_id: str, parameters: Dict[str, Any]) -> Any:
@@ -292,6 +326,46 @@ class MCPConnector:
                 raise MCPError(f"Unsupported transport for tool execution: {self.transport}")
         except Exception as e:
             raise MCPError(f"Tool execution failed: {e}") from e
+
+    async def _reconnect_ws(self) -> None:
+        """Reconnect the websocket connection with backoff."""
+        if self.transport != MCPTransportType.WEBSOCKET:
+            return
+        self._connected = False
+        attempts = 0
+        while attempts < self._max_reconnect_attempts:
+            attempts += 1
+            try:
+                await self._connect_websocket()
+                self._connected = True
+                return
+            except Exception as e:
+                backoff = self._base_backoff * (2 ** (attempts - 1))
+                self.logger.warning(
+                    f"Reconnect WS attempt {attempts} failed for {self.name}: {e}; retry in {backoff:.2f}s"
+                )
+                await asyncio.sleep(backoff)
+        raise MCPError("Failed to reconnect websocket")
+
+    async def _reconnect_stdio(self) -> None:
+        """Reconnect the stdio process with backoff."""
+        if self.transport != MCPTransportType.STDIO:
+            return
+        self._connected = False
+        attempts = 0
+        while attempts < self._max_reconnect_attempts:
+            attempts += 1
+            try:
+                await self._connect_stdio()
+                self._connected = True
+                return
+            except Exception as e:
+                backoff = self._base_backoff * (2 ** (attempts - 1))
+                self.logger.warning(
+                    f"Reconnect stdio attempt {attempts} failed for {self.name}: {e}; retry in {backoff:.2f}s"
+                )
+                await asyncio.sleep(backoff)
+        raise MCPError("Failed to reconnect stdio process")
     
     async def __aenter__(self):
         await self.connect()
@@ -299,3 +373,4 @@ class MCPConnector:
     
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.disconnect()
+        return False

@@ -400,9 +400,9 @@ P2 — Developer experience and testing
 - [x] Trim unused heavy deps to optional extras
 
 P2 — Performance and resilience
-- [ ] Cache embeddings per request; reduce duplicate calls
+- [x] Cache embeddings per request; reduce duplicate calls
 - [ ] Improve tool selection heuristics beyond string matching
-- [ ] Interactive vector-store migration UX
+- [x] Interactive vector-store migration UX
 
 DX/UX polish
 - [x] Add `yamllm diagnose` command (env/config/tools/vector dims)
@@ -414,9 +414,9 @@ DX/UX polish
 MCP Implementation (first-class citizen)
 - [x] `/mcp list` CLI to enumerate tools by connector
 - [x] Fully fix async/await across client/connector (broader audit/tests)
-- [ ] Implement WS/HTTP/stdio transports and reconnection logic
+- [x] Implement WS/HTTP/stdio transports and reconnection logic
 - [ ] Add MCP host mode to expose local tools
-- [ ] Namespacing, auth, health checks
+- [x] Namespacing, auth, health checks
 
 CLI & Quick Start
 - [x] `yamllm run` alias for streamlined chat
