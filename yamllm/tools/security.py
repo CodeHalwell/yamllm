@@ -60,7 +60,8 @@ class SecurityManager:
         # Additional checks for path traversal attempts
         path_parts = Path(abs_path).parts
         if ".." in path_parts:
-            raise ToolExecutionError("Path traversal attempt detected")
+            # Normalize message so tests and callers can match consistently
+            raise ToolExecutionError("Access denied: path traversal attempt detected")
 
         # Verify the resolved path is within allowed directories
         is_allowed = False
@@ -114,5 +115,11 @@ class SecurityManager:
             # Block mDNS/zeroconf style hostnames and user-specified blocked domains
             if host.endswith(".local"):
                 raise ToolExecutionError("Access to .local domains is not allowed")
-            if any(bd for bd in self.blocked_domains if bd and bd in host):
+            # Only block exact domain or subdomains, not arbitrary substring matches
+            def _is_blocked_domain(blocked: str, hostname: str) -> bool:
+                blocked = blocked.strip('.').lower()
+                hostname = (hostname or '').strip('.').lower()
+                return hostname == blocked or hostname.endswith('.' + blocked)
+
+            if any(_is_blocked_domain(bd, host) for bd in self.blocked_domains if bd):
                 raise ToolExecutionError(f"Access to domain {host} is blocked")

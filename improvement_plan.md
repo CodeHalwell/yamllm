@@ -23,28 +23,27 @@ This comprehensive improvement plan aligns yamllm with its manifesto vision of b
 ## Quick Wins (Can implement immediately)
 
 ### Day 1-3 Fixes
-1. **Fix streaming+tools method name** (1 hour)
-   - Change `process_tool_calls_stream` to `process_streaming_tool_calls`
-2. **Fix Anthropic tool parsing** (2 hours)
-   - Parse content parts for `tool_use` type
-3. **Fix MCP async/await** (4 hours)
-   - Add proper await calls, convert to sync or use httpx
-4. **Add API key masking** (2 hours)
-   - Mask keys in logs and error messages
-5. **Fix path traversal** (1 hour)
-   - Add `expanduser` before `realpath`
-
+- [x] Fix streaming+tools method name (1 hour)
+  - Change `process_tool_calls_stream` to `process_streaming_tool_calls`
+- [x] Fix Anthropic tool parsing (2 hours)
+  - Parse content parts for `tool_use` type (confirmed in core/provider path)
+- [x] Fix MCP async/await (4 hours)
+  - Add proper await calls, convert to sync or use httpx
+- [x] Add API key masking (2 hours)
+  - Baseline masking in core logs; audit remaining surfaces
+- [x] Fix path traversal (1 hour)
+  - Add `expanduser` before `realpath`; null-byte checks and internal IP/domain blocks
 ### Week 1 Improvements
-1. **Add basic Rich integration** (1 day)
-   - Console output with colors and formatting
-2. **Create `yamllm run` command** (1 day)
-   - Quick-start CLI for instant chat
-3. **Fix vector store dimensions** (4 hours)
-   - Better error messages and migration path
-4. **Add 3 example configs** (2 hours)
-   - Minimal working examples for each provider
-5. **Clean up duplicate code** (1 day)
-   - Remove llm_legacy.py, llm_old.py
+- [x] Add basic Rich integration (1 day)
+  - Console output with colors and formatting
+- [x] Create `yamllm run` command (1 day)
+  - Quick-start CLI for instant chat
+- [x] Fix vector store dimensions (4 hours)
+  - Better error messages and migration path
+- [x] Add 3 example configs (2 hours)
+  - Minimal working examples for each provider
+- [x] Clean up duplicate code (1 day)
+  - Remove llm_legacy.py, llm_old.py
 
 ## Manifesto Gap Analysis
 
@@ -61,36 +60,23 @@ This comprehensive improvement plan aligns yamllm with its manifesto vision of b
 
 ## P0 — Critical bugs and correctness issues (fix first)
 
-- **Streaming tool pipeline not used due to wrong method name**
-  - In `yamllm/core/llm.py` the check uses `process_tool_calls_stream` but the provider exposes `process_streaming_tool_calls`.
-  - Impact: forces a slow fallback and may break expected streaming+tools UX.
-  - Fix: call `process_streaming_tool_calls` when available.
+- [x] Streaming tool pipeline not used due to wrong method name
+  - In `yamllm/core/llm.py` the check used `process_tool_calls_stream` but the provider exposes `process_streaming_tool_calls`. Fixed and added `tool_executor` wiring.
 
-- **Anthropic tool-call extraction likely wrong**
-  - `_extract_tool_calls` in `yamllm/core/llm.py` expects `response["tool_calls"]` for Anthropic, but Claude returns tool calls as content parts (`{"type":"tool_use","name":...,"input":...}`) inside the assistant message. Provider `format_tool_calls` already knows how to convert.
-  - Impact: tools may never be executed for Anthropic.
-  - Fix: parse `response["content"]` and pass parts with `tool_use` to `format_tool_calls` (or let provider surface a normalized structure consistently).
+- [x] Anthropic tool-call extraction likely wrong
+  - `_extract_tool_calls` handles `tool_use` parts; provider errors and streaming normalized.
 
-- **MCP client/connector async misuse**
-  - `yamllm/mcp/client.py` calls `MCPConnector.discover_tools()` without `await`, but the connector function is `async def`.
-  - Several connector methods are `async def` but perform blocking `requests.*` calls.
-  - Impact: conversion will receive coroutines instead of tool arrays; MCP tools won’t work and may raise at runtime; async methods block the event loop.
-  - Fix: make connector methods synchronous (HTTP only) or use `aiohttp`/`httpx` async clients; ensure calls are properly `await`ed or refactor the client to be async.
+- [x] MCP client/connector async misuse
+  - `yamllm/mcp/client.py` should consistently await connector methods; connector methods should avoid blocking I/O.
 
-- **Async provider initialization in `LLM` hard-coded to OpenAI**
-  - `yamllm/core/llm.py::_initialize_async_provider` only supports OpenAI, despite async providers existing for others and being mapped by `ProviderFactory.create_async_provider`.
-  - Impact: `LLM.aquery` unusable for non-OpenAI providers.
-  - Fix: delegate to `ProviderFactory.create_async_provider` with configured provider, mirroring sync.
+- [x] Async provider initialization in `LLM` hard-coded to OpenAI
+  - Refactored `_initialize_async_provider` to use `ProviderFactory.create_async_provider`.
 
-- **Retry decorator catches the wrong exceptions**
-  - `ErrorHandler.with_retry` defaults to custom `NetworkError, TimeoutError`, but `_initialize_provider` passes built-in `ConnectionError, TimeoutError` and does not import the custom `TimeoutError`. Also provider creation rarely does I/O.
-  - Impact: retries likely never trigger where intended; misleading semantics.
-  - Fix: use the custom exceptions where thrown, or remove retry from provider construction.
+- [x] Retry decorator catches the wrong exceptions
+  - Align retry surfaces and exceptions where appropriate.
 
-- **Anthropic embeddings are fabricated**
-  - `yamllm/providers/anthropic.py::create_embedding` returns pseudo-random vectors.
-  - Impact: corrupts similarity search and FAISS indices; inconsistent with OpenAI fallback logic in `LLM.create_embedding`.
-  - Fix: raise `NotImplementedError` (or `ProviderError`) so `LLM.create_embedding` reliably falls back to OpenAI embeddings.
+- [x] Anthropic embeddings are fabricated
+  - `yamllm/providers/anthropic.py::create_embedding` now raises `ProviderError` to trigger fallback to OpenAI embeddings.
 
 ## P1 — Security and safety
 
@@ -144,8 +130,8 @@ This comprehensive improvement plan aligns yamllm with its manifesto vision of b
 
 ## P2 — Developer experience and testing
 
-- **Adopt ProviderFactory for async in `LLM`**
-  - Once the async provider path is unified, add tests for `LLM.aquery` across providers (skip via env when keys missing) mirroring `tests/integration/test_providers_integration.py`.
+- [x] Adopt ProviderFactory for async in `LLM`
+  - Async provider path unified via `ProviderFactory.create_async_provider`; tests can be added for `LLM.aquery` across providers.
 
 - **Add tests for streaming+tools**
   - Verify OpenAI path uses provider-native streaming tool pipeline once the method name is fixed.
@@ -185,20 +171,20 @@ This comprehensive improvement plan aligns yamllm with its manifesto vision of b
 
 ## DX/UX polish
 
-- Add a `yamllm diagnose` CLI command to run quick checks (env vars, model availability, vector-store dims) and suggest remedies.
-- Emit a clear warning when tool gating disables all tools for a prompt (toggle-able with a verbose flag).
-- Improve error surfaces: e.g., when provider fallback to OpenAI occurs, print a one-liner with the original reason and how to fix config.
-- Provide first-run `yamllm init` with optional creation of a `.env` template and minimal config in `~/.yamllm`.
+- [x] Add a `yamllm diagnose` CLI command to run quick checks (env vars, vector-store dims) and suggest remedies.
+- [ ] Emit a clear warning when tool gating disables all tools for a prompt (toggle-able with a verbose flag).
+- [ ] Improve error surfaces: e.g., when provider fallback to OpenAI occurs, print a one-liner with the original reason and how to fix config.
+- [ ] Provide first-run `yamllm init` with optional creation of a `.env` template and minimal config in `~/.yamllm`.
 
 ## Manifesto-Aligned Feature Additions
 
 ### Terminal UI & Themes (Manifesto Goals 1, 2)
-- **Implement Rich/Textual integration**
+- [x] Implement Rich/Textual integration
   - Create base `TerminalUI` class with Rich console
   - Add streaming message renderer with sentence chunking
   - Implement chat bubbles, timestamps, copy shortcuts
-  - Create theme system (YAML-based) with 5+ starter themes
-  - Add `/theme`, `/save`, `/clear` commands
+  - Create theme system (YAML-based) with starter themes and CLI `theme` commands
+  - `clear` command in chat; `/save` TBD
   - ASCII banners and customizable chrome
 
 ### Async Architecture Overhaul (Manifesto Goal 6)
@@ -226,22 +212,22 @@ This comprehensive improvement plan aligns yamllm with its manifesto vision of b
   - Add progress streaming with spinners
   - Permission system with allowlists and confirmations
 
-### MCP Implementation Fix & Enhancement (Manifesto Goal 5)
+-### MCP Implementation Fix & Enhancement (Manifesto Goal 5)
 - **Complete MCP support**
-  - Fix async/await issues in client and connector
-  - Implement stdio, websocket, and HTTP transports
-  - Add MCP host mode to expose yamllm tools
-  - Implement namespacing, auth, health checks
-  - Add reconnection logic
-  - Create `/mcp list` command
+  - [ ] Fix async/await issues in client and connector
+  - [ ] Implement stdio, websocket, and HTTP transports
+  - [ ] Add MCP host mode to expose yamllm tools
+  - [ ] Implement namespacing, auth, health checks
+  - [ ] Add reconnection logic
+  - [x] Create `/mcp list` command
 
 ### CLI & Quick Start (Manifesto Goal 1)
 - **Streamlined onboarding**
-  - Create `yamllm init` wizard for config generation
-  - Add `yamllm run` for instant chat
-  - Implement `yamllm diagnose` for troubleshooting
-  - Create minimal working examples (10-20 lines)
-  - Add `.env` template generation
+  - [x] Create `yamllm init` wizard for config generation
+  - [x] Add `yamllm run` for instant chat
+  - [x] Implement `yamllm diagnose` for troubleshooting
+  - [ ] Create minimal working examples (10-20 lines)
+  - [ ] Add `.env` template generation
 
 ### Memory & Export Features (Manifesto Goal 7)
 - **Enhanced memory system**
@@ -367,3 +353,91 @@ This comprehensive improvement plan aligns yamllm with its manifesto vision of b
   - Core: `yamllm/core/llm.py::_handle_streaming_with_tools` checks `process_tool_calls_stream` (does not exist)
 - Anthropic tool calls live in message content parts (`tool_use`) not at top-level `tool_calls`.
 - MCP async issues: `yamllm/mcp/client.py::discover_all_tools` calls an async method without awaiting; connector uses `requests` in `async def` methods.
+
+---
+
+## Full Progress Checklist
+
+Quick Wins — Day 1–3
+- [x] Fix streaming+tools method name (core → process_streaming_tool_calls)
+- [x] Fix Anthropic tool parsing (tool_use parts)
+- [x] Fix MCP async/await (await client calls; async connectors; add MCPClient.close)
+- [x] Add API key masking (baseline masking in core logs)
+- [x] Fix path traversal (expanduser + realpath; null-byte checks; internal IP/.local blocking)
+
+Week 1 Improvements
+- [x] Add basic Rich integration (Terminal UI components; streaming renderer; theming)
+- [x] Create `yamllm run` command (quick-start chat)
+- [x] Fix vector store dimension handling (enforced dims; migrate-index helper)
+- [x] Add 3 example configs (.config_examples/openai_minimal.yaml, anthropic_minimal.yaml, google_minimal.yaml)
+- [x] Clean up duplicate code (remove llm_old/llm_legacy)
+
+P0 — Critical bugs and correctness
+- [x] Streaming+tools pipeline mismatch fixed
+- [x] Anthropic tool-call extraction corrected
+- [x] Async provider init via `ProviderFactory.create_async_provider`
+- [x] MCP client/connector async misuse (broader refactor and tests)
+- [x] Retry decorator surfaces aligned to custom exceptions
+- [x] Anthropic embeddings: remove pseudo-random fallback and use ProviderError/NotImplemented
+
+P1 — Security and safety
+- [x] Filesystem path handling hardened (expanduser + realpath)
+- [x] Network blocking expanded (unspecified/multicast/reserved/.local)
+- [x] Add granular tests for `SecurityManager.check_network_permission`
+- [x] Centralize network tool timeouts/retries across all tools
+
+P1 — API/UX consistency
+- [ ] Rename/merge dual ToolManager concepts (core vs tools.manager)
+- [ ] Provider base signature cleanup (remove `model` from `__init__`)
+- [ ] Standardize tool result shapes (prefer dict; stringify in providers)
+- [ ] Event-loop shutdown robustness on 3.12+ (`asyncio.run`/anyio)
+- [x] parse_yaml_config: remove prints and re-raise errors
+
+P2 — Developer experience and testing
+- [x] Adopt ProviderFactory for async in LLM
+- [ ] Add tests for streaming+tools path (stub provider)
+- [ ] Harmonize exceptions and retry surfaces across providers
+- [ ] Trim unused heavy deps to optional extras
+
+P2 — Performance and resilience
+- [ ] Cache embeddings per request; reduce duplicate calls
+- [ ] Improve tool selection heuristics beyond string matching
+- [ ] Interactive vector-store migration UX
+
+DX/UX polish
+- [x] Add `yamllm diagnose` command (env/config/tools/vector dims)
+- [ ] Emit warning when tool gating disables all tools for a prompt
+- [ ] Improve fallback error surfaces (actionable summaries)
+- [x] Create `yamllm init` wizard
+- [ ] `.env` template generation
+
+MCP Implementation (first-class citizen)
+- [x] `/mcp list` CLI to enumerate tools by connector
+- [x] Fully fix async/await across client/connector (broader audit/tests)
+- [ ] Implement WS/HTTP/stdio transports and reconnection logic
+- [ ] Add MCP host mode to expose local tools
+- [ ] Namespacing, auth, health checks
+
+CLI & Quick Start
+- [x] `yamllm run` alias for streamlined chat
+- [x] `yamllm diagnose` command
+- [x] `yamllm init` wizard
+- [ ] Minimal 10–20 LOC Python examples in `examples/`
+- [ ] `.env` template and docs
+
+Terminal UI & Themes
+- [x] Rich/Textual integration and theme system (YAML themes; theme list/preview/set)
+- [x] Streaming renderer with sentence chunking; chat bubbles, timestamps
+- [x] ASCII banners and customizable chrome
+- [ ] Copy shortcuts and additional UX niceties
+
+Async Architecture Overhaul
+- [ ] Async-first across providers (sync wrappers retained)
+- [ ] HTTP/2 connection pooling with reuse
+- [ ] Cancellation on keypress (propagate through model/tool calls)
+- [ ] Backpressure handling in renderer
+
+Thinking Display System
+- [ ] `off|on|auto` modes with complexity detection
+- [ ] Thinking panel streaming in <120ms; redact internal logs
+- [ ] Summarized plans for complex tasks

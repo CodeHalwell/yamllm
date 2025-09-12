@@ -29,7 +29,7 @@ class WeatherTool(NetworkTool):
         )
 
         self.api_key = os.environ.get('WEATHER_API_KEY') if api_key is None else api_key
-        self.base_url = "http://api.openweathermap.org/data/2.5/weather"
+        self.base_url = "https://api.openweathermap.org/data/2.5/weather"
         self.params = {
             "appid": self.api_key,
             "units": "metric"  # Use metric units by default
@@ -171,8 +171,9 @@ class SerpAPIProvider:
     def __init__(self, session: requests.Session, api_key: str, timeout: int, max_retries: int) -> None:
         self.session = session
         self.api_key = api_key
-        self.timeout = timeout
-        self.max_retries = max_retries
+        # Respect centralized clamping bounds
+        self.timeout = max(1, min(int(timeout), 30))
+        self.max_retries = max(0, min(int(max_retries), 5))
 
     def search(self, query: str, max_results: int = 5) -> List[Dict]:
         url = "https://serpapi.com/search.json"
@@ -215,8 +216,8 @@ class TavilyProvider:
     def __init__(self, session: requests.Session, api_key: str, timeout: int, max_retries: int) -> None:
         self.session = session
         self.api_key = api_key
-        self.timeout = timeout
-        self.max_retries = max_retries
+        self.timeout = max(1, min(int(timeout), 30))
+        self.max_retries = max(0, min(int(max_retries), 5))
 
     def search(self, query: str, max_results: int = 5) -> List[Dict]:
         url = "https://api.tavily.com/search"
@@ -261,8 +262,8 @@ class BingSearchProvider:
     def __init__(self, session: requests.Session, api_key: str, timeout: int, max_retries: int) -> None:
         self.session = session
         self.api_key = api_key
-        self.timeout = timeout
-        self.max_retries = max_retries
+        self.timeout = max(1, min(int(timeout), 30))
+        self.max_retries = max(0, min(int(max_retries), 5))
         self.base_url = "https://api.bing.microsoft.com/v7.0/search"
 
     def search(self, query: str, max_results: int = 5) -> List[Dict]:

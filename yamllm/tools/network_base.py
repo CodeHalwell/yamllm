@@ -26,8 +26,18 @@ class NetworkTool(Tool, ABC):
         security_manager: Optional[SecurityManager] = None,
     ):
         super().__init__(name=name, description=description)
-        self.timeout = timeout
-        self.max_retries = max_retries
+        # Clamp to safe bounds
+        try:
+            clamped_timeout = int(timeout)
+        except Exception:
+            clamped_timeout = 15
+        self.timeout = max(1, min(clamped_timeout, 30))
+
+        try:
+            clamped_retries = int(max_retries)
+        except Exception:
+            clamped_retries = 3
+        self.max_retries = max(0, min(clamped_retries, 5))
         self.session = requests.Session()
         self.session.headers.update({"User-Agent": "yamllm-tool/1.0"})
         self.security: Optional[SecurityManager] = security_manager
@@ -39,6 +49,9 @@ class NetworkTool(Tool, ABC):
         """
         # Merge default timeout
         kwargs.setdefault("timeout", self.timeout)
+        # Disallow insecure TLS
+        if kwargs.get("verify") is False:
+            raise NetworkError("Insecure TLS configuration: verify=False is not allowed")
         # Security check
         try:
             if self.security:

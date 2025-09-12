@@ -91,3 +91,32 @@ def test_null_byte_prevention():
         sm.validate_file_access("/tmp/file\x00.txt")
     assert "Null byte" in str(exc_info.value)
 
+
+def test_network_internal_ip_and_domains_blocked():
+    sm = SecurityManager(allowed_paths=[os.getcwd()])
+    # Internal IPs
+    for url in [
+        "http://127.0.0.1/",
+        "http://localhost/",
+        "http://10.0.0.1/",
+        "http://169.254.1.1/",
+        "http://0.0.0.0/",
+        "http://[::1]/",
+    ]:
+        with pytest.raises(ToolExecutionError):
+            sm.check_network_permission(url)
+
+    # .local mDNS
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("http://printer.local")
+
+    # Blocked domains (exact and subdomain)
+    sm2 = SecurityManager(blocked_domains=["example.com"])  # only exact or subdomain should block
+    with pytest.raises(ToolExecutionError):
+        sm2.check_network_permission("https://example.com/path")
+    with pytest.raises(ToolExecutionError):
+        sm2.check_network_permission("https://sub.example.com")
+    # Should NOT block unrelated domains containing substring
+    sm3 = SecurityManager(blocked_domains=["ample.com"])
+    sm3.check_network_permission("https://example.com")
+
