@@ -128,7 +128,8 @@ Example configuration:
 provider:
   name: "openai"  # supported: openai, google, deepseek and mistralai supported.
   model: "gpt-4o-mini"  # model identifier
-  api_key: # api key goes here, best practice to put into dotenv
+  # Do NOT store API keys in config files. Provide the key via environment
+  # variables and pass it into the LLM constructor.
   base_url: # optional: for custom endpoints when using the google, deepseek or mistral
 
 # Model Configuration

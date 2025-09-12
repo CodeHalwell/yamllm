@@ -1,0 +1,18 @@
+name: Synthwave
+description: "A retro-futuristic theme with neon colors."
+colors:
+  primary: "bright_magenta"
+  secondary: "bright_cyan"
+  success: "green"
+  warning: "yellow"
+  error: "red"
+  info: "bright_blue"
+  dim: "grey50"
+layout:
+  show_ascii_art: true
+ascii_art: |
+  __        __   _                          
+  \ \      / /__| | ___ ___  _ __ ___   ___ 
+   \ \ /\ / / _ \ |/ __/ _ \| '_ ` _ \ / _ \
+    \ V  V /  __/ | (_| (_) | | | | | |  __/
+     \_/\_/ \___|_|\___\___/|_| |_| |_|\___|

@@ -1,0 +1,89 @@
+# LLM Provider Settings
+provider:
+  name: "anthropic"  # supported: openai, google, deepseek, mistral, anthropic
+  model: "claude-4-sonnet"  # model identifier
+  # Note: Do NOT place API keys in config. Set ANTHROPIC_API_KEY in your environment (.env)
+  base_url: # optional: for custom endpoints
+  extra_settings:
+    api_version: "2023-06-01"  # Anthropic API version
+
+# Model Configuration
+model_settings:
+  temperature: 0.7
+  max_tokens: 1000
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stop_sequences: []
+  
+# Request Settings
+request:
+  timeout: 30  # seconds
+  retry:
+    max_attempts: 3
+    initial_delay: 1
+    backoff_factor: 2
+    
+# Context Management
+context:
+  system_prompt: "You are a helpful, conversational assistant with access to tools. 
+    When asked questions about current events, news, calculations, or unit conversions, use the appropriate tool.
+    For current information, use the web_search tool instead of stating you don't have up-to-date information.
+
+    Always present information in a natural, conversational way:
+    - For web search results, summarize the key points in your own words
+    - For calculations, explain the result in plain language
+    - For weather information, provide a brief overview of the current conditions using weather
+    - For unit conversions, explain the conversion process and provide the result in a user-friendly format
+    - For specific website searches, provide a summary of the content found on the page
+    - For conversions, provide context about the conversion
+    - Use a friendly, helpful tone throughout
+
+    Do not show raw data or JSON in your responses unless specifically asked to do so."
+  max_context_length: 16000
+  memory:
+    enabled: true
+    max_messages: 5  # number of messages to keep in conversation history
+    session_id: "session2"
+    conversation_db: "memory/conversation_history.db"
+    vector_store:
+      index_path: "memory/vector_store/faiss_index.idx"
+      metadata_path: "memory/vector_store/metadata.pkl"
+      top_k: 5
+    
+# Output Formatting
+output:
+  format: "text"  # supported: text, json, markdown
+  stream: false
+
+logging:
+  level: "INFO"
+  file: "yamllm.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Tool Management 
+tools:
+  enabled: true
+  tool_timeout: 10  # seconds
+  tool_list: ['calculator', 'web_search', 'weather', 'web_scraper']
+  # Security options
+  safe_mode: false
+  allow_network: true
+  allow_filesystem: true
+  allowed_paths: ["./"]
+  blocked_domains: []
+
+# Safety Settings
+safety:
+  content_filtering: true
+  max_requests_per_minute: 60
+  sensitive_keywords: []
+
+thinking:
+  enabled: true
+  show_tool_reasoning: true
+  model: claude-3-haiku
+  max_tokens: 600
+  stream_thinking: true
+  save_thinking: false
+  thinking_temperature: 0.5

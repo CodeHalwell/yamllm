@@ -20,7 +20,7 @@ Configuration:
 provider:
   name: "azure_openai"
   model: "gpt-4"  # your deployed model name
-  api_key: ${AZURE_OPENAI_API_KEY}
+  # Do not include API keys in config. Pass via environment and constructor.
   base_url: ${AZURE_OPENAI_ENDPOINT}
   extra_settings:
     api_version: "2023-05-15"  # Azure OpenAI API version
@@ -42,7 +42,7 @@ Configuration:
 provider:
   name: "azure_foundry"
   model: "my-gpt4-deployment"  # your model deployment name
-  api_key: "default"  # Use "default" for DefaultAzureCredential
+  # For DefaultAzureCredential, pass api_key="default" to your constructor at runtime
   base_url: ${AZURE_AI_PROJECT_ENDPOINT}
   extra_settings:
     project_id: "my-project-id"  # optional: your Azure AI project ID
@@ -55,13 +55,13 @@ Azure integrations support two authentication methods:
 1. **API Key**: Provide an API key for authentication
    ```yaml
    provider:
-     api_key: "your-api-key-here"
+     # Do not include credentials in YAML
    ```
 
 2. **DefaultAzureCredential**: Use the Azure Identity library for authentication
    ```yaml
    provider:
-     api_key: "default"  # Special value that triggers DefaultAzureCredential
+     # At runtime, pass api_key="default" to use DefaultAzureCredential
    ```
 
    This method will attempt to authenticate using environment variables, managed identity, Visual Studio Code credentials, Azure CLI credentials, and more.

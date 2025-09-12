@@ -1,19 +1,14 @@
 # Provider Interface
 
+Note: Do not place API keys in YAML configuration files. YAMLLM’s validator rejects `provider.api_key` in configs. Pass the key via environment variables to your application and provide it to the `LLM` (or wrapper classes) constructor.
+
 YAMLLM now supports a provider-agnostic interface that allows using different LLM providers with a unified API. The key providers currently supported are:
 
 ## OpenAI (GPT Models)
 
 ```python
 from yamllm.core.llm import OpenAIGPT
-# Or use the new interface
-from yamllm.core.llm_v2 import LLMv2
-
-# Using original class
 llm = OpenAIGPT(config_path="config.yaml", api_key="your-api-key")
-
-# Using new provider interface
-llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
 ```
 
 Configuration:
@@ -21,7 +16,6 @@ Configuration:
 provider:
   name: "openai"
   model: "gpt-4o-mini"  # model identifier
-  api_key: # api key goes here, best practice to put into dotenv
   base_url: # optional: for custom endpoints
 ```
 
@@ -31,14 +25,7 @@ provider:
 
 ```python
 from yamllm.core.llm import AnthropicAI
-# Or use the new interface
-from yamllm.core.llm_v2 import LLMv2
-
-# Using original class
 llm = AnthropicAI(config_path="config.yaml", api_key="your-api-key")
-
-# Using new provider interface
-llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
 ```
 
 Configuration:
@@ -46,7 +33,6 @@ Configuration:
 provider:
   name: "anthropic"
   model: "claude-3-opus-20240229"  # model identifier
-  api_key: # api key goes here, best practice to put into dotenv
   base_url: # optional: for custom endpoints
   extra_settings:
     api_version: "2023-06-01"  # Anthropic API version
@@ -58,14 +44,7 @@ provider:
 
 ```python
 from yamllm.core.llm import GoogleGemini
-# Or use the new interface
-from yamllm.core.llm_v2 import LLMv2
-
-# Using original class
 llm = GoogleGemini(config_path="config.yaml", api_key="your-api-key")
-
-# Using new provider interface
-llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
 ```
 
 Configuration:
@@ -73,7 +52,6 @@ Configuration:
 provider:
   name: "google"
   model: "gemini-1.5-flash"  # model identifier
-  api_key: # api key goes here, best practice to put into dotenv
   base_url: null  # optional: for custom endpoints, e.g. "https://generativelanguage.googleapis.com/v1"
 ```
 
@@ -85,14 +63,7 @@ The GoogleGeminiProvider now uses the native Google GenAI SDK for improved perfo
 
 ```python
 from yamllm.core.llm import MistralAI
-# Or use the new interface
-from yamllm.core.llm_v2 import LLMv2
-
-# Using original class
 llm = MistralAI(config_path="config.yaml", api_key="your-api-key")
-
-# Using new provider interface
-llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
 ```
 
 Configuration:
@@ -100,7 +71,6 @@ Configuration:
 provider:
   name: "mistralai"
   model: "mistral-small-latest"  # model identifier
-  api_key: # api key goes here, best practice to put into dotenv
   base_url: "https://api.mistral.ai/v1/" # optional: for custom endpoints
 ```
 
@@ -114,14 +84,7 @@ DeepSeek is supported through an OpenAI-compatible endpoint with some specific o
 
 ```python
 from yamllm.core.llm import DeepSeek
-# Or use the new interface
-from yamllm.core.llm_v2 import LLMv2
-
-# Using original classes
 llm = DeepSeek(config_path="config.yaml", api_key="your-api-key")
-
-# Using new provider interface
-llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
 ```
 
 Configuration:
@@ -129,7 +92,6 @@ Configuration:
 provider:
   name: "deepseek"
   model: "deepseek-chat"  # model identifier
-  api_key: # api key goes here, best practice to put into dotenv
   base_url: "https://api.deepseek.com" # optional: for custom endpoints
   extra_settings:
     headers:
@@ -147,15 +109,13 @@ provider:
 Azure OpenAI is supported through the Azure OpenAI Service.
 
 ```python
-from yamllm.core.llm import AzureOpenAI
-# Or use the new interface
-from yamllm.core.llm_v2 import LLMv2
+from yamllm.core.llm import OpenAIGPT
 
-# Using original classes
-llm = AzureOpenAI(config_path="config.yaml", api_key="your-api-key")
+# Configure provider.name: "azure_openai" in config.yaml
+llm = OpenAIGPT(config_path="config.yaml", api_key="your-api-key")
 
-# Using new provider interface
-llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
+# Optional: stream callback for UI rendering
+llm.set_stream_callback(lambda delta: print(delta, end="", flush=True))
 ```
 
 Configuration:
@@ -163,7 +123,6 @@ Configuration:
 provider:
   name: "azure_openai"
   model: "your-deployment-name"  # deployment name in Azure
-  api_key: # api key goes here, best practice to put into dotenv
   base_url: "https://your-resource-name.openai.azure.com/" # Azure endpoint
   extra_settings:
     api_version: "2023-05-15"  # Azure OpenAI API version
@@ -177,15 +136,8 @@ provider:
 Azure AI Foundry is supported for access to custom models deployed in Azure AI Foundry projects.
 
 ```python
-from yamllm.core.llm import AzureFoundry
-# Or use the new interface
-from yamllm.core.llm_v2 import LLMv2
-
-# Using original classes
-llm = AzureFoundry(config_path="config.yaml", api_key="your-api-key")
-
-# Using new provider interface
-llm = LLMv2(config_path="config.yaml", api_key="your-api-key")
+from yamllm.core.llm import OpenAIGPT
+llm = OpenAIGPT(config_path="config.yaml", api_key="your-api-key")
 ```
 
 Configuration:
@@ -193,7 +145,6 @@ Configuration:
 provider:
   name: "azure_foundry"
   model: "your-deployment-name"  # deployment name in Azure AI Foundry
-  api_key: "your-api-key" # or "default" to use DefaultAzureCredential
   base_url: "https://your-project-endpoint.ai.azure.com" # Azure AI project endpoint
   extra_settings:
     project_id: "your-project-id"  # optional if included in endpoint
@@ -239,7 +190,7 @@ class MyCustomProvider(BaseProvider):
         pass
 ```
 
-Then register your provider in the `PROVIDER_MAP` in `LLMv2` class.
+Then register your provider in `yamllm.core.providers.factory.ProviderFactory`.
 
 ## Tool Use Configuration
 

@@ -12,10 +12,11 @@ A complete YAMLLM configuration must include these sections:
 
 ```yaml
 # LLM Provider Settings
+# Note: Do not include API keys in this file. Pass them via environment
+# variables to your application and into the constructor.
 provider:
   name: "mistralai"  # Required: openai, google, deepseek, or mistralai
   model: "mistral-small-latest"  # Required: model identifier
-  api_key: ${MISTRAL_API_KEY}  # Required: use environment variable
   base_url: "https://api.mistral.ai/v1/"  # Optional: custom endpoint
 
 # Model Configuration
@@ -129,6 +130,23 @@ safety:
 | level | string | Yes | "INFO" | Log level |
 | file | string | Yes | "yamllm.log" | Log file path |
 | format | string | Yes | - | Log format string |
+| console | boolean | No | false | Also log to console |
+| rotate | boolean | No | false | Enable rotating file handler |
+| rotate_max_bytes | integer | No | 1048576 | Rotate when file exceeds this size |
+| rotate_backup_count | integer | No | 3 | Number of rotated files to keep |
+
+Example:
+
+```yaml
+logging:
+  level: "INFO"
+  file: "yamllm.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  console: true
+  rotate: true
+  rotate_max_bytes: 2097152
+  rotate_backup_count: 5
+```
 
 ### Tool Settings
 
@@ -137,6 +155,24 @@ safety:
 | enabled | boolean | Yes | false | Enable tools |
 | tool_timeout | integer | Yes | 10 | Tool timeout |
 | tool_list | list | Yes | [] | Available tools |
+| packs | list | No | [] | Tool packs shortcut (e.g., ["common", "web"]) |
+
+### Embeddings Settings
+
+Optional section to control embeddings provider/model. If omitted, the selected provider is used when it supports embeddings; otherwise, OpenAI is used as a lazy fallback.
+
+| Setting | Type | Required | Default | Description |
+|---------|------|----------|---------|-------------|
+| provider | string or null | No | null | Embeddings provider name (e.g., "openai") |
+| model | string | No | "text-embedding-3-small" | Embeddings model name |
+
+Example:
+
+```yaml
+embeddings:
+  provider: null
+  model: "text-embedding-3-small"
+```
 
 ### Safety Settings
 
@@ -162,3 +198,25 @@ See the `.config_examples` directory for complete provider-specific configuratio
 - `google_config.yaml`
 - `deepseek_config.yaml`
 - `mistral_config.yaml`
+Tool Packs
+
+Use packs to enable curated sets of tools without listing each by name. You can combine packs and explicit `tool_list`.
+
+- common: calculator, datetime, uuid, random_string, json_tool, regex_extract, lorem_ipsum
+- web: web_search, web_scraper, url_metadata, weather
+- files: file_read, file_search, csv_preview
+- crypto: hash_text, base64_encode, base64_decode
+- numbers: random_number, unit_converter
+- time: datetime, timezone
+- dev: json_tool, regex_extract, hash_text, base64_encode, base64_decode, file_read, file_search, csv_preview, uuid, random_string
+- all: all tools
+
+Example:
+
+```yaml
+tools:
+  enabled: true
+  tool_timeout: 10
+  packs: ["common", "web"]
+  tool_list: ["unit_converter"]  # extra overrides
+```

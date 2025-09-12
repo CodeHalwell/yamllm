@@ -15,10 +15,12 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
+    "anthropic>=0.67.0",
     "bs4>=0.0.2",
     "duckduckgo-search>=7.5.5",
     "faiss-cpu>=1.10.0",
     "google-generativeai>=0.4.0",
+    "httpx>=0.27.0",
     "matplotlib>=3.10.0",
     "mistralai>=1.7.1",
     "numpy>=2.2.3",
@@ -33,6 +35,7 @@ dependencies = [
     "scikit-learn>=1.6.1",
     "seaborn>=0.13.2",
     "tabulate>=0.9.0",
+    "websockets>=12.0",
 ]
 
 [project.optional-dependencies]
@@ -54,3 +57,29 @@ packages = ["yamllm"]
 Homepage = "https://github.com/codehalwell/yamllm"
 Documentation = "https://codehalwell.github.io/yamllm/"
 Repository = "https://github.com/codehalwell/yamllm.git"
+
+[project.scripts]
+yamllm = "yamllm.cli:main"
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+strict_optional = true
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+exclude = [
+  "^tests/",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+    "pytest>=8.3.4",
+    "azure-ai-inference>=1.0.0b1",
+    "azure-identity>=1.15.0",
+]

@@ -64,12 +64,11 @@ MISTRAL_API_KEY=your_mistral_key_here
 DEEPSEEK_API_KEY=your_deepseek_key_here
 ```
 
-2. Create a configuration file (config.yaml):
+2. Create a configuration file (config.yaml). Do not include API keys in this file — pass them via environment variables to your application and into the constructor:
 ```yaml
 provider:
   name: "mistralai"  # or openai, google, deepseek
   model: "mistral-small-latest"
-  api_key: ${MISTRAL_API_KEY}
 
 model_settings:
   temperature: 0.7

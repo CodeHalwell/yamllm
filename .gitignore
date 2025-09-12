@@ -30,7 +30,7 @@ conversations.db
 faiss_index.idx
 metadata.pkl
 .ruff_cache
-dev
+dev/
 test_results.txt
 report.html
 .doctrees
@@ -44,4 +44,6 @@ settings.json
 yamllm.log
 .vscode/settings.json
 MagicMock/
-
+docs/_site/
+.idea
+.archive

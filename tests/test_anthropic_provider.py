@@ -2,8 +2,6 @@
 Test for the Anthropic provider implementation.
 """
 
-import pytest
-import os
 import sys
 from unittest.mock import MagicMock, patch
 
@@ -20,13 +18,12 @@ sys.modules['openai'] = MagicMock()
 
 # Directly import AnthropicProvider without going through the main module
 sys.path.append('/home/runner/work/yamllm/yamllm')
-from yamllm.core.providers.base import BaseProvider
-from yamllm.core.providers.anthropic import AnthropicProvider
+from yamllm.providers.anthropic import AnthropicProvider
 
 
 def test_anthropic_provider_init():
     """Test initializing the AnthropicProvider."""
-    with patch('anthropic.Anthropic') as mock_anthropic:
+    with patch('yamllm.providers.anthropic.Anthropic') as mock_anthropic:
         provider = AnthropicProvider(api_key="test_key", base_url="https://test.api")
         
         # Check that the Anthropic client was initialized correctly
@@ -38,7 +35,7 @@ def test_anthropic_provider_init():
 
 def test_anthropic_provider_message_conversion():
     """Test converting messages to Anthropic format."""
-    with patch('anthropic.Anthropic'):
+    with patch('yamllm.providers.anthropic.Anthropic'):
         provider = AnthropicProvider(api_key="test_key")
         
         # Test basic message conversion
@@ -65,7 +62,7 @@ def test_anthropic_provider_message_conversion():
 
 def test_anthropic_provider_tool_conversion():
     """Test converting tools to Anthropic format."""
-    with patch('anthropic.Anthropic'):
+    with patch('yamllm.providers.anthropic.Anthropic'):
         provider = AnthropicProvider(api_key="test_key")
         
         # Test tool conversion

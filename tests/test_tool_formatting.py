@@ -2,10 +2,9 @@ import pytest
 from unittest.mock import MagicMock, patch
 import json
 
-from yamllm.providers.base import ToolDefinition, ToolCall
 from yamllm.providers.openai_provider import OpenAIProvider
-from yamllm.providers.google_provider import GoogleGeminiProvider
-from yamllm.providers.mistral_provider import MistralProvider
+from yamllm.providers.google import GoogleGeminiProvider
+from yamllm.providers.mistral import MistralProvider
 from yamllm.providers.deepseek_provider import DeepSeekProvider
 from yamllm.providers.azure_openai_provider import AzureOpenAIProvider
 from yamllm.providers.azure_foundry_provider import AzureFoundryProvider
@@ -76,7 +75,7 @@ class TestToolFormatting:
     def test_google_format_tool_calls(self):
         """Test Google Gemini provider tool call formatting"""
         # Setup
-        provider = GoogleGeminiProvider(api_key="fake-key", model="fake-model")
+        provider = GoogleGeminiProvider(api_key="fake-key")
         
         # Create a mock Google function call object
         mock_function_call = MagicMock()
@@ -96,7 +95,7 @@ class TestToolFormatting:
     def test_google_format_tool_results(self, tool_results_data):
         """Test Google Gemini provider tool results formatting"""
         # Setup
-        provider = GoogleGeminiProvider(api_key="fake-key", model="fake-model")
+        provider = GoogleGeminiProvider(api_key="fake-key")
         
         # Test
         formatted_results = provider.format_tool_results(tool_results_data)
@@ -111,7 +110,7 @@ class TestToolFormatting:
     def test_mistral_format_tool_calls(self, tool_calls_data):
         """Test Mistral provider tool call formatting"""
         # Setup
-        provider = MistralProvider(api_key="fake-key", model="fake-model")
+        provider = MistralProvider(api_key="fake-key")
         
         # Create a mock Mistral tool call object (similar to OpenAI format)
         mock_tool_call = MagicMock()
@@ -132,7 +131,7 @@ class TestToolFormatting:
     def test_mistral_format_tool_results(self, tool_results_data):
         """Test Mistral provider tool results formatting"""
         # Setup
-        provider = MistralProvider(api_key="fake-key", model="fake-model")
+        provider = MistralProvider(api_key="fake-key")
         
         # Test
         formatted_results = provider.format_tool_results(tool_results_data)
@@ -200,22 +199,23 @@ class TestToolFormatting:
     def test_azure_foundry_format_tool_calls(self, tool_calls_data):
         """Test Azure Foundry provider tool call formatting"""
         # Setup
-        with patch("azure.ai.inference.InferenceClient"):
-            with patch("azure.identity.DefaultAzureCredential"):
-                provider = AzureFoundryProvider(api_key="fake-key", model="fake-model", base_url="https://example.com")
-                
-                # Create a mock Azure Foundry tool call object
-                mock_tool_call = MagicMock()
-                mock_tool_call.id = "call_123"
-                mock_tool_call.function.name = "web_search"
-                mock_tool_call.function.arguments = json.dumps({"query": "current weather in New York"})
-                
-                # Test
-                formatted_calls = provider.format_tool_calls([mock_tool_call])
-                
-                # Verify
-                assert len(formatted_calls) == 1
-                assert formatted_calls[0]["id"] == "call_123"
-                assert formatted_calls[0]["type"] == "function"
-                assert formatted_calls[0]["function"]["name"] == "web_search"
-                assert json.loads(formatted_calls[0]["function"]["arguments"]) == {"query": "current weather in New York"}
+        with patch("azure.ai.inference.ChatCompletionsClient"):
+            with patch("azure.ai.inference.EmbeddingsClient"):
+                with patch("azure.identity.DefaultAzureCredential"):
+                    provider = AzureFoundryProvider(api_key="fake-key", model="fake-model", base_url="https://example.com")
+                    
+                    # Create a mock Azure Foundry tool call object
+                    mock_tool_call = MagicMock()
+                    mock_tool_call.id = "call_123"
+                    mock_tool_call.function.name = "web_search"
+                    mock_tool_call.function.arguments = json.dumps({"query": "current weather in New York"})
+                    
+                    # Test
+                    formatted_calls = provider.format_tool_calls([mock_tool_call])
+                    
+                    # Verify
+                    assert len(formatted_calls) == 1
+                    assert formatted_calls[0]["id"] == "call_123"
+                    assert formatted_calls[0]["type"] == "function"
+                    assert formatted_calls[0]["function"]["name"] == "web_search"
+                    assert json.loads(formatted_calls[0]["function"]["arguments"]) == {"query": "current weather in New York"}

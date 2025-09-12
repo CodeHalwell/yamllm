@@ -2,8 +2,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 import json
 
-from yamllm.providers.base import ToolDefinition, ToolCall
-from yamllm.providers.openai_provider import OpenAIProvider
+from yamllm.providers.openai import OpenAIProvider
 
 
 class TestOpenAIToolFormatting:

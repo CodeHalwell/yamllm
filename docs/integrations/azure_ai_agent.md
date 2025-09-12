@@ -27,7 +27,7 @@ Azure AI Agent Service could be integrated with yamllm-core in multiple ways:
 provider:
   name: "azure_ai_agent"
   model: "gpt-4"  # Base model for the agent
-  api_key: ${AZURE_API_KEY}
+  # Do not include API keys in config. Pass via environment and constructor.
   base_url: ${AZURE_AGENT_ENDPOINT}
   extra_settings:
     project_id: "my-project-id"
@@ -50,7 +50,7 @@ from typing import Dict, List, Any, Optional
 import json
 from azure.ai.agents import AgentClient
 from azure.identity import DefaultAzureCredential
-from yamllm.providers.base import BaseProvider, Message, ToolDefinition
+from yamllm.core.providers.base import BaseProvider
 
 class AzureAIAgentProvider(BaseProvider):
     def __init__(self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs):
@@ -105,7 +105,7 @@ In this approach, an Azure AI Agent is used as a tool within yamllm-core:
 provider:
   name: "openai"  # Regular provider
   model: "gpt-4"
-  api_key: ${OPENAI_API_KEY}
+  # Do not include API keys in config. Pass via environment and constructor.
   
 tools:
   enabled: true

@@ -5,7 +5,8 @@ This module provides the client implementation for interacting with MCP servers.
 """
 
 import logging
-from typing import Dict, List, Any, Optional
+import asyncio
+from typing import Dict, List, Any
 from .connector import MCPConnector
 from yamllm.providers.base import ToolDefinition
 
@@ -36,7 +37,7 @@ class MCPClient:
         self.connectors[connector.name] = connector
         self.logger.debug(f"Registered MCP connector: {connector.name}")
     
-    def discover_all_tools(self, force_refresh: bool = False) -> Dict[str, List[Dict[str, Any]]]:
+    async def discover_all_tools(self, force_refresh: bool = False) -> Dict[str, List[Dict[str, Any]]]:
         """
         Discover tools from all registered MCP connectors.
         
@@ -50,7 +51,7 @@ class MCPClient:
         
         for name, connector in self.connectors.items():
             try:
-                tools = connector.discover_tools(force_refresh=force_refresh)
+                tools = await connector.discover_tools(force_refresh=force_refresh)
                 all_tools[name] = tools
             except Exception as e:
                 self.logger.error(f"Error discovering tools from connector {name}: {str(e)}")
@@ -58,7 +59,7 @@ class MCPClient:
         
         return all_tools
     
-    def execute_tool(self, connector_name: str, tool_id: str, parameters: Dict[str, Any]) -> Any:
+    async def execute_tool(self, connector_name: str, tool_id: str, parameters: Dict[str, Any]) -> Any:
         """
         Execute a tool on an MCP server.
         
@@ -77,9 +78,9 @@ class MCPClient:
             raise ValueError(f"MCP connector '{connector_name}' not found")
         
         connector = self.connectors[connector_name]
-        return connector.execute_tool(tool_id, parameters)
+        return await connector.execute_tool(tool_id, parameters)
     
-    def convert_mcp_tools_to_definitions(self) -> List[ToolDefinition]:
+    async def convert_mcp_tools_to_definitions(self) -> List[ToolDefinition]:
         """
         Convert MCP tools to YAMLLM tool definitions.
         
@@ -87,7 +88,7 @@ class MCPClient:
             List[ToolDefinition]: List of tool definitions.
         """
         tool_definitions = []
-        all_tools = self.discover_all_tools()
+        all_tools = await self.discover_all_tools()
         
         for connector_name, tools in all_tools.items():
             for tool in tools:

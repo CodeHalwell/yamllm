@@ -128,95 +128,59 @@ class BaseProvider(ABC):
         pass
     
     @abstractmethod
-    def prepare_completion_params(self, messages: List[Message], temperature: float, max_tokens: int, 
-                                 top_p: float, stop_sequences: Optional[List[str]] = None) -> Dict[str, Any]:
+    def get_completion(self, messages: List[Dict[str, str]], model: str, temperature: float, max_tokens: int, top_p: float, stop_sequences: Optional[List[str]] = None, tools: Optional[List[Dict[str, Any]]] = None, tool_choice: str = "auto") -> Any:
         """
-        Prepare completion parameters for the provider's API.
+        Get a completion from the model.
         
         Args:
-            messages (List[Message]): The messages to send to the model.
+            messages (List[Dict[str, str]]): The messages to send to the model.
+            model (str): The model to use.
             temperature (float): The temperature parameter for the model.
             max_tokens (int): The maximum number of tokens to generate.
             top_p (float): The top_p parameter for the model.
             stop_sequences (List[str], optional): Sequences that will stop generation.
+            tools (List[Dict[str, Any]], optional): Tool definitions.
+            tool_choice (str, optional): The tool choice strategy.
             
         Returns:
-            Dict[str, Any]: The parameters for the API request.
+            Any: The response from the model.
         """
         pass
-    
+
     @abstractmethod
-    def handle_streaming_response(self, messages: List[Message], params: Dict[str, Any]) -> str:
+    def get_streaming_completion(self, messages: List[Dict[str, str]], model: str, temperature: float, max_tokens: int, top_p: float, stop_sequences: Optional[List[str]] = None, tools: Optional[List[Dict[str, Any]]] = None, tool_choice: str = "auto") -> Any:
         """
-        Handle streaming response from the model.
+        Get a streaming completion from the model.
         
         Args:
-            messages (List[Message]): The messages sent to the model.
-            params (Dict[str, Any]): The parameters for the API request.
+            messages (List[Dict[str, str]]): The messages to send to the model.
+            model (str): The model to use.
+            temperature (float): The temperature parameter for the model.
+            max_tokens (int): The maximum number of tokens to generate.
+            top_p (float): The top_p parameter for the model.
+            stop_sequences (List[str], optional): Sequences that will stop generation.
+            tools (List[Dict[str, Any]], optional): Tool definitions.
+            tool_choice (str, optional): The tool choice strategy.
             
         Returns:
-            str: The concatenated response text.
+            Any: The streaming response from the model.
         """
         pass
-    
-    @abstractmethod
-    def handle_non_streaming_response(self, messages: List[Message], params: Dict[str, Any], 
-                                     tools: Optional[List[ToolDefinition]] = None) -> str:
+
+    def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         """
-        Handle non-streaming response from the model.
+        Format tool calls from the provider into a standardized format.
         
         Args:
-            messages (List[Message]): The messages sent to the model.
-            params (Dict[str, Any]): The parameters for the API request.
-            tools (List[ToolDefinition], optional): Tool definitions.
+            tool_calls (Any): The tool calls from the provider.
             
         Returns:
-            str: The response text.
+            List[Dict[str, Any]]: The formatted tool calls.
         """
-        pass
-    
-    @abstractmethod
-    def handle_streaming_with_tool_detection(self, messages: List[Message], params: Dict[str, Any], 
-                                           tools: Optional[List[ToolDefinition]] = None) -> str:
+        return tool_calls
+
+    def close(self):
         """
-        Handle streaming with tool detection.
-        
-        Args:
-            messages (List[Message]): The messages sent to the model.
-            params (Dict[str, Any]): The parameters for the API request.
-            tools (List[ToolDefinition], optional): Tool definitions.
-            
-        Returns:
-            str: The response text.
-        """
-        pass
-    
-    @abstractmethod
-    def process_tool_calls(self, messages: List[Message], model_message: Any, 
-                          execute_tool_func: callable, max_iterations: int = 5) -> str:
-        """
-        Process tool calls from the model.
-        
-        Args:
-            messages (List[Message]): The messages sent to the model.
-            model_message (Any): The message from the model containing tool calls.
-            execute_tool_func (callable): Function to execute a tool.
-            max_iterations (int, optional): Maximum number of tool call iterations.
-            
-        Returns:
-            str: The final response text.
-        """
-        pass
-    
-    @abstractmethod
-    def create_embedding(self, text: str) -> bytes:
-        """
-        Create an embedding for the given text.
-        
-        Args:
-            text (str): The text to create an embedding for.
-            
-        Returns:
-            bytes: The embedding as bytes.
+        Close any open connections.
         """
         pass

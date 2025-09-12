@@ -3,7 +3,7 @@ Minimal test for the Anthropic provider implementation.
 """
 
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 import sys
 import os
 
@@ -11,12 +11,12 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 # Import the AnthropicProvider
-from yamllm.core.providers.anthropic import AnthropicProvider
+from yamllm.providers.anthropic import AnthropicProvider
 
 
 class TestAnthropicProvider(unittest.TestCase):
     
-    @patch('anthropic.Anthropic')
+    @patch('yamllm.providers.anthropic.Anthropic')
     def test_init(self, mock_anthropic):
         """Test initializing the AnthropicProvider."""
         provider = AnthropicProvider(api_key="test_key", base_url="https://test.api")
@@ -27,7 +27,7 @@ class TestAnthropicProvider(unittest.TestCase):
             base_url="https://test.api"
         )
     
-    @patch('anthropic.Anthropic')
+    @patch('yamllm.providers.anthropic.Anthropic')
     def test_message_conversion(self, _):
         """Test converting messages to Anthropic format."""
         provider = AnthropicProvider(api_key="test_key")

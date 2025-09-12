@@ -1,9 +1,10 @@
 import sqlite3
 import os
+import logging
 from typing import List, Dict, Any, Tuple, Optional
 import faiss
 import numpy as np
-import pickle
+from contextlib import contextmanager
 
 class ConversationStore:
     """
@@ -56,6 +57,15 @@ class ConversationStore:
 
         The connection to the database is closed after the table is created.
         """
+        # Ensure parent directory exists if specified
+        try:
+            parent = os.path.dirname(self.db_path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+        except Exception:
+            # Best-effort; SQLite will still attempt to create the file
+            pass
+
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
@@ -95,7 +105,7 @@ class ConversationStore:
             conn.commit()
             return message_id
         except Exception as e:
-            print(f"Error adding message: {e}")
+            logging.getLogger('yamllm').error(f"Error adding message: {e}")
             return None
         finally:
             conn.close()
@@ -189,7 +199,16 @@ class ConversationStore:
             return cursor.fetchone()[0]
         finally:
             conn.close()
+    
+    def close(self) -> None:
+        """Close any open database connections."""
+        # SQLite connections are opened/closed per operation in this implementation
+        # So there's nothing persistent to clean up
+        pass
         
+from yamllm.core.exceptions import MemoryError
+
+
 class VectorStore:
     def __init__(self, store_path: str, vector_dim: int = 1536):
         """
@@ -209,19 +228,87 @@ class VectorStore:
         self.vector_dim = vector_dim
         self.store_path = store_path
         self.index_path = os.path.join(store_path, "faiss_index.idx")
-        self.metadata_path = os.path.join(store_path, "metadata.pkl")
+        self.metadata_path = os.path.join(store_path, "metadata.json")
+        self.metadata_db = os.path.join(store_path, "metadata.db")
         
         # Create directory if it doesn't exist
         os.makedirs(store_path, exist_ok=True)
         
-        # Initialize or load the index
+        # Initialize metadata database
+        self._init_metadata_db()
+        
+        # Initialize or load the index with dimension validation
         if os.path.exists(self.index_path):
             self.index = faiss.read_index(self.index_path)
-            with open(self.metadata_path, 'rb') as f:
-                self.metadata = pickle.load(f)
+            # Dimension mismatch indicates a different embedding model was used.
+            if getattr(self.index, "d", vector_dim) != vector_dim:
+                raise MemoryError(
+                    f"Vector index dimension mismatch: index has {getattr(self.index, 'd', 'unknown')}, "
+                    f"but configured dimension is {vector_dim}. "
+                    f"To migrate, consider purging the index with: \n"
+                    f"  yamllm migrate-index --store-path {self.store_path} --purge\n"
+                    f"Then re-run to rebuild with the new embedding model."
+                )
+            # Load metadata from database instead of pickle
+            self.metadata = self._load_metadata()
         else:
             self.index = faiss.IndexFlatIP(vector_dim)  # Inner product for cosine similarity
             self.metadata = []  # List to store message metadata
+
+    def _init_metadata_db(self) -> None:
+        """Initialize metadata database with proper schema."""
+        with self._get_db_connection() as conn:
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS vector_metadata (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    vector_index INTEGER NOT NULL,
+                    message_id INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    role TEXT NOT NULL,
+                    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    dimension INTEGER NOT NULL
+                )
+            """)
+            conn.commit()
+
+    @contextmanager
+    def _get_db_connection(self):
+        """Safe database connection context manager."""
+        conn = None
+        try:
+            conn = sqlite3.connect(self.metadata_db)
+            conn.row_factory = sqlite3.Row
+            yield conn
+        except sqlite3.Error as e:
+            if conn:
+                conn.rollback()
+            raise MemoryError(f"Vector store database error: {e}")
+        finally:
+            if conn:
+                conn.close()
+
+    def _load_metadata(self) -> List[Dict[str, Any]]:
+        """Load metadata from database."""
+        metadata = []
+        try:
+            with self._get_db_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT message_id, content, role 
+                    FROM vector_metadata 
+                    ORDER BY vector_index
+                """)
+                for row in cursor.fetchall():
+                    metadata.append({
+                        'id': row['message_id'],
+                        'content': row['content'],
+                        'role': row['role']
+                    })
+        except Exception as e:
+            logging.getLogger('yamllm').warning(f"Failed to load vector metadata: {e}")
+            # Fall back to empty metadata if database read fails
+            metadata = []
+        return metadata
 
     def add_vector(self, vector: List[float], message_id: int, content: str, role: str) -> None:
         """
@@ -237,10 +324,26 @@ class VectorStore:
             The vector is L2-normalized before being added to the index.
             Updates are automatically saved to disk.
         """
+        if len(vector) != self.vector_dim:
+            raise MemoryError(
+                f"Vector dimension mismatch: expected {self.vector_dim}, got {len(vector)}"
+            )
         vector_np = np.array([vector]).astype('float32')
         faiss.normalize_L2(vector_np)
         
         self.index.add(vector_np)
+        vector_index = self.index.ntotal - 1  # Index of the newly added vector
+        
+        # Store metadata in database
+        with self._get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO vector_metadata (vector_index, message_id, content, role, dimension)
+                VALUES (?, ?, ?, ?, ?)
+            """, (vector_index, message_id, content, role, self.vector_dim))
+            conn.commit()
+        
+        # Update in-memory metadata
         self.metadata.append({
             'id': message_id,
             'content': content,
@@ -258,9 +361,11 @@ class VectorStore:
         Raises:
             IOError: If there is an error writing the index or metadata to disk.
         """
-        faiss.write_index(self.index, self.index_path)
-        with open(self.metadata_path, 'wb') as f:
-            pickle.dump(self.metadata, f)
+        try:
+            faiss.write_index(self.index, self.index_path)
+            # Metadata is now stored in database, no need for separate file
+        except Exception as e:
+            raise MemoryError(f"Failed to persist vector store: {e}")
 
     def search(self, query_vector: List[float], k) -> List[Dict[str, Any]]:
         """
@@ -277,6 +382,12 @@ class VectorStore:
                 - role (str): Message role
                 - similarity (float): Similarity score
         """
+        if len(query_vector) != self.vector_dim:
+            raise MemoryError(
+                f"Query vector dimension mismatch: expected {self.vector_dim}, got {len(query_vector)}"
+            )
+        if self.index.ntotal == 0:
+            return []
         query_np = np.array([query_vector]).astype('float32')
         faiss.normalize_L2(query_np)
         
@@ -331,3 +442,11 @@ class VectorStore:
     def __len__(self) -> int:
         """Returns the total number of vectors in the store."""
         return self.index.ntotal
+    
+    def close(self) -> None:
+        """Save the index and close resources."""
+        try:
+            self._save_store()
+        except Exception:
+            # Best effort - don't fail on cleanup
+            pass

@@ -1,0 +1,12 @@
+name: Default
+description: "The default yamllm theme with a balanced, modern look."
+colors:
+  primary: "cyan"
+  secondary: "magenta"
+  success: "green"
+  warning: "yellow"
+  error: "red"
+  info: "blue"
+  dim: "grey70"
+layout:
+  show_ascii_art: true

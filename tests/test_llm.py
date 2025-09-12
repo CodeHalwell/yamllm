@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch, call
 from yamllm.core.llm import LLM
 from openai import OpenAIError
 import os
-import time
 
 @pytest.fixture
 def mock_llm():
@@ -24,6 +23,9 @@ def mock_llm():
     mock_config.logging.level = "INFO"
     mock_config.logging.file = "yamllm.log"
     mock_config.logging.format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    mock_config.logging.rotate = True
+    mock_config.logging.rotate_max_bytes = 1024
+    mock_config.logging.rotate_backup_count = 3
 
     with patch("yamllm.core.llm.LLM.load_config", return_value=mock_config):
         llm = LLM(config_path="config.yaml", api_key=os.environ.get("OPENAI_API_KEY"))
@@ -52,6 +54,9 @@ def test_query_missing_api_key():
     mock_config.logging.level = "INFO"
     mock_config.logging.file = "yamllm.log"
     mock_config.logging.format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    mock_config.logging.rotate = True
+    mock_config.logging.rotate_max_bytes = 1024
+    mock_config.logging.rotate_backup_count = 3
     
     # Add required provider configuration
     mock_config.provider.name = "openai"
@@ -123,6 +128,9 @@ def test_make_api_call_retry_success():
     mock_config.logging.level = "INFO"
     mock_config.logging.file = "yamllm.log"
     mock_config.logging.format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    mock_config.logging.rotate = True
+    mock_config.logging.rotate_max_bytes = 1024
+    mock_config.logging.rotate_backup_count = 3
     
     # Add required provider configuration
     mock_config.provider.name = "openai"
@@ -200,6 +208,9 @@ def test_make_api_call_max_retries_exceeded():
     mock_config.logging.level = "INFO"
     mock_config.logging.file = "yamllm.log"
     mock_config.logging.format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    mock_config.logging.rotate = True
+    mock_config.logging.rotate_max_bytes = 1024
+    mock_config.logging.rotate_backup_count = 3
     
     # Add required provider configuration
     mock_config.provider.name = "openai"

@@ -1,0 +1,70 @@
+# OpenRouter Integration Example
+#
+# This configuration demonstrates how to use OpenRouter with yamllm-core.
+# Replace placeholder values with your actual OpenRouter credentials.
+
+provider:
+  name: "openrouter"
+  model: "openai/gpt-4o-mini"  # example routed model id (see openrouter docs)
+  base_url: https://openrouter.ai/api/v1
+  extra_settings:
+    # Optional headers recommended by OpenRouter for routing/attribution
+    referer: "https://your-app.example"  # shown on openrouter listing
+    title: "Your App Name"
+
+model_settings:
+  temperature: 0.7
+  max_tokens: 1000
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stop_sequences: []
+
+request:
+  timeout: 30
+  retry:
+    max_attempts: 3
+    initial_delay: 1
+    backoff_factor: 2
+
+context:
+  system_prompt: "You are a helpful assistant."
+  max_context_length: 16000
+  memory:
+    enabled: false
+    max_messages: 5
+    session_id: "or_session"
+    conversation_db: "memory/conversation_history.db"
+    vector_store:
+      index_path: "memory/vector_store/faiss_index.idx"
+      metadata_path: "memory/vector_store/metadata.pkl"
+      top_k: 5
+
+output:
+  format: "text"
+  stream: true
+
+logging:
+  level: "INFO"
+  file: "yamllm.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+tools:
+  enabled: true
+  tool_timeout: 10
+  packs: ["common"]
+  # Security options
+  safe_mode: false
+  allow_network: true
+  allow_filesystem: true
+  allowed_paths: ["./"]
+  blocked_domains: []
+
+thinking:
+  enabled: false
+  show_tool_reasoning: true
+  model: null
+  max_tokens: 512
+  stream_thinking: true
+  save_thinking: false
+  thinking_temperature: 0.7

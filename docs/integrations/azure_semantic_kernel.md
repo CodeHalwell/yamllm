@@ -19,7 +19,7 @@ Semantic Kernel could be integrated with yamllm-core in multiple ways:
 provider:
   name: "semantic_kernel"
   model: "gpt-4"  # Model used by Semantic Kernel
-  api_key: ${AZURE_OPENAI_API_KEY}  # For Azure OpenAI backend
+  # Do not include API keys in config. Pass via environment and constructor.
   base_url: ${AZURE_OPENAI_ENDPOINT}  # For Azure OpenAI backend
   extra_settings:
     api_version: "2023-05-15"  # For Azure OpenAI
@@ -43,7 +43,7 @@ from typing import Dict, List, Any, Optional
 import json
 import semantic_kernel as sk
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from yamllm.providers.base import BaseProvider, Message, ToolDefinition
+from yamllm.core.providers.base import BaseProvider
 
 class SemanticKernelProvider(BaseProvider):
     def __init__(self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs):
