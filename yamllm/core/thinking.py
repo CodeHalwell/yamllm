@@ -44,6 +44,48 @@ class ThinkingManager:
         self.save_thinking = save_thinking
         self.temperature = temperature
         self.thinking_blocks: List[ThinkingBlock] = []
+        # Runtime controls for display hygiene
+        self.mode: str = "auto"  # off|on|auto
+        self.redact_logs: bool = True
+
+    def should_show(self, prompt: str, *, available_tools: List[str]) -> bool:
+        """Decide whether to show thinking based on mode and heuristic complexity.
+
+        - off: never
+        - on: always (if enabled)
+        - auto: show for complex tasks detected by a lightweight heuristic
+        """
+        if not self.enabled:
+            return False
+        mode = (self.mode or "auto").lower()
+        if mode == "off":
+            return False
+        if mode == "on":
+            return True
+        # auto: complexity detection
+        return self._is_complex(prompt, available_tools)
+
+    def _is_complex(self, prompt: str, available_tools: List[str]) -> bool:
+        """Simple heuristic: long prompts, multi-part questions, explicit planning words,
+        code blocks, or when multiple tool intents likely.
+        """
+        p = (prompt or "").lower()
+        if len(p) >= 220:
+            return True
+        # Multi-part cues
+        multi_cues = ["first,", "second,", "third,", "step", "steps", "plan", "outline"]
+        if any(c in p for c in multi_cues):
+            return True
+        # Code markers
+        if "```" in p or "def " in p or "class " in p:
+            return True
+        # Multiple tool intents
+        intents = 0
+        intents += 1 if any(k in p for k in ("http://", "https://", "search", "scrape", "website")) else 0
+        intents += 1 if any(k in p for k in ("calculate", "sum", "difference", "+", "-", "*", "/")) else 0
+        intents += 1 if any(k in p for k in ("convert", "units", "km", "miles", "celsius", "fahrenheit")) else 0
+        intents += 1 if any(k in p for k in ("timezone", "time in", "utc", "pst", "est")) else 0
+        return intents >= 2
 
     def generate_thinking(
         self, prompt: str, available_tools: List[str], provider_client: Any, model_fallback: str
@@ -155,7 +197,8 @@ class ThinkingManager:
                 return str(content or "")
             return str(resp)
         except Exception as e:
-            return f"[Thinking error: {e}]"
+            # Redact internal error text if redaction enabled
+            return "[Thinking unavailable]" if self.redact_logs else f"[Thinking error: {e}]"
 
     def format_thinking_for_display(self, blocks: List[ThinkingBlock]) -> str:
         if not blocks:

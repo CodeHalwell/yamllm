@@ -401,7 +401,7 @@ P2 — Developer experience and testing
 
 P2 — Performance and resilience
 - [x] Cache embeddings per request; reduce duplicate calls
-- [ ] Improve tool selection heuristics beyond string matching
+- [x] Improve tool selection heuristics beyond string matching
 - [x] Interactive vector-store migration UX
 
 DX/UX polish
@@ -432,12 +432,12 @@ Terminal UI & Themes
 - [ ] Copy shortcuts and additional UX niceties
 
 Async Architecture Overhaul
-- [ ] Async-first across providers (sync wrappers retained)
-- [ ] HTTP/2 connection pooling with reuse
-- [ ] Cancellation on keypress (propagate through model/tool calls)
-- [ ] Backpressure handling in renderer
+- [x] Async-first across providers (sync wrappers retained)
+- [x] HTTP/2 connection pooling with reuse
+- [x] Cancellation on keypress (propagate through model/tool calls)
+- [ ] Backpressure handling in renderer (baseline via sentence chunking/live refresh)
 
 Thinking Display System
-- [ ] `off|on|auto` modes with complexity detection
-- [ ] Thinking panel streaming in <120ms; redact internal logs
-- [ ] Summarized plans for complex tasks
+- [x] `off|on|auto` modes with complexity detection
+- [x] Thinking panel streaming in <120ms; redact internal logs
+- [x] Summarized plans for complex tasks

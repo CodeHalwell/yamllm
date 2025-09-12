@@ -126,6 +126,8 @@ class LLM:
         
         # Error handler
         self.error_handler = ErrorHandler(self.logger)
+        # Simple per-process embedding cache
+        self._embedding_cache: Dict[str, List[float]] = {}
         
         # Extract configuration values
         self._extract_config_values()
@@ -381,7 +383,7 @@ class LLM:
         if not thinking_config:
             return ThinkingManager(enabled=False)
         
-        return ThinkingManager(
+        tm = ThinkingManager(
             enabled=getattr(thinking_config, 'enabled', False),
             show_tool_reasoning=getattr(thinking_config, 'show_tool_reasoning', True),
             thinking_model=getattr(thinking_config, 'model', None),
@@ -390,6 +392,13 @@ class LLM:
             save_thinking=getattr(thinking_config, 'save_thinking', False),
             temperature=getattr(thinking_config, 'thinking_temperature', 0.7)
         )
+        # Apply new hygiene and mode controls
+        try:
+            tm.mode = str(getattr(thinking_config, 'mode', 'auto') or 'auto').lower()
+            tm.redact_logs = bool(getattr(thinking_config, 'redact_logs', True))
+        except Exception:
+            pass
+        return tm
     
     def _infer_embedding_dimension(self) -> int:
         """Infer embedding dimension from model name."""
@@ -472,6 +481,8 @@ class LLM:
         """Get response from the model with tool support."""
         # Reset tool execution stack for new request
         self.tool_orchestrator.reset_execution_stack()
+        # Reset cancellation flag for a fresh request
+        setattr(self, "_cancel_requested", False)
         
         # Prepare messages
         messages = self._prepare_messages(prompt, system_prompt)
@@ -620,36 +631,39 @@ class LLM:
         if not prompt_text:
             return tools_param
         
-        # Simple intent heuristics to allow a subset when strongly indicated
-        text = prompt_text.lower()
-        want_web = any(k in text for k in (
-            "search", "look up", "latest", "today", "current", "news", "http://", "https://", "headline", "website"
-        ))
-        want_calc = any(k in text for k in ("calculate", "calc", "sum", "difference", "multiply", "divide", "percent"))
-        if not want_calc:
-            import re
-            if re.search(r"\b\d+\s*([\+\-\*/×÷])\s*\d+(\s*([\+\-\*/×÷])\s*\d+)*\b", text):
-                want_calc = True
-        want_convert = any(k in text for k in ("convert", "units", "unit", "km", "miles", "celsius", "fahrenheit"))
-        want_time = any(k in text for k in ("time in", "timezone", "utc", "pst", "est"))
-        want_files = any(k in text for k in ("read file", "open file", "path", "csv", "search file", "grep"))
+        # Enhanced intent extraction
+        wants = self._extract_intent(prompt_text)
 
-        if not any([want_web, want_calc, want_convert, want_time, want_files]):
+        if not any(wants.values()):
             # No strong intent detected; return no tools to minimize token usage
             return []
 
         # Map tool intents to names
         allow: set[str] = set()
-        if want_web:
+        if wants.get("web"):
             allow.update({"web_search", "web_scraper", "url_metadata", "web_headlines", "weather"})
-        if want_calc:
+        if wants.get("calc"):
             allow.update({"calculator"})
-        if want_convert:
+        if wants.get("convert"):
             allow.update({"unit_converter"})
-        if want_time:
+        if wants.get("time"):
             allow.update({"timezone", "datetime"})
-        if want_files:
+        if wants.get("files"):
             allow.update({"file_read", "file_search", "csv_preview"})
+        if wants.get("url"):
+            allow.update({"url_metadata", "web_scraper"})
+        if wants.get("csv"):
+            allow.update({"csv_preview", "file_read"})
+        if wants.get("json"):
+            allow.update({"json_tool"})
+        if wants.get("regex"):
+            allow.update({"regex_extract"})
+        if wants.get("hash"):
+            allow.update({"hash_text"})
+        if wants.get("base64"):
+            allow.update({"base64_encode", "base64_decode"})
+        if wants.get("uuid"):
+            allow.update({"uuid"})
 
         # Filter by function name where available
         filtered: List[Dict[str, Any]] = []
@@ -662,6 +676,31 @@ class LLM:
                 filtered.append(t)
 
         return filtered or tools_param
+
+    def _extract_intent(self, prompt_text: str) -> Dict[str, bool]:
+        """Extract lightweight intents from prompt to guide tool selection."""
+        text = (prompt_text or "").lower()
+        import re
+        wants = {
+            "web": any(k in text for k in ("search", "look up", "latest", "today", "current", "news", "headline", "website"))
+                    or bool(re.search(r"https?://", text)),
+            "calc": any(k in text for k in ("calculate", "calc", "sum", "difference", "multiply", "divide", "percent"))
+                    or bool(re.search(r"\b\d+\s*([\+\-\*/×÷])\s*\d+", text)),
+            "convert": any(k in text for k in ("convert", "units", "unit", "km", "miles", "celsius", "fahrenheit")),
+            "time": any(k in text for k in ("time in", "timezone", "utc", "pst", "est")),
+            "files": any(k in text for k in ("read file", "open file", "path", "search file", "grep")),
+            "url": bool(re.search(r"https?://[\w\.-]+", text)),
+            "csv": "csv" in text,
+            "json": "json" in text and any(k in text for k in ("pretty", "minify", "validate")),
+            "regex": "regex" in text or bool(re.search(r"\/[a-zA-Z0-9_\-\.\+\*\?\|\(\)\[\]\{\}]+\/", text)),
+            "hash": "hash" in text or any(k in text for k in ("md5", "sha256", "sha1")),
+            "base64": "base64" in text or any(k in text for k in ("encode", "decode")),
+            "uuid": "uuid" in text,
+        }
+        # Expand web intent if explicit URL present
+        if wants["url"]:
+            wants["web"] = True
+        return wants
     
     def _process_thinking(self, prompt: str):
         """Process thinking mode if enabled."""
@@ -697,6 +736,9 @@ class LLM:
                 return
 
             available_tools = self.tool_orchestrator.tool_manager.list()
+            # Respect thinking mode off|on|auto
+            if not self.thinking_manager.should_show(prompt, available_tools=available_tools):
+                return
             # If streaming is enabled and provider supports streaming, stream thinking deltas per block
             can_stream = bool(self.output_stream and self.stream_callback)
             provider = (self.provider_name or "").lower()
@@ -948,6 +990,9 @@ class LLM:
                         response_text += chunk_text
                         if self.stream_callback:
                             self.stream_callback(chunk_text)
+                    # Cooperative cancellation
+                    if getattr(self, "_cancel_requested", False):
+                        break
                 return response_text
 
             # Fallback: non-stream tool loop to produce final text; stream it artificially
@@ -1155,13 +1200,19 @@ class LLM:
     def create_embedding(self, text: str) -> List[float]:
         """Create embedding for text."""
         try:
+            if text in self._embedding_cache:
+                return self._embedding_cache[text]
             # Try provider embeddings first if supported
             if hasattr(self.provider_client, 'create_embedding') and (
                 not self._embeddings_provider_name or 
                 self._embeddings_provider_name == self.provider_name
             ):
                 try:
-                    return self.provider_client.create_embedding(text, self._embedding_model)
+                    emb = self.provider_client.create_embedding(text, self._embedding_model)
+                    self._embedding_cache[text] = emb
+                    if len(self._embedding_cache) > 64:
+                        self._embedding_cache.pop(next(iter(self._embedding_cache)))
+                    return emb
                 except Exception as e:
                     self.logger.debug(f"Provider embeddings failed, falling back to OpenAI: {e}")
             
@@ -1175,7 +1226,11 @@ class LLM:
                 input=text,
                 model=self._embedding_model
             )
-            return response.data[0].embedding
+            emb = response.data[0].embedding
+            self._embedding_cache[text] = emb
+            if len(self._embedding_cache) > 64:
+                self._embedding_cache.pop(next(iter(self._embedding_cache)))
+            return emb
             
         except Exception as e:
             masked_error = mask_string(str(e))
@@ -1281,11 +1336,13 @@ class LLM:
         # Clean up async components
         if self._async_provider:
             try:
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
+                try:
+                    loop = asyncio.get_running_loop()
+                    # If a loop is running, schedule the close and return
                     loop.create_task(self._async_provider.__aexit__(None, None, None))
-                else:
-                    loop.run_until_complete(self._async_provider.__aexit__(None, None, None))
+                except RuntimeError:
+                    # No running loop; create a fresh one
+                    asyncio.run(self._async_provider.__aexit__(None, None, None))
             except Exception as e:
                 self.logger.debug(f"Error closing async provider: {e}")
         

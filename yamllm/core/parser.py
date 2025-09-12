@@ -109,6 +109,11 @@ class ThinkingSettings(BaseModel):
     # If true, when the prompt clearly doesn't need tools, emit a compact, local
     # thinking note (no model call) and proceed directly to the answer.
     compact_for_non_tool: bool = True
+    # New: thinking display mode and hygiene
+    # off: never show thinking; on: always show; auto: show only for complex tasks
+    mode: str = "auto"
+    # Redact thinking content from logs (UI still displays)
+    redact_logs: bool = True
 
 class YamlLMConfig(BaseModel):
     provider: ProviderSettings
