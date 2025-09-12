@@ -383,20 +383,20 @@ P0 — Critical bugs and correctness
 P1 — Security and safety
 - [x] Filesystem path handling hardened (expanduser + realpath)
 - [x] Network blocking expanded (unspecified/multicast/reserved/.local)
-- [x] Add granular tests for `SecurityManager.check_network_permission`
-- [x] Centralize network tool timeouts/retries across all tools
+- [ ] Add granular tests for `SecurityManager.check_network_permission`
+- [ ] Centralize network tool timeouts/retries across all tools
 
 P1 — API/UX consistency
-- [ ] Rename/merge dual ToolManager concepts (core vs tools.manager)
-- [ ] Provider base signature cleanup (remove `model` from `__init__`)
-- [ ] Standardize tool result shapes (prefer dict; stringify in providers)
-- [ ] Event-loop shutdown robustness on 3.12+ (`asyncio.run`/anyio)
+- [x] Rename/merge dual ToolManager concepts (core vs tools.manager)
+- [x] Provider base signature cleanup (remove `model` from `__init__`)
+- [x] Standardize tool result shapes (prefer dict; stringify in providers)
+- [x] Event-loop shutdown robustness on 3.12+ (`asyncio.run`/anyio)
 - [x] parse_yaml_config: remove prints and re-raise errors
 
 P2 — Developer experience and testing
 - [x] Adopt ProviderFactory for async in LLM
-- [ ] Add tests for streaming+tools path (stub provider)
-- [ ] Harmonize exceptions and retry surfaces across providers
+- [x] Add tests for streaming+tools path (stub provider)
+- [x] Harmonize exceptions and retry surfaces across providers
 - [ ] Trim unused heavy deps to optional extras
 
 P2 — Performance and resilience

@@ -89,7 +89,7 @@ class GoogleGeminiProvider(BaseProvider):
             return gm.generate_content(contents=contents, generation_config=generation_config)
         except Exception as e:
             logger.error(f"Google Gemini error: {e}")
-            raise ProviderError(f"Google Gemini error: {e}") from e
+            raise ProviderError("Google", f"API error: {e}", original_error=e) from e
 
     def get_streaming_completion(
         self,
@@ -117,7 +117,7 @@ class GoogleGeminiProvider(BaseProvider):
             return gm.generate_content(contents=contents, generation_config=generation_config, stream=True)
         except Exception as e:
             logger.error(f"Google Gemini streaming error: {e}")
-            raise ProviderError(f"Google Gemini streaming error: {e}") from e
+            raise ProviderError("Google", f"Streaming error: {e}", original_error=e) from e
 
     def create_embedding(self, text: str, model: str = "models/text-embedding-004") -> List[float]:
         try:
@@ -126,7 +126,7 @@ class GoogleGeminiProvider(BaseProvider):
             return list(vec or [])
         except Exception as e:
             logger.error(f"Google Gemini embedding error: {e}")
-            raise ProviderError(f"Google Gemini embedding error: {e}") from e
+            raise ProviderError("Google", f"Embedding error: {e}", original_error=e) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         # Google returns function_call parts; callers using this provider should

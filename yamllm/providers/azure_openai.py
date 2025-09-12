@@ -71,7 +71,7 @@ class AzureOpenAIProvider(BaseProvider):
             return self.client.chat.completions.create(**params)
         except Exception as e:
             logger.error(f"Azure OpenAI error: {e}")
-            raise ProviderError(f"Azure OpenAI error: {e}") from e
+            raise ProviderError("Azure OpenAI", f"API error: {e}", original_error=e) from e
 
     def get_streaming_completion(
         self,
@@ -102,7 +102,7 @@ class AzureOpenAIProvider(BaseProvider):
             return list(resp.data[0].embedding)
         except Exception as e:
             logger.error(f"Azure OpenAI embedding error: {e}")
-            raise ProviderError(f"Azure OpenAI embedding error: {e}") from e
+            raise ProviderError("Azure OpenAI", f"Embedding error: {e}", original_error=e) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         if not tool_calls:
@@ -213,7 +213,7 @@ class AzureOpenAIProvider(BaseProvider):
             except Exception as e:
                 logger.error(f"Azure OpenAI tool processing error: {e}")
                 yield {"status": "error", "error": str(e)}
-                raise ProviderError(f"Azure OpenAI tool processing error: {e}") from e
+                raise ProviderError("Azure OpenAI", f"Tool processing error: {e}", original_error=e) from e
 
         # Stream the final response
         try:
@@ -233,4 +233,4 @@ class AzureOpenAIProvider(BaseProvider):
         except Exception as e:
             logger.error(f"Azure OpenAI streaming error: {e}")
             yield {"status": "error", "error": str(e)}
-            raise ProviderError(f"Azure OpenAI streaming error: {e}") from e
+            raise ProviderError("Azure OpenAI", f"Streaming error: {e}", original_error=e) from e

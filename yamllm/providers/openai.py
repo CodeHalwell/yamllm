@@ -107,7 +107,7 @@ class OpenAIProvider(BaseProvider):
             return self.client.chat.completions.create(**params)
         except OpenAIError as e:
             logger.error(f"OpenAI API error: {str(e)}")
-            raise ProviderError(f"OpenAI API error: {str(e)}") from e
+            raise ProviderError("OpenAI", f"API error: {str(e)}", original_error=e) from e
     
     def get_streaming_completion(self, 
                                messages: List[Dict[str, Any]], 
@@ -175,7 +175,7 @@ class OpenAIProvider(BaseProvider):
 
         except OpenAIError as e:
             logger.error(f"OpenAI API streaming error: {str(e)}")
-            raise ProviderError(f"OpenAI streaming error: {str(e)}") from e
+            raise ProviderError("OpenAI", f"Streaming error: {str(e)}", original_error=e) from e
     
     def process_tool_calls(self,
                            messages: List[Dict[str, Any]],
@@ -273,7 +273,7 @@ class OpenAIProvider(BaseProvider):
                 
             except OpenAIError as e:
                 logger.error(f"OpenAI API error during tool processing: {str(e)}")
-                raise ProviderError(f"OpenAI tool processing error: {str(e)}") from e
+                raise ProviderError("OpenAI", f"Tool processing error: {str(e)}", original_error=e) from e
         
         # If we reach here, we've hit the maximum number of iterations
         logger.warning(f"Reached maximum tool call iterations ({max_iterations})")
@@ -320,7 +320,7 @@ class OpenAIProvider(BaseProvider):
             return response.data[0].embedding
         except OpenAIError as e:
             logger.error(f"OpenAI API embedding error: {str(e)}")
-            raise ProviderError(f"OpenAI embedding error: {str(e)}") from e
+            raise ProviderError("OpenAI", f"Embedding error: {str(e)}", original_error=e) from e
     
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         """
@@ -480,10 +480,10 @@ class OpenAIProvider(BaseProvider):
                 # Add the tool results to the conversation
                 current_messages.extend(formatted_results)
                 
-            except OpenAIError as e:
-                logger.error(f"OpenAI API error during streaming tool processing: {str(e)}")
-                yield {"status": "error", "error": str(e)}
-                raise ProviderError(f"OpenAI tool processing error: {str(e)}") from e
+        except OpenAIError as e:
+            logger.error(f"OpenAI API error during streaming tool processing: {str(e)}")
+            yield {"status": "error", "error": str(e)}
+            raise ProviderError("OpenAI", f"Tool processing error: {str(e)}", original_error=e) from e
         
         # Second phase: stream the final response
         try:
@@ -508,7 +508,7 @@ class OpenAIProvider(BaseProvider):
         except OpenAIError as e:
             logger.error(f"OpenAI API error during final streaming: {str(e)}")
             yield {"status": "error", "error": str(e)}
-            raise ProviderError(f"OpenAI streaming error: {str(e)}") from e
+            raise ProviderError("OpenAI", f"Streaming error: {str(e)}", original_error=e) from e
     
     def close(self):
         """

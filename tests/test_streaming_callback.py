@@ -74,3 +74,66 @@ def test_llm_streaming_callback_invoked():
 
         assert result is None  # streaming mode returns None
         assert "".join(collected) == "Hello, world!"
+
+
+def test_streaming_with_tools_stub_loop():
+    """Smoke test the streaming+tools loop with a stub provider."""
+    mock_config = MagicMock()
+    mock_config.provider.name = "openai"
+    mock_config.provider.model = "gpt-x"
+    mock_config.provider.base_url = "https://api.openai.com"
+    mock_config.model_settings.temperature = 0.1
+    mock_config.model_settings.max_tokens = 10
+    mock_config.model_settings.top_p = 1.0
+    mock_config.model_settings.stop_sequences = []
+    mock_config.request.timeout = 30
+    mock_config.request.retry.max_attempts = 1
+    mock_config.request.retry.initial_delay = 0
+    mock_config.request.retry.backoff_factor = 1
+    mock_config.context.system_prompt = ""
+    mock_config.context.max_context_length = 1000
+    mock_config.context.memory.enabled = False
+    mock_config.context.memory.max_messages = 5
+    mock_config.output.format = "text"
+    mock_config.output.stream = True
+    mock_config.logging.level = "INFO"
+    mock_config.logging.file = "yamllm.log"
+    mock_config.logging.format = "%(message)s"
+    mock_config.tools.enabled = True
+    mock_config.tools.tools = ["calculator"]
+    mock_config.tools.tool_timeout = 1
+    mock_config.safety.content_filtering = False
+    mock_config.safety.max_requests_per_minute = 100
+    mock_config.safety.sensitive_keywords = []
+
+    with patch("yamllm.core.llm.LLM.load_config", return_value=mock_config):
+        llm = LLM(config_path="cfg.yaml", api_key="test")
+
+        class StubProvider:
+            def process_streaming_tool_calls(self, **kwargs):
+                # Emulate a single tool call then stream final text
+                tool_calls = [
+                    {
+                        "id": "1",
+                        "type": "function",
+                        "function": {"name": "calculator", "arguments": "{\"expression\": \"1+1\"}"},
+                    }
+                ]
+                yield {"status": "processing", "iteration": 1, "max_iterations": 5}
+                yield {"status": "tool_calls", "tool_calls": tool_calls}
+                # Execute via provided executor
+                tool_results = kwargs["tool_executor"](tool_calls)
+                yield {"status": "tool_results", "tool_results": tool_results}
+                yield {"status": "streaming"}
+                # Stream final message chunks
+                yield _fake_openai_chunk("Answer: ")
+                yield _fake_openai_chunk("2")
+
+        llm.provider_client = StubProvider()
+
+        collected = []
+        llm.set_stream_callback(lambda d: collected.append(d))
+
+        result = llm.query("what is 1+1?")
+        assert result is None
+        assert "".join(collected).endswith("Answer: 2")

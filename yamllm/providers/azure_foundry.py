@@ -66,7 +66,7 @@ class AzureFoundryProvider(BaseProvider):
             return self.chat_completions_client.create(deployment_name=model, **params)
         except Exception as e:
             logger.error(f"Azure Foundry error: {e}")
-            raise ProviderError(f"Azure Foundry error: {e}") from e
+            raise ProviderError("AzureFoundry", f"API error: {e}", original_error=e) from e
 
     def get_streaming_completion(
         self,
@@ -97,7 +97,7 @@ class AzureFoundryProvider(BaseProvider):
             return list(resp.data[0].embedding)
         except Exception as e:
             logger.error(f"Azure Foundry embedding error: {e}")
-            raise ProviderError(f"Azure Foundry embedding error: {e}") from e
+            raise ProviderError("AzureFoundry", f"Embedding error: {e}", original_error=e) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         if not tool_calls:

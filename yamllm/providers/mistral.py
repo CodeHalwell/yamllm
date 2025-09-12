@@ -52,7 +52,7 @@ class MistralProvider(BaseProvider):
             return self.client.chat.complete(**params)
         except Exception as e:
             logger.error(f"Mistral error: {e}")
-            raise ProviderError(f"Mistral error: {e}") from e
+            raise ProviderError("Mistral", f"API error: {e}", original_error=e) from e
 
     def get_streaming_completion(
         self,
@@ -83,7 +83,7 @@ class MistralProvider(BaseProvider):
             return list(resp.data[0].embedding)
         except Exception as e:
             logger.error(f"Mistral embedding error: {e}")
-            raise ProviderError(f"Mistral embedding error: {e}") from e
+            raise ProviderError("Mistral", f"Embedding error: {e}", original_error=e) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
