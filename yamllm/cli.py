@@ -40,13 +40,14 @@ def migrate_index(args: argparse.Namespace) -> int:
         print(f"Failed to read index: {e}")
         return 1
 
-    if args.expect_dim is not None and dim is not None and dim != args.expect_dim:
+    mismatched = args.expect_dim is not None and dim is not None and dim != args.expect_dim
+    if mismatched:
         print(
             f"Dimension mismatch: index={dim}, expected={args.expect_dim}. "
             f"This indicates the embedding model has changed."
         )
 
-    if args.purge:
+    if args.purge or (mismatched and Confirm.ask("Purge incompatible index/metadata now?", default=False)):
         try:
             os.remove(index_path)
             if os.path.exists(metadata_path):

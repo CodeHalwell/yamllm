@@ -115,13 +115,12 @@ class BaseProvider(ABC):
     """
     
     @abstractmethod
-    def __init__(self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs):
+    def __init__(self, api_key: str, base_url: Optional[str] = None, **kwargs):
         """
         Initialize the provider.
         
         Args:
             api_key (str): The API key for the provider.
-            model (str): The model to use.
             base_url (str, optional): The base URL for the provider's API.
             **kwargs: Additional provider-specific parameters.
         """

@@ -147,10 +147,21 @@ class ChatInterface:
                     
                     # Get LLM response
                     if self.llm.output_stream:
-                        # Streaming response
+                        # Streaming response with cooperative cancellation
                         self.streaming_display.start("assistant")
-                        response = self.llm.query(user_input)
-                        self.streaming_display.stop()
+                        try:
+                            response = self.llm.query(user_input)
+                        except KeyboardInterrupt:
+                            try:
+                                self.llm.cancel()
+                            except Exception:
+                                pass
+                            self.console.console.print(
+                                f"\n[{self.console.theme['warning']}]Interrupted. Streaming cancelled.[/{self.console.theme['warning']}]"
+                            )
+                            response = None
+                        finally:
+                            self.streaming_display.stop()
                     else:
                         # Non-streaming response
                         with self.console.live_status("🤔 Thinking..."):

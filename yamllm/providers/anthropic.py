@@ -168,38 +168,10 @@ class AnthropicProvider(BaseProvider):
     
     def create_embedding(self, text: str, model: str = "claude-3-haiku-20240307") -> List[float]:
         """
-        Create an embedding for the given text using Anthropic.
-        
-        Note: Anthropic doesn't have a dedicated embeddings API, so we'll use the
-        OpenAI embeddings API as a fallback with a warning.
-        
-        Args:
-            text: Text to embed
-            model: Model to use for embedding (ignored, will use OpenAI)
-            
-        Returns:
-            Embedding vector as a list of floats
+        Anthropic does not provide an embeddings API.
+        Raise a ProviderError so callers can fall back to another provider.
         """
-        # Since Anthropic doesn't provide embeddings, we'll use a simple alternative
-        # that generates deterministic embeddings based on hashing
-        import hashlib
-        import numpy as np
-        
-        # Generate a hash of the text
-        hash_object = hashlib.sha256(text.encode())
-        hash_hex = hash_object.hexdigest()
-        
-        # Use the hash to seed a random number generator
-        np.random.seed(int(hash_hex, 16) % (2**32))
-        
-        # Generate a pseudo-random embedding vector (dimension 1536 for compatibility)
-        embedding = np.random.normal(0, 1, 1536).tolist()
-        
-        # Normalize the embedding
-        norm = sum(x**2 for x in embedding) ** 0.5
-        embedding = [x / norm for x in embedding]
-        
-        return embedding
+        raise ProviderError("Anthropic", "Embeddings not supported by Anthropic")
     
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         """

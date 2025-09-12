@@ -111,3 +111,25 @@ class MCPClient:
                 tool_definitions.append(tool_definition)
         
         return tool_definitions
+
+    async def _disconnect_all(self) -> None:
+        """Async helper to disconnect all connectors cleanly."""
+        for connector in self.connectors.values():
+            try:
+                await connector.disconnect()
+            except Exception:
+                # Best-effort cleanup
+                continue
+
+    def close(self) -> None:
+        """Synchronously close all connectors (best-effort)."""
+        try:
+            # Use a fresh event loop for cleanup if needed
+            asyncio.run(self._disconnect_all())
+        except RuntimeError:
+            # If already in an event loop, schedule and return
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(self._disconnect_all())
+            except Exception:
+                pass

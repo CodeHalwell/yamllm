@@ -480,10 +480,10 @@ class OpenAIProvider(BaseProvider):
                 # Add the tool results to the conversation
                 current_messages.extend(formatted_results)
                 
-        except OpenAIError as e:
-            logger.error(f"OpenAI API error during streaming tool processing: {str(e)}")
-            yield {"status": "error", "error": str(e)}
-            raise ProviderError("OpenAI", f"Tool processing error: {str(e)}", original_error=e) from e
+            except OpenAIError as e:
+                logger.error(f"OpenAI API error during streaming tool processing: {str(e)}")
+                yield {"status": "error", "error": str(e)}
+                raise ProviderError("OpenAI", f"Tool processing error: {str(e)}", original_error=e) from e
         
         # Second phase: stream the final response
         try:

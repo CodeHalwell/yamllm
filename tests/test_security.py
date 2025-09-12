@@ -92,6 +92,35 @@ def test_null_byte_prevention():
     assert "Null byte" in str(exc_info.value)
 
 
+def test_block_localhost_and_internal_ips():
+    sm = SecurityManager(allowed_paths=[os.getcwd()])
+    # localhost
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("http://localhost")
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("http://127.0.0.1")
+    # unspecified and multicast
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("http://0.0.0.0")
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("http://224.0.0.1")
+    # link-local range
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("http://169.254.1.1")
+
+
+def test_block_local_domain_suffix():
+    sm = SecurityManager(allowed_paths=[os.getcwd()])
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("http://printer.local")
+
+
+def test_only_http_https_allowed():
+    sm = SecurityManager(allowed_paths=[os.getcwd()])
+    with pytest.raises(ToolExecutionError):
+        sm.check_network_permission("ftp://example.com")
+
+
 def test_network_internal_ip_and_domains_blocked():
     sm = SecurityManager(allowed_paths=[os.getcwd()])
     # Internal IPs
@@ -119,4 +148,3 @@ def test_network_internal_ip_and_domains_blocked():
     # Should NOT block unrelated domains containing substring
     sm3 = SecurityManager(blocked_domains=["ample.com"])
     sm3.check_network_permission("https://example.com")
-

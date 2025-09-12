@@ -9,6 +9,7 @@ import functools
 import logging
 from typing import Callable, TypeVar, Optional, Dict, Any, Type
 import time
+import builtins as _builtins
 
 from yamllm.core.exceptions import (
     ProviderError, ToolExecutionError,
@@ -32,7 +33,7 @@ class ErrorHandler:
         max_attempts: int = 3,
         initial_delay: float = 1.0,
         backoff_factor: float = 2.0,
-        exceptions: tuple = (NetworkError, TimeoutError),
+        exceptions: tuple = (NetworkError, TimeoutError, ConnectionError, _builtins.TimeoutError),
         on_retry: Optional[Callable[[Exception, int], None]] = None
     ):
         """

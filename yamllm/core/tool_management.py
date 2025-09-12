@@ -281,8 +281,8 @@ class ToolRegistry:
         return sorted(list(categories))
 
 
-class ToolManager:
-    """Enhanced tool management system."""
+class ToolRegistryManager:
+    """Enhanced tool metadata/registry manager (CLI-facing)."""
     
     def __init__(self):
         self.registry = ToolRegistry()
@@ -457,5 +457,5 @@ class ToolManager:
         return result
 
 
-# Global instance
-tool_manager = ToolManager()
+# Global instance for CLI usage
+tool_manager = ToolRegistryManager()

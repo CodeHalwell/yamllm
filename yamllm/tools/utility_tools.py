@@ -15,6 +15,30 @@ dotenv.load_dotenv()
 
 # Import network base early to use in classes below
 from .network_base import NetworkTool, NetworkError
+
+
+def _request_with_retries(session: requests.Session, method: str, url: str, *, timeout: int, max_retries: int, **kwargs) -> requests.Response:
+    """Helper to perform an HTTP request with retries/backoff similar to NetworkTool.
+
+    Retries on 429/5xx timeouts and connection errors, with simple exponential backoff.
+    """
+    attempt = 0
+    last_error: Optional[Exception] = None
+    while attempt < max_retries:
+        try:
+            resp = session.request(method, url, timeout=timeout, **kwargs)
+            if resp.status_code == 429:
+                raise requests.HTTPError("429 rate limited", response=resp)
+            resp.raise_for_status()
+            return resp
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError, ValueError) as e:
+            last_error = e
+            attempt += 1
+            if attempt >= max_retries:
+                break
+            import time as _t
+            _t.sleep(0.5 * attempt)
+    raise RuntimeError(f"Request failed after {max_retries} attempts: {last_error}")
 from .security import SecurityManager, ToolExecutionError
 
 class WeatherTool(NetworkTool):
@@ -182,10 +206,7 @@ class SerpAPIProvider:
         last_error: Optional[Exception] = None
         while attempt < self.max_retries:
             try:
-                resp = self.session.get(url, params=params, timeout=self.timeout)
-                if resp.status_code == 429:
-                    raise requests.HTTPError("429 rate limited", response=resp)
-                resp.raise_for_status()
+                resp = _request_with_retries(self.session, "GET", url, timeout=self.timeout, max_retries=1, params=params)
                 data = resp.json()
                 org = data.get("organic_results", [])
                 results = [
@@ -231,10 +252,7 @@ class TavilyProvider:
         last_error: Optional[Exception] = None
         while attempt < self.max_retries:
             try:
-                resp = self.session.post(url, json=payload, timeout=self.timeout)
-                if resp.status_code == 429:
-                    raise requests.HTTPError("429 rate limited", response=resp)
-                resp.raise_for_status()
+                resp = _request_with_retries(self.session, "POST", url, timeout=self.timeout, max_retries=1, json=payload)
                 data = resp.json() or {}
                 items = data.get("results", []) or []
                 results = [
@@ -275,17 +293,15 @@ class BingSearchProvider:
         
         while attempt < self.max_retries:
             try:
-                resp = self.session.get(
-                    self.base_url, 
-                    params=params, 
-                    headers=headers, 
-                    timeout=self.timeout
+                resp = _request_with_retries(
+                    self.session,
+                    "GET",
+                    self.base_url,
+                    timeout=self.timeout,
+                    max_retries=1,
+                    params=params,
+                    headers=headers,
                 )
-                
-                if resp.status_code == 429:
-                    raise requests.HTTPError("429 rate limited", response=resp)
-                
-                resp.raise_for_status()
                 data = resp.json()
                 
                 web_pages = data.get("webPages", {}).get("value", [])
@@ -391,7 +407,7 @@ class TimezoneTool(Tool):
             description="Convert between timezones"
         )
 
-    def execute(self, time: str, from_tz: str, to_tz: str) -> str:
+    def execute(self, time: str, from_tz: str, to_tz: str) -> Dict:
         """
         Convert time between different timezones.
 
@@ -421,9 +437,9 @@ class TimezoneTool(Tool):
                 "converted_time": dt_target.isoformat(),
                 "converted_timezone": to_tz
             }
-            return json.dumps(result)
+            return result
         except Exception as e:
-            return f"Error converting timezone: {str(e)}"
+            return {"error": f"Error converting timezone: {str(e)}"}
     
     def _get_parameters(self) -> Dict:
         return {
@@ -443,7 +459,7 @@ class UnitConverter(Tool):
             description="Convert between different units"
         )
 
-    def execute(self, value: float, from_unit: str, to_unit: str) -> float:
+    def execute(self, value: float, from_unit: str, to_unit: str) -> Dict:
         """Convert values between different units of measurement."""
         # Simple mapping of conversion factors for common units
         conversion_map = {
@@ -481,10 +497,10 @@ class UnitConverter(Tool):
                     "converted_unit": to_unit
                 }
             else:
-                return f"Conversion from {from_unit} to {to_unit} is not supported"
+                return {"error": f"Conversion from {from_unit} to {to_unit} is not supported"}
                 
         except Exception as e:
-            return f"Error converting units: {str(e)}"
+            return {"error": f"Error converting units: {str(e)}"}
         
     def _get_parameters(self) -> Dict:
         return {
