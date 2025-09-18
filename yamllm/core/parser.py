@@ -82,9 +82,11 @@ class Tools(BaseModel):
     enabled: bool = True
     tool_timeout: int = 30
     # Accept legacy key `tool_list` by alias while normalizing to `tools` internally
-    tools: List[str] = Field(default_factory=list, alias="tool_list")
+    tools: List[str] = Field(default_factory=list)
+    tool_list: Optional[List[str]] = Field(default=None, alias="tool_list")
     packs: List[str] = Field(default_factory=list)
     mcp_connectors: List[MCPConnectorSettings] = Field(default_factory=list)
+    include_help_tool: bool = True
     # Security settings
     safe_mode: bool = False
     allow_network: bool = True

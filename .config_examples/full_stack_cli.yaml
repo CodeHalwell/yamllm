@@ -1,0 +1,131 @@
+# Example configuration for a full-featured yamllm CLI chat session.
+#
+# Before running, export at least one provider API key, e.g.:
+#   export OPENAI_API_KEY="sk-..."
+# Optional tool providers:
+#   export WEATHER_API_KEY, SERPAPI_API_KEY, TAVILY_API_KEY, BING_SEARCH_API_KEY
+# Optional MCP auth tokens should be referenced via ${ENV_VAR} entries below.
+
+provider:
+  name: "openai"
+  model: "gpt-4o"
+  base_url:
+
+model_settings:
+  temperature: 0.4
+  max_tokens: 1800
+  top_p: 1.0
+  frequency_penalty: 0.0
+  presence_penalty: 0.0
+  stop_sequences: []
+
+request:
+  timeout: 45
+  retry:
+    max_attempts: 3
+    initial_delay: 1
+    backoff_factor: 2
+
+context:
+  system_prompt: |
+    You are yamllm running in a developer terminal.
+    - Keep answers concise and use markdown where helpful.
+    - Call a tool only when it directly advances the task. Never call `tools_help`
+      unless the user explicitly asks for tool documentation.
+    - When the user explicitly instructs you to call a tool (e.g. "use the web_scraper tool" or
+      "scrape example.com"), execute it immediately without asking for further confirmation.
+    - Prefer the `calculator` for arithmetic, `web_search`/`web_scraper` when the
+      user asks for current information, and `weather` only when the user requests
+      forecast details.
+    - When a tool requires a URL, include the full scheme (e.g. https://example.com).
+    - Always summarise tool output in friendly prose before sharing raw details.
+  max_context_length: 32768
+  memory:
+    enabled: true
+    max_messages: 12
+    session_id: "full-stack-cli-demo"
+    conversation_db: "memory/conversations.db"
+    vector_store:
+      index_path: "memory/vector_store/faiss_index.idx"
+      metadata_path: "memory/vector_store/metadata.db"
+      top_k: 5
+
+output:
+  format: "markdown"
+  stream: true
+
+logging:
+  level: "INFO"
+  file: "logs/yamllm_demo.log"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  console: true
+  rotate: true
+  rotate_max_bytes: 1048576
+  rotate_backup_count: 3
+  json_format: false
+
+safety:
+  content_filtering: true
+  max_requests_per_minute: 40
+  sensitive_keywords:
+    - "password"
+    - "secret"
+
+tools:
+  enabled: true
+  tool_timeout: 30
+  tools:
+    - "calculator"
+    - "web_search"
+    - "web_scraper"
+    - "weather"
+    - "file_read"
+    - "file_search"
+    - "csv_preview"
+    - "json_tool"
+    - "hash_text"
+    - "timezone"
+    - "unit_converter"
+    - "url_metadata"
+    - "web_headlines"
+  packs: []
+  mcp_connectors:
+    - name: "notes-http"
+      url: "http://localhost:7420"
+      transport: "http"
+      authentication: "${NOTES_MCP_TOKEN}"
+      description: "Sample HTTP MCP server exposing a knowledge base"
+      tool_prefix: "notes"
+      enabled: false  # Enable after installing httpx[h2] and running an MCP server
+    - name: "cli-stdio"
+      url: "mcp-cli-server --stdio"
+      transport: "stdio"
+      authentication:
+      description: "Local CLI MCP server reachable via stdio"
+      tool_prefix: "cli"
+      enabled: false  # Enable when the MCP CLI server is available
+  include_help_tool: false
+  safe_mode: false
+  allow_network: true
+  allow_filesystem: true
+  allowed_paths:
+    - "."
+  blocked_domains:
+    - "metadata.google.internal"
+  gate_web_search: true
+
+embeddings:
+  provider: "openai"
+  model: "text-embedding-3-small"
+
+thinking:
+  enabled: true
+  show_tool_reasoning: true
+  model:
+  max_tokens: 600
+  stream_thinking: true
+  save_thinking: false
+  thinking_temperature: 0.6
+  compact_for_non_tool: true
+  mode: "auto"
+  redact_logs: true

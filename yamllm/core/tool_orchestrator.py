@@ -84,7 +84,8 @@ class ToolOrchestrator:
         tool_timeout: int = 30,
         security_config: Optional[Dict[str, Any]] = None,
         logger: Optional[logging.Logger] = None,
-        mcp_client: Optional[Any] = None
+        mcp_client: Optional[Any] = None,
+        include_help_tool: bool = True
     ):
         """
         Initialize the tool orchestrator.
@@ -104,6 +105,7 @@ class ToolOrchestrator:
         self.tool_timeout = tool_timeout
         self.logger = logger or logging.getLogger(__name__)
         self.mcp_client = mcp_client
+        self.include_help_tool = include_help_tool
         
         # Initialize security manager
         security_config = security_config or {}
@@ -135,9 +137,10 @@ class ToolOrchestrator:
             # Register each tool
             for tool_name in selected_tools:
                 self._register_tool(tool_name)
-            
+
             # Always register help tool last
-            self.tool_manager.register(ToolsHelpTool(self.tool_manager))
+            if self.include_help_tool:
+                self.tool_manager.register(ToolsHelpTool(self.tool_manager))
             
         except Exception as e:
             self.logger.error(f"Tool registration error: {e}")

@@ -11,6 +11,7 @@ import json
 import logging
 import asyncio
 import time
+import re
 import dotenv
 
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
@@ -314,7 +315,8 @@ class LLM:
             tool_timeout=tools_config.tool_timeout,
             security_config=security_config,
             logger=self.logger,
-            mcp_client=self.mcp_client
+            mcp_client=self.mcp_client,
+            include_help_tool=getattr(tools_config, 'include_help_tool', True)
         )
         
         # Replace the tool manager with our thread-safe version
@@ -633,8 +635,9 @@ class LLM:
         
         # Enhanced intent extraction
         wants = self._extract_intent(prompt_text)
+        explicit_tool = self._extract_explicit_tool(prompt_text)
 
-        if not any(wants.values()):
+        if not any(wants.values()) and not explicit_tool:
             # No strong intent detected; return no tools to minimize token usage
             return []
 
@@ -664,6 +667,8 @@ class LLM:
             allow.update({"base64_encode", "base64_decode"})
         if wants.get("uuid"):
             allow.update({"uuid"})
+        if explicit_tool:
+            allow.add(explicit_tool)
 
         # Filter by function name where available
         filtered: List[Dict[str, Any]] = []
@@ -675,32 +680,75 @@ class LLM:
             except Exception:
                 filtered.append(t)
 
-        return filtered or tools_param
+        if not filtered:
+            return tools_param
+        try:
+            self.logger.info(
+                "filtered_tools",
+                extra={
+                    "allow": sorted(allow),
+                    "selected": [
+                        t.get("function", {}).get("name")
+                        for t in filtered
+                        if isinstance(t, dict)
+                    ],
+                },
+            )
+        except Exception:
+            pass
+        return filtered
 
     def _extract_intent(self, prompt_text: str) -> Dict[str, bool]:
         """Extract lightweight intents from prompt to guide tool selection."""
         text = (prompt_text or "").lower()
         import re
+        domain_hint = re.search(r"\b(?:[a-z0-9-]+\.)+(?:[a-z]{2,})(?:/[^\s]*)?\b", text)
+        explicit_url = re.search(r"https?://[^\s]+", text)
+        command_match = re.search(r"(?:use|call|run|invoke)\s+(?:the\s+)?([a-z0-9_\-]+)\s+tool", text)
         wants = {
-            "web": any(k in text for k in ("search", "look up", "latest", "today", "current", "news", "headline", "website"))
-                    or bool(re.search(r"https?://", text)),
-            "calc": any(k in text for k in ("calculate", "calc", "sum", "difference", "multiply", "divide", "percent"))
+            "web": any(k in text for k in ("search", "look up", "latest", "today", "current", "news", "headline", "website", "site", "scrape", "scraper", "crawl", "fetch"))
+                    or bool(explicit_url) or bool(domain_hint),
+            "calc": any(k in text for k in ("calculate", "calc", "sum", "difference", "multiply", "divide", "percent", "product"))
                     or bool(re.search(r"\b\d+\s*([\+\-\*/×÷])\s*\d+", text)),
             "convert": any(k in text for k in ("convert", "units", "unit", "km", "miles", "celsius", "fahrenheit")),
             "time": any(k in text for k in ("time in", "timezone", "utc", "pst", "est")),
             "files": any(k in text for k in ("read file", "open file", "path", "search file", "grep")),
-            "url": bool(re.search(r"https?://[\w\.-]+", text)),
+            "url": bool(explicit_url) or bool(domain_hint),
             "csv": "csv" in text,
             "json": "json" in text and any(k in text for k in ("pretty", "minify", "validate")),
             "regex": "regex" in text or bool(re.search(r"\/[a-zA-Z0-9_\-\.\+\*\?\|\(\)\[\]\{\}]+\/", text)),
             "hash": "hash" in text or any(k in text for k in ("md5", "sha256", "sha1")),
             "base64": "base64" in text or any(k in text for k in ("encode", "decode")),
             "uuid": "uuid" in text,
+            "direct_tool": bool(command_match),
         }
         # Expand web intent if explicit URL present
         if wants["url"]:
             wants["web"] = True
         return wants
+
+    def _extract_explicit_tool(self, prompt_text: str) -> Optional[str]:
+        text = (prompt_text or "").lower()
+        matches = re.findall(r"(?:use|call|run|invoke)\s+(?:the\s+)?([a-z0-9_\-]+)\s+tool", text)
+        if not matches:
+            bare_match = re.search(r"\buse\s+(webscrape|webscraper|web_scraper|webscraping)\b", text)
+            if bare_match:
+                matches = [bare_match.group(1)]
+        if not matches:
+            return None
+        alias_map = {
+            "webscrape": "web_scraper",
+            "webscraper": "web_scraper",
+            "web_scraper": "web_scraper",
+            "webscraping": "web_scraper",
+            "scrape": "web_scraper",
+            "scraper": "web_scraper",
+            "websearch": "web_search",
+            "search": "web_search",
+            "calc": "calculator",
+        }
+        requested = matches[-1].replace('-', '_')
+        return alias_map.get(requested, requested)
     
     def _process_thinking(self, prompt: str):
         """Process thinking mode if enabled."""
@@ -716,7 +764,7 @@ class LLM:
                 compact_ok = bool(getattr(getattr(self.config, 'thinking', None), 'compact_for_non_tool', True))
             except Exception:
                 compact_ok = True
-            if not self._intent_requires_tools(prompt):
+            if not self._intent_requires_tools(prompt) and not self._extract_explicit_tool(prompt):
                 if compact_ok and self.thinking_manager.stream_thinking and self.stream_callback:
                     compact = "<thinking>\n=== ANALYSIS ===\nNo tools needed; responding directly.\n" \
                               + ("=" * 50) + "\n</thinking>\n"
@@ -884,18 +932,85 @@ class LLM:
         """Heuristic to decide whether tools are likely needed for this prompt."""
         text = (prompt_text or "").lower()
         want_web = any(k in text for k in (
-            "search", "look up", "latest", "today", "current", "news", "http://", "https://", "headline", "website"
+            "search", "look up", "latest", "today", "current", "news", "headline", "website", "scrape", "scraper", "crawl", "fetch"
         ))
+        if not want_web:
+            if re.search(r"https?://", text) or re.search(r"\b(?:[a-z0-9-]+\.)+(?:[a-z]{2,})(?:/[^\s]*)?\b", text):
+                want_web = True
         want_calc = any(k in text for k in ("calculate", "calculator", "calc", "sum", "difference", "multiply", "divide", "percent"))
         want_convert = any(k in text for k in ("convert", "units", "unit", "km", "miles", "celsius", "fahrenheit"))
         want_time = any(k in text for k in ("time in", "timezone", "utc", "pst", "est"))
         want_files = any(k in text for k in ("read file", "open file", "path", "csv", "search file", "grep"))
         # Detect arithmetic expressions like 1234*4321, including unicode × ÷
         if not want_calc:
-            import re
             if re.search(r"\b\d+\s*([\+\-\*/×÷])\s*\d+(\s*([\+\-\*/×÷])\s*\d+)*\b", text):
                 want_calc = True
         return any([want_web, want_calc, want_convert, want_time, want_files])
+
+    def _get_last_user_message(self, messages: Optional[List[Dict[str, Any]]]) -> str:
+        if not messages:
+            return ""
+        for m in reversed(messages):
+            if m.get("role") == "user":
+                return str(m.get("content", ""))
+        return ""
+
+    def _choose_primary_tool(self, wants: Dict[str, bool], available_names: set[str], explicit: Optional[str]) -> Optional[str]:
+        if explicit and explicit in available_names:
+            return explicit
+        if wants.get("calc") and "calculator" in available_names:
+            return "calculator"
+        if wants.get("web"):
+            if wants.get("url") and "web_scraper" in available_names:
+                return "web_scraper"
+            if "web_search" in available_names:
+                return "web_search"
+            if "url_metadata" in available_names:
+                return "url_metadata"
+            if "web_headlines" in available_names:
+                return "web_headlines"
+        if wants.get("time") and "timezone" in available_names:
+            return "timezone"
+        if wants.get("convert") and "unit_converter" in available_names:
+            return "unit_converter"
+        if wants.get("files"):
+            for candidate in ("file_read", "file_search", "csv_preview"):
+                if candidate in available_names:
+                    return candidate
+        if wants.get("direct_tool") and available_names:
+            # Fall back to first available tool if directed but alias unknown
+            return next(iter(available_names))
+        return None
+
+    def _determine_tool_choice(
+        self,
+        prompt_text: str,
+        tools_param: Optional[List[Dict[str, Any]]]
+    ) -> Optional[Any]:
+        if not tools_param:
+            return None
+        if not self._intent_requires_tools(prompt_text):
+            explicit = self._extract_explicit_tool(prompt_text)
+            if not explicit:
+                return None
+        else:
+            explicit = self._extract_explicit_tool(prompt_text)
+        try:
+            wants = self._extract_intent(prompt_text)
+        except Exception:
+            wants = {}
+        if explicit:
+            wants["direct_tool"] = True
+        available_names: set[str] = set()
+        for t in tools_param:
+            if isinstance(t, dict) and t.get("type") == "function":
+                name = t.get("function", {}).get("name")
+                if name:
+                    available_names.add(name)
+        primary = self._choose_primary_tool(wants, available_names, explicit)
+        if primary:
+            return {"type": "function", "function": {"name": primary}}
+        return "required"
 
     def _handle_streaming_with_tools(self, messages: List[Dict[str, str]], tools: List[Dict[str, Any]]) -> str:
         """Handle streaming with tool support when possible.
@@ -911,16 +1026,24 @@ class LLM:
                 "openai", "azure_openai", "openrouter", "deepseek", "mistral"
             ):
                 # If strong intent for tools, require a tool call
-                tool_choice_kwargs = {}
+                tool_choice_kwargs: Dict[str, Any] = {}
                 try:
-                    # Grab latest user content
-                    last_user = ""
-                    for m in reversed(messages or []):
-                        if m.get("role") == "user":
-                            last_user = str(m.get("content", ""))
-                            break
-                    if self._intent_requires_tools(last_user):
-                        tool_choice_kwargs = {"tool_choice": "required"}
+                    last_user = self._get_last_user_message(messages)
+                    choice_spec = self._determine_tool_choice(last_user, tools)
+                    if choice_spec:
+                        self.logger.info(
+                            "tool_choice",
+                            extra={
+                                "choice": choice_spec,
+                                "available_tools": [
+                                    t.get("function", {}).get("name")
+                                    for t in tools
+                                    if isinstance(t, dict)
+                                ],
+                                "prompt": last_user,
+                            },
+                        )
+                        tool_choice_kwargs = {"tool_choice": choice_spec}
                 except Exception:
                     tool_choice_kwargs = {}
                 # Define a tool executor that uses the orchestrator and returns
@@ -991,9 +1114,13 @@ class LLM:
                         if self.stream_callback:
                             self.stream_callback(chunk_text)
                     # Cooperative cancellation
-                    if getattr(self, "_cancel_requested", False):
-                        break
-                return response_text
+                        if getattr(self, "_cancel_requested", False):
+                            break
+                if response_text:
+                    return response_text
+                # If streaming yielded no visible output (some providers may suppress final deltas),
+                # fall back to non-streaming flow to ensure we produce a reply.
+                return self._handle_non_streaming_response(messages, tools)
 
             # Fallback: non-stream tool loop to produce final text; stream it artificially
             final_text = self._handle_non_streaming_response(messages, tools)
@@ -1041,6 +1168,8 @@ class LLM:
     ) -> str:
         """Handle non-streaming response with optional tool support."""
         try:
+            last_user = self._get_last_user_message(messages)
+            tool_choice_spec = self._determine_tool_choice(last_user, tools)
             response = self.provider_client.get_completion(
                 messages=messages,
                 model=self.model,
@@ -1049,7 +1178,7 @@ class LLM:
                 top_p=self.top_p,
                 stop_sequences=self.stop_sequences,
                 tools=tools,
-                tool_choice="auto" if tools else None
+                tool_choice=tool_choice_spec if tool_choice_spec else ("auto" if tools else None)
             )
             
             # Track usage

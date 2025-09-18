@@ -93,4 +93,31 @@
 - Streaming preserved; no added blocking calls on async paths.
 - Tool schemas validated; timeouts and cancellation covered by tests where applicable.
 - MCP changes verified against reference servers where relevant.
-- Secrets masked; telemetry unchanged (off by default) unless explicitly opted‑in.
+- Secrets masked; telemetry unchanged (off by default) unless explicitly opted-in.
+
+## Current Architecture Snapshot
+- `yamllm/core/llm.py` owns orchestration: config load + validation, provider selection, tool orchestration, thinking manager, streaming callbacks, usage tracking, and memory writes.
+- Provider layer lives under `yamllm/providers/*` with a `ProviderFactory` that normalises sync and async providers (OpenAI, Azure, Anthropic, Google, Mistral, DeepSeek, OpenRouter) and exposes capability flags via `providers/capabilities.py`.
+- Tools flow through `core/tool_orchestrator.py`, `tools/thread_safe_manager.py`, and `tools/security.py`, giving JSON-schema signatures, per-call sandboxing, and thread-safe execution with concurrency limits.
+- Memory is handled by `core/memory_manager.py` and `yamllm/memory/conversation_store.py`, combining SQLite transcript storage with a FAISS-backed vector store plus CLI migration support.
+- Terminal UX is provided by `yamllm/ui/chat.py` and `ui/themes.py`, delivering Rich streaming, theme switching, and tool/thinking event panels; CLI entry points are centralised in `yamllm/cli.py`.
+
+## Capabilities Implemented
+- Streaming chat with tool usage, thinking traces, and UI events is wired end-to-end for OpenAI-compatible providers; tool execution emits structured callbacks for renderers.
+- Built-in tool library covers web search/scrape, weather, conversions, file IO, UUID/random generators, etc., backed by shared networking and security guards.
+- MCP connectors (`yamllm/mcp/*.py`) support HTTP, WebSocket, and stdio transports, convert remote schemas into local tool definitions, and stream results back through the orchestrator.
+- Memory subsystem captures both text history and embeddings with caching and OpenAI fallback, including dimension checks and migration helpers in the CLI.
+- Extensive pytest suite (`tests/`) exercises config parsing, provider adapters, tool security, thinking heuristics, streaming callbacks, and thread safety; most integrations are mocked for offline runs.
+
+## Identified Gaps and Risks
+- Async story is partial: `core/async_llm.py` only supports OpenAI today and is not integrated into the CLI or provider-agnostic pathways; broader async streaming remains on the roadmap.
+- Tool metadata manager in `core/tool_management.py` overlaps with `tools.manager.ToolManager`, leading to dual abstractions and potential confusion for contributors.
+- Tool return payloads are not fully uniform (some dict, some stringified JSON), increasing formatting work in UIs and risking inconsistent downstream behaviour.
+- Embedding fallback always leans on OpenAI (`core/llm.py`), so non-OpenAI installs still need an OpenAI key unless provider embeddings succeed; consider documenting or introducing pluggable backends.
+- Thinking manager currently reuses the primary model and streams via provider completions; there is limited guard for providers without streaming thinking support, so failure handling relies on debug logging.
+- Performance hooks exist (usage tracking, retry/backoff) but there is no telemetry or latency measurement aligned with manifesto targets, and several paths remain blocking (memory searches, tool execution dispatch).
+
+## Testing and Tooling Notes
+- Test suite relies on `tests/mock_config.yaml` and heavy use of `unittest.mock` to isolate provider calls; `test_mcp.py.disabled` indicates pending work to stabilise full MCP coverage.
+- CLI utilities (`yamllm/cli.py`) expose `yamllm run`, tool registry inspection, and FAISS index migration; docs (`README.md`, `improvement_plan.md`) give onboarding guidance but should stay in sync with evolving defaults.
+- Repository already includes safety guards (secret masking, network allowlists); contributors should expand tests when touching these areas to keep regressions out.

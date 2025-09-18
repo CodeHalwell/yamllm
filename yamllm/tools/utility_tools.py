@@ -9,6 +9,7 @@ import os
 import dotenv
 from bs4 import BeautifulSoup
 import math
+import re
 
 # Load environment variables from .env file if it exists
 dotenv.load_dotenv()
@@ -531,9 +532,19 @@ class WebScraper(NetworkTool):
         Scrape data from a webpage.
         """
         try:
-            if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
-                return {"error": "Invalid URL. Must start with http:// or https://"}
-            resp = self.make_request("GET", url)
+            if not isinstance(url, str):
+                return {"error": "Invalid URL. Must be a string."}
+            normalized = url.strip()
+            if not normalized:
+                return {"error": "URL cannot be empty."}
+            if not normalized.lower().startswith(("http://", "https://")):
+                # Accept bare domains like example.com or example.co.uk and default to https
+                domain_match = re.match(r"^(?:[a-z0-9-]+\.)+(?:[a-z]{2,})(?:/.*)?$", normalized, re.IGNORECASE)
+                if domain_match:
+                    normalized = "https://" + normalized.lstrip("/")
+                else:
+                    return {"error": "Invalid URL. Provide a full URL starting with http:// or https://"}
+            resp = self.make_request("GET", normalized)
             resp.raise_for_status()
             soup = BeautifulSoup(resp.text, 'html.parser')
             text = soup.get_text()
@@ -543,7 +554,7 @@ class WebScraper(NetworkTool):
             
             # Return the text content (trimmed)
             return {
-                "url": url,
+                "url": normalized,
                 "content": text[:1000]
             }
         except NetworkError as e:
