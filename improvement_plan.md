@@ -112,7 +112,7 @@ This comprehensive improvement plan consolidates findings from three major code 
 - [ ] **Fix inconsistent tool selection** (yamllm/core/llm.py:616-709) ⚠️ CONFIRMED ISSUE
   - [ ] When user explicitly requests a tool, return ONLY that tool definition
   - [ ] Set tool_choice="required" for explicit tool requests
-  - [ ] Add unit tests for _filter_tools_for_prompt and _determine_tool_choice (MISSING - no tests found)
+  - [ ] Add unit tests for _filter_tools_for_prompt and _determine_tool_choice (MISSING - VERIFIED no tests found)
   - [ ] Fix OpenAI ignoring forced tool_choice parameter
   - [ ] Timeline: 1 week
 
@@ -129,14 +129,14 @@ This comprehensive improvement plan consolidates findings from three major code 
 - [x] **Filesystem path handling hardened** ✅ CONFIRMED IMPLEMENTED
   - [x] `yamllm/tools/security.py::validate_file_access` uses `expanduser` before `realpath` (lines 55-56)
   - [x] Added null-byte checks (line 49-50) and internal IP blocking (lines 98-99)
-  - [ ] Add comprehensive tests for SecurityManager.check_network_permission
-  - [ ] Block additional networks: 0.0.0.0, 169.254.0.0/16, .local domains
+  - [x] Add comprehensive tests for SecurityManager.check_network_permission
+  - [x] Block additional networks: 0.0.0.0, 169.254.0.0/16, .local domains ✅ CONFIRMED IMPLEMENTED
   - [ ] Timeline: 1 week
 
 - [ ] **Network security improvements**
-  - [ ] Centralize timeouts/retries in NetworkTool across all tools
+  - [ ] Centralize timeouts/retries in NetworkTool across all tools ✅ PARTIALLY VERIFIED
   - [ ] Add rate limiting for API calls (max_requests_per_minute)
-  - [ ] Implement input validation for all tool parameters
+  - [ ] Implement input validation for all tool parameters ✅ PARTIALLY VERIFIED
   - [ ] Add audit logging for security events
   - [ ] Timeline: 2 weeks
 
@@ -148,10 +148,10 @@ This comprehensive improvement plan consolidates findings from three major code 
 
 ### Error Handling Standardization (Claude Review)
 
-- [ ] **Create unified exception hierarchy**
-  - [ ] Standardize ProviderError across all providers
-  - [ ] Implement consistent retry logic for transient failures
-  - [ ] Add structured error messages with recovery suggestions
+- [x] **Create unified exception hierarchy**
+  - [x] Standardize ProviderError across all providers
+  - [x] Implement consistent retry logic for transient failures
+  - [ ] Add structured error messages with recovery suggestions ✅ PARTIALLY VERIFIED
   - [ ] Remove inconsistent error swallowing (utility_tools.py:149)
   - [ ] Timeline: 1-2 sprints
 
@@ -167,7 +167,7 @@ This comprehensive improvement plan consolidates findings from three major code 
 
 - [ ] **Enhance caching strategies** ✅ CONFIRMED BOTTLENECKS
   - [ ] Increase embedding cache from 64 to 1000 entries with TTL (confirmed lines 1342, 1360)
-  - [ ] Implement connection pooling for HTTP-based providers
+  - [x] Implement connection pooling for HTTP-based providers
   - [ ] Cache tool definitions (currently regenerated 5x per request - confirmed lines 341, 346, 502, 509, 1306)
   - [ ] Optimize vector store searches (avoid on every query when not relevant)
   - [ ] Timeline: 2-3 sprints
@@ -548,7 +548,7 @@ Week 1 Improvements
 - [x] Add basic Rich integration (Terminal UI components; streaming renderer; theming)
 - [x] Create `yamllm run` command (quick-start chat)
 - [x] Fix vector store dimension handling (enforced dims; migrate-index helper)
-- [x] Add 3 example configs (.config_examples/openai_minimal.yaml, anthropic_minimal.yaml, google_minimal.yaml)
+- [ ] Add minimal example configs (ship openai/anthropic/google variants in `.config_examples/`)
 - [x] Clean up duplicate code (remove llm_old/llm_legacy)
 
 P0 — Critical bugs and correctness
@@ -566,7 +566,7 @@ P1 — Security and safety
 - [ ] Centralize network tool timeouts/retries across all tools
 
 P1 — API/UX consistency
-- [x] Rename/merge dual ToolManager concepts (core vs tools.manager)
+- [ ] Consolidate dual ToolManager concepts (runtime executor vs CLI metadata) and rename execution layer to `ToolExecutor`
 - [x] Provider base signature cleanup (remove `model` from `__init__`)
 - [x] Standardize tool result shapes (prefer dict; stringify in providers)
 - [x] Event-loop shutdown robustness on 3.12+ (`asyncio.run`/anyio)
@@ -611,9 +611,9 @@ Terminal UI & Themes
 - [ ] Copy shortcuts and additional UX niceties
 
 Async Architecture Overhaul
-- [x] Async-first across providers (sync wrappers retained)
-- [x] HTTP/2 connection pooling with reuse
-- [x] Cancellation on keypress (propagate through model/tool calls)
+- [ ] Async-first across providers (sync wrappers retained; extend beyond OpenAI-only async path)
+- [ ] HTTP/2 connection pooling with reuse (migrate shared tool networking off `requests.Session`)
+- [ ] Cancellation on keypress (propagate through model/tool calls; add `LLM.cancel()` to set `_cancel_requested`)
 - [ ] Backpressure handling in renderer (baseline via sentence chunking/live refresh)
 
 Thinking Display System
