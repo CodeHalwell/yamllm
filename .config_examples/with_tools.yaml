@@ -1,0 +1,73 @@
+# Configuration with Tools Enabled
+# This example shows how to enable and use tools
+
+provider:
+  name: "openai"
+  model: "gpt-4o-mini"
+
+model_settings:
+  temperature: 0.7
+  max_tokens: 2000
+
+context:
+  system_prompt: |
+    You are a helpful assistant with access to various tools.
+    When users ask questions that require:
+    - Current information: use web_search
+    - Math calculations: use calculator
+    - Weather information: use weather
+    - Web scraping: use web_scraper
+    
+    Always present results in a natural, conversational way.
+  max_context_length: 16000
+  memory:
+    enabled: true
+    max_messages: 10
+    session_id: "default"
+    conversation_db: "memory/conversation_history.db"
+
+output:
+  format: "text"
+  stream: false
+
+logging:
+  level: "INFO"
+  console: true
+  file: "logs/yamllm.log"
+
+tools:
+  enabled: true
+  tool_timeout: 30
+  tool_list:
+    # Search & Web Tools
+    - web_search
+    - web_scraper
+    - web_headlines
+    - url_metadata
+    
+    # Information Tools
+    - weather
+    
+    # Math & Conversion Tools
+    - calculator
+    - unit_converter
+    - timezone
+    
+    # Utility Tools
+    - datetime
+    - uuid
+    - hash
+    - json
+    - regex_extract
+    
+    # File Tools (use with caution)
+    - file_read
+    - csv_preview
+    
+    # Helper
+    - tools_help
+
+# Safety Settings
+safety:
+  content_filtering: true
+  max_requests_per_minute: 60
