@@ -1255,18 +1255,26 @@ class LLM:
     def set_stream_callback(self, callback: Callable[[str], None]):
         """Set streaming callback."""
         self.stream_callback = callback
+        if self._streaming_manager:
+            self._streaming_manager.stream_callback = callback
     
     def clear_stream_callback(self):
         """Clear streaming callback."""
         self.stream_callback = None
+        if self._streaming_manager:
+            self._streaming_manager.stream_callback = None
     
     def set_event_callback(self, callback: Callable[[Dict[str, Any]], None]):
         """Set event callback."""
         self.event_callback = callback
+        if self._streaming_manager:
+            self._streaming_manager.event_callback = callback
     
     def clear_event_callback(self):
         """Clear event callback."""
         self.event_callback = None
+        if self._streaming_manager:
+            self._streaming_manager.event_callback = None
     
     # Utility methods
     def update_settings(self, **kwargs):
