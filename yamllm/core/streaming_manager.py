@@ -146,7 +146,20 @@ class StreamingManager:
                         tool_args = tool_call.get('arguments', {})
                         
                         if isinstance(tool_args, str):
-                            tool_args = json.loads(tool_args)
+                            try:
+                                tool_args = json.loads(tool_args)
+                            except json.JSONDecodeError as jde:
+                                error_msg = (
+                                    f"\n[Tool error: Malformed tool arguments for '{tool_name}': {jde}]\n"
+                                )
+                                self.logger.error(
+                                    f"Malformed tool arguments for '{tool_name}': {tool_args} ({jde})"
+                                )
+                                accumulated += error_msg
+                                if self.stream_callback:
+                                    self.stream_callback(error_msg)
+                                # Skip this tool call since arguments are invalid
+                                continue
                         
                         if self.event_callback:
                             self.event_callback({
