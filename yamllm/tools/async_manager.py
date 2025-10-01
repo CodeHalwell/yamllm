@@ -9,15 +9,15 @@ import asyncio
 from typing import Dict, Any, List
 from concurrent.futures import ThreadPoolExecutor
 
-from yamllm.tools.manager import ToolManager
+from yamllm.tools.manager import ToolExecutor
 from yamllm.core.exceptions import ToolExecutionError
 
 
-class AsyncToolManager(ToolManager):
+class AsyncToolManager(ToolExecutor):
     """
     Async-enabled tool manager.
     
-    This class extends ToolManager with async execution capabilities,
+    This class extends ToolExecutor with async execution capabilities,
     allowing tools to be run concurrently.
     """
     
