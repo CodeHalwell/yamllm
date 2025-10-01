@@ -1427,6 +1427,34 @@ class LLM:
         """Clear event callback."""
         self.event_callback = None
     
+    # Performance metrics methods
+    def get_metrics_summary(self) -> Dict[str, Any]:
+        """
+        Get performance metrics summary.
+        
+        Returns:
+            Dictionary containing performance metrics including:
+            - Request count and average time
+            - First token latency (avg and p95)
+            - Token usage and throughput
+            - Tool execution statistics
+            - Cache hit rates
+        """
+        return self.metrics.get_summary()
+    
+    def get_prometheus_metrics(self) -> str:
+        """
+        Get performance metrics in Prometheus format.
+        
+        Returns:
+            String containing metrics in Prometheus exposition format
+        """
+        return self.metrics.format_prometheus()
+    
+    def reset_metrics(self):
+        """Reset all performance metrics."""
+        self.metrics.reset()
+    
     # Utility methods
     def update_settings(self, **kwargs):
         """Update instance settings."""
