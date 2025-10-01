@@ -120,3 +120,7 @@ class ToolExecutor:
         if name not in self._tools:
             raise KeyError(f"Tool '{name}' not registered")
         return self._tools[name]
+
+
+# Backward compatibility alias
+ToolManager = ToolExecutor
