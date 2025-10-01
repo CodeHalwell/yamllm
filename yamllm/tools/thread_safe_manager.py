@@ -11,16 +11,16 @@ import time
 from typing import Dict, Any, List, Optional, Set
 from contextlib import contextmanager
 
-from yamllm.tools.manager import ToolManager
+from yamllm.tools.manager import ToolExecutor
 import logging
 from yamllm.core.exceptions import ToolExecutionError
 
 
-class ThreadSafeToolManager(ToolManager):
+class ThreadSafeToolManager(ToolExecutor):
     """
     Thread-safe tool manager with resource locking and execution tracking.
     
-    This class extends ToolManager with thread safety features to prevent
+    This class extends ToolExecutor with thread safety features to prevent
     race conditions when tools access shared resources.
     """
     

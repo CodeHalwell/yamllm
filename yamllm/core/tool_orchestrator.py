@@ -10,7 +10,7 @@ import os
 import logging
 import asyncio
 
-from yamllm.tools.manager import ToolManager
+from yamllm.tools.manager import ToolExecutor
 from yamllm.tools.security import SecurityManager
 from yamllm.tools.utility_tools import (
     WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool,
@@ -27,6 +27,10 @@ class ToolOrchestrator:
     
     This class encapsulates all tool-related functionality that was
     previously embedded in the main LLM class.
+    
+    Note: Uses ToolExecutor (formerly ToolManager) for low-level tool execution.
+    ToolOrchestrator provides higher-level orchestration including registration,
+    security management, and coordination with LLM workflows.
     """
     
     # Tool registry mapping names to classes
@@ -117,8 +121,8 @@ class ToolOrchestrator:
             blocked_domains=security_config.get('blocked_domains', [])
         )
         
-        # Initialize tool manager
-        self.tool_manager = ToolManager(timeout=self.tool_timeout, logger=self.logger)
+        # Initialize tool executor (renamed from ToolManager for clarity)
+        self.tool_manager = ToolExecutor(timeout=self.tool_timeout, logger=self.logger)
         
         # Track execution for circular dependency detection
         self._execution_stack = []

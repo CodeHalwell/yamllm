@@ -8,13 +8,16 @@ from .base import Tool
 from yamllm.core.exceptions import ToolExecutionError
 
 
-class ToolManager:
+class ToolExecutor:
     """
     Central registry and executor for tools.
 
     - Registers tool instances
     - Exposes provider-friendly tool definitions (function tools schema)
     - Executes tools with timeouts and normalized errors
+    
+    Note: Previously named ToolManager. Renamed to ToolExecutor to clarify
+    separation from ToolOrchestrator (which orchestrates tool usage at a higher level).
     """
 
     def __init__(self, *, timeout: int = 30, logger=None) -> None:
@@ -117,3 +120,7 @@ class ToolManager:
         if name not in self._tools:
             raise KeyError(f"Tool '{name}' not registered")
         return self._tools[name]
+
+
+# Backward compatibility alias
+ToolManager = ToolExecutor
