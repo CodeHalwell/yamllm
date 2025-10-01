@@ -9,6 +9,9 @@ from typing import Dict, List, Any, Optional
 import os
 import logging
 import asyncio
+import hashlib
+import json
+from functools import lru_cache
 
 from yamllm.tools.manager import ToolExecutor
 from yamllm.tools.security import SecurityManager
@@ -124,6 +127,10 @@ class ToolOrchestrator:
         # Initialize tool executor (renamed from ToolManager for clarity)
         self.tool_manager = ToolExecutor(timeout=self.tool_timeout, logger=self.logger)
         
+        # Cache for tool definitions
+        self._tool_definitions_cache: Optional[List[Dict[str, Any]]] = None
+        self._cache_config_hash: Optional[str] = None
+        
         # Track execution for circular dependency detection
         self._execution_stack = []
         
@@ -198,7 +205,10 @@ class ToolOrchestrator:
     
     def get_tool_definitions(self) -> List[Dict[str, Any]]:
         """
-        Get all tool definitions for API calls.
+        Get all tool definitions for API calls with caching.
+        
+        Tool definitions are cached based on configuration hash to avoid
+        regeneration on every request (performance optimization).
         
         Returns:
             List of tool definitions in provider-expected format
@@ -206,6 +216,19 @@ class ToolOrchestrator:
         if not self.enabled:
             return []
         
+        # Generate config hash for cache validation
+        config_data = {
+            'tool_list': sorted(self.tool_list),
+            'tool_packs': sorted(self.tool_packs),
+            'has_mcp': self.mcp_client is not None,
+        }
+        config_hash = hashlib.md5(json.dumps(config_data, sort_keys=True).encode()).hexdigest()
+        
+        # Return cached definitions if config hasn't changed
+        if self._cache_config_hash == config_hash and self._tool_definitions_cache is not None:
+            return self._tool_definitions_cache
+        
+        # Generate new definitions
         definitions = []
         
         # Add local tool definitions
@@ -222,6 +245,10 @@ class ToolOrchestrator:
                 self.logger.debug(f"Added {len(mcp_tools)} tools from MCP connectors")
             except Exception as e:
                 self.logger.error(f"Error adding MCP tools: {e}")
+        
+        # Cache the definitions
+        self._tool_definitions_cache = definitions
+        self._cache_config_hash = config_hash
         
         return definitions
     
