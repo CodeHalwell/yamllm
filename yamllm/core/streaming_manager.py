@@ -72,13 +72,13 @@ class StreamingManager:
         accumulated = ""
         
         try:
-            stream = self.provider_client.get_completion_streaming(
+            stream = self.provider_client.get_streaming_completion(
                 messages=messages,
                 model=self.model,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
-                stop=self.stop_sequences if self.stop_sequences else None
+                stop_sequences=self.stop_sequences if self.stop_sequences else None
             )
             
             for chunk in stream:
@@ -115,13 +115,13 @@ class StreamingManager:
         tool_calls = []
         
         try:
-            stream = self.provider_client.get_completion_streaming(
+            stream = self.provider_client.get_streaming_completion(
                 messages=messages,
                 model=self.model,
                 temperature=self.temperature,
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
-                stop=self.stop_sequences if self.stop_sequences else None,
+                stop_sequences=self.stop_sequences if self.stop_sequences else None,
                 tools=tools
             )
             
