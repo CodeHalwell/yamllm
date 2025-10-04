@@ -1285,9 +1285,36 @@ class LLM:
     # Utility methods
     def update_settings(self, **kwargs):
         """Update instance settings."""
+        # Track which settings affect components
+        component_affecting_keys = {
+            'provider_name', 'model', 'temperature', 'max_tokens', 
+            'top_p', 'stop_sequences'
+        }
+        
+        # Check if any component-affecting settings are being updated
+        reset_components = any(key in component_affecting_keys for key in kwargs.keys())
+        
+        # Update the settings
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
+        
+        # Reset cached components if their settings changed
+        if reset_components:
+            # Invalidate StreamingManager - will be recreated on next use
+            self._streaming_manager = None
+            
+            # Recreate ResponseOrchestrator with new settings
+            self.response_orchestrator = ResponseOrchestrator(
+                provider_client=self.provider_client,
+                provider_name=self.provider_name,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences,
+                logger=self.logger
+            )
     
     def print_settings(self):
         """Print current settings."""
