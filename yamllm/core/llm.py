@@ -661,7 +661,7 @@ class LLM:
             return tools_param
         
         # Use ToolSelector for filtering
-        return self.tool_selector.filter_tools_for_prompt(tools_param, messages)
+        return self.tool_selector.filter_tools_for_prompt(tools_param, messages, gate=gate)
     
     def _process_thinking(self, prompt: str):
         """Process thinking mode if enabled."""
