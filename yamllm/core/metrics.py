@@ -32,7 +32,7 @@ class PerformanceMetrics:
     # Tool metrics
     tool_execution_count: int = 0
     tool_execution_time: float = 0.0
-    tool_execution_times: Dict[str, List[float]] = field(default_factory=lambda: defaultdict(list))
+    tool_execution_times: Dict[str, List[float]] = field(default_factory=dict)
     
     # Cache metrics
     embedding_cache_hits: int = 0
