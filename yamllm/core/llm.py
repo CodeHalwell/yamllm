@@ -13,6 +13,8 @@ import asyncio
 import time
 import re
 import dotenv
+from functools import lru_cache
+from collections import OrderedDict
 
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.core.config_validator import ConfigValidator
@@ -23,6 +25,7 @@ from yamllm.core.error_handler import ErrorHandler
 from yamllm.core.memory_manager import MemoryManager
 from yamllm.core.tool_orchestrator import ToolOrchestrator
 from yamllm.core.thinking import ThinkingManager
+from yamllm.core.metrics import MetricsTracker
 from yamllm.providers.factory import ProviderFactory
 from yamllm.providers.capabilities import get_provider_capabilities
 from yamllm.tools.thread_safe_manager import ThreadSafeToolManager
@@ -127,8 +130,12 @@ class LLM:
         
         # Error handler
         self.error_handler = ErrorHandler(self.logger)
-        # Simple per-process embedding cache
-        self._embedding_cache: Dict[str, List[float]] = {}
+        # LRU embedding cache with configurable size (default: 1000)
+        self._embedding_cache: OrderedDict[str, List[float]] = OrderedDict()
+        self._embedding_cache_size = self.config.get("embedding_cache_size", 1000)
+        
+        # Performance metrics tracker
+        self.metrics = MetricsTracker()
         
         # Extract configuration values
         self._extract_config_values()
@@ -1327,10 +1334,17 @@ class LLM:
             self.logger.error(f"Error storing memory: {e}")
     
     def create_embedding(self, text: str) -> List[float]:
-        """Create embedding for text."""
+        """Create embedding for text with LRU caching (1000 entries)."""
         try:
+            # Check cache and move to end (LRU)
             if text in self._embedding_cache:
+                self._embedding_cache.move_to_end(text)
+                self.metrics.record_embedding_cache_hit()
                 return self._embedding_cache[text]
+            
+            # Cache miss
+            self.metrics.record_embedding_cache_miss()
+            
             # Try provider embeddings first if supported
             if hasattr(self.provider_client, 'create_embedding') and (
                 not self._embeddings_provider_name or 
@@ -1338,9 +1352,7 @@ class LLM:
             ):
                 try:
                     emb = self.provider_client.create_embedding(text, self._embedding_model)
-                    self._embedding_cache[text] = emb
-                    if len(self._embedding_cache) > 64:
-                        self._embedding_cache.pop(next(iter(self._embedding_cache)))
+                    self._cache_embedding(text, emb)
                     return emb
                 except Exception as e:
                     self.logger.debug(f"Provider embeddings failed, falling back to OpenAI: {e}")
@@ -1356,15 +1368,20 @@ class LLM:
                 model=self._embedding_model
             )
             emb = response.data[0].embedding
-            self._embedding_cache[text] = emb
-            if len(self._embedding_cache) > 64:
-                self._embedding_cache.pop(next(iter(self._embedding_cache)))
+            self._cache_embedding(text, emb)
             return emb
             
         except Exception as e:
             masked_error = mask_string(str(e))
             self.logger.error(f"Error creating embedding: {masked_error}")
             raise
+    
+    def _cache_embedding(self, text: str, embedding: List[float]):
+        """Cache an embedding with LRU eviction."""
+        self._embedding_cache[text] = embedding
+        # Evict oldest entry if cache is full
+        if len(self._embedding_cache) > self._embedding_cache_size:
+            self._embedding_cache.popitem(last=False)
     
     def _record_usage(self, response: Any):
         """Record token usage from response."""
@@ -1409,6 +1426,34 @@ class LLM:
     def clear_event_callback(self):
         """Clear event callback."""
         self.event_callback = None
+    
+    # Performance metrics methods
+    def get_metrics_summary(self) -> Dict[str, Any]:
+        """
+        Get performance metrics summary.
+        
+        Returns:
+            Dictionary containing performance metrics including:
+            - Request count and average time
+            - First token latency (avg and p95)
+            - Token usage and throughput
+            - Tool execution statistics
+            - Cache hit rates
+        """
+        return self.metrics.get_summary()
+    
+    def get_prometheus_metrics(self) -> str:
+        """
+        Get performance metrics in Prometheus format.
+        
+        Returns:
+            String containing metrics in Prometheus exposition format
+        """
+        return self.metrics.format_prometheus()
+    
+    def reset_metrics(self):
+        """Reset all performance metrics."""
+        self.metrics.reset()
     
     # Utility methods
     def update_settings(self, **kwargs):
