@@ -1093,7 +1093,7 @@ class LLM:
     
     def _extract_text_from_response(self, response) -> str:
         """Extract text from a non-streaming response."""
-        return self.response_orchestrator._extract_text_from_response(response)
+        return self.response_orchestrator.extract_text_from_response(response)
     
     def _extract_tool_calls(self, response) -> Optional[List[Dict[str, Any]]]:
         """Extract tool calls from response if present."""
