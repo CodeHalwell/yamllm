@@ -130,9 +130,9 @@ class LLM:
         
         # Error handler
         self.error_handler = ErrorHandler(self.logger)
-        # LRU embedding cache with 1000 entries (increased from 64)
+        # LRU embedding cache with configurable size (default: 1000)
         self._embedding_cache: OrderedDict[str, List[float]] = OrderedDict()
-        self._embedding_cache_size = 1000
+        self._embedding_cache_size = self.config.get("embedding_cache_size", 1000)
         
         # Performance metrics tracker
         self.metrics = MetricsTracker()
