@@ -189,37 +189,61 @@ class MetricsTracker:
             self.metrics = PerformanceMetrics()
             self._start_time = time.time()
     
+    def _prometheus_requests(self) -> list:
+        return [
+            "# HELP yamllm_requests_total Total number of requests",
+            "# TYPE yamllm_requests_total counter",
+            f"yamllm_requests_total {self.metrics.request_count}",
+            "",
+            "# HELP yamllm_request_duration_seconds Average request duration",
+            "# TYPE yamllm_request_duration_seconds gauge",
+            f"yamllm_request_duration_seconds {self.metrics.get_avg_request_time():.6f}",
+            "",
+        ]
+
+    def _prometheus_latency(self) -> list:
+        return [
+            "# HELP yamllm_first_token_latency_ms Average first token latency",
+            "# TYPE yamllm_first_token_latency_ms gauge",
+            f"yamllm_first_token_latency_ms {{quantile=\"0.50\"}} {self.metrics.get_avg_first_token_latency():.2f}",
+            f"yamllm_first_token_latency_ms {{quantile=\"0.95\"}} {self.metrics.get_p95_first_token_latency():.2f}",
+            "",
+        ]
+
+    def _prometheus_tokens(self) -> list:
+        return [
+            "# HELP yamllm_tokens_total Total tokens processed",
+            "# TYPE yamllm_tokens_total counter",
+            f"yamllm_tokens_total {{type=\"prompt\"}} {self.metrics.total_prompt_tokens}",
+            f"yamllm_tokens_total {{type=\"completion\"}} {self.metrics.total_completion_tokens}",
+            f"yamllm_tokens_total {{type=\"total\"}} {self.metrics.total_tokens}",
+            "",
+        ]
+
+    def _prometheus_cache(self) -> list:
+        return [
+            "# HELP yamllm_cache_hit_rate Cache hit rate percentage",
+            "# TYPE yamllm_cache_hit_rate gauge",
+            f"yamllm_cache_hit_rate {{cache=\"embedding\"}} {self.metrics.get_embedding_cache_hit_rate():.2f}",
+            f"yamllm_cache_hit_rate {{cache=\"tool_def\"}} {self.metrics.get_tool_def_cache_hit_rate():.2f}",
+            "",
+        ]
+
+    def _prometheus_tools(self) -> list:
+        return [
+            "# HELP yamllm_tool_executions_total Total tool executions",
+            "# TYPE yamllm_tool_executions_total counter",
+            f"yamllm_tool_executions_total {self.metrics.tool_execution_count}",
+            "",
+        ]
+
     def format_prometheus(self) -> str:
         """Format metrics in Prometheus exposition format."""
         with self._lock:
-            lines = [
-                "# HELP yamllm_requests_total Total number of requests",
-                "# TYPE yamllm_requests_total counter",
-                f"yamllm_requests_total {self.metrics.request_count}",
-                "",
-                "# HELP yamllm_request_duration_seconds Average request duration",
-                "# TYPE yamllm_request_duration_seconds gauge",
-                f"yamllm_request_duration_seconds {self.metrics.get_avg_request_time():.6f}",
-                "",
-                "# HELP yamllm_first_token_latency_ms Average first token latency",
-                "# TYPE yamllm_first_token_latency_ms gauge",
-                f"yamllm_first_token_latency_ms {{quantile=\"0.50\"}} {self.metrics.get_avg_first_token_latency():.2f}",
-                f"yamllm_first_token_latency_ms {{quantile=\"0.95\"}} {self.metrics.get_p95_first_token_latency():.2f}",
-                "",
-                "# HELP yamllm_tokens_total Total tokens processed",
-                "# TYPE yamllm_tokens_total counter",
-                f"yamllm_tokens_total {{type=\"prompt\"}} {self.metrics.total_prompt_tokens}",
-                f"yamllm_tokens_total {{type=\"completion\"}} {self.metrics.total_completion_tokens}",
-                f"yamllm_tokens_total {{type=\"total\"}} {self.metrics.total_tokens}",
-                "",
-                "# HELP yamllm_cache_hit_rate Cache hit rate percentage",
-                "# TYPE yamllm_cache_hit_rate gauge",
-                f"yamllm_cache_hit_rate {{cache=\"embedding\"}} {self.metrics.get_embedding_cache_hit_rate():.2f}",
-                f"yamllm_cache_hit_rate {{cache=\"tool_def\"}} {self.metrics.get_tool_def_cache_hit_rate():.2f}",
-                "",
-                "# HELP yamllm_tool_executions_total Total tool executions",
-                "# TYPE yamllm_tool_executions_total counter",
-                f"yamllm_tool_executions_total {self.metrics.tool_execution_count}",
-                "",
-            ]
+            lines = []
+            lines.extend(self._prometheus_requests())
+            lines.extend(self._prometheus_latency())
+            lines.extend(self._prometheus_tokens())
+            lines.extend(self._prometheus_cache())
+            lines.extend(self._prometheus_tools())
             return "\n".join(lines)
