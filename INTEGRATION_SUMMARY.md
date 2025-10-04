@@ -33,25 +33,25 @@ self._streaming_manager: Optional[StreamingManager] = None
 ### 2. Delegated Methods
 
 #### ResponseOrchestrator
-- **`_extract_text_from_response()`** - Delegates to `response_orchestrator._extract_text_from_response()`
+- **`extract_text_from_response()`** - Delegates to `response_orchestrator.extract_text_from_response()`
   - Handles provider-specific response parsing (OpenAI, Anthropic, Google, etc.)
   - Used by both sync and async query methods
 
 #### StreamingManager
-- **`_handle_streaming_response()`** - Delegates to `streaming_manager.handle_streaming_response()`
+- **`handle_streaming_response()`** - Delegates to `streaming_manager.handle_streaming_response()`
   - Handles streaming completion without tools
   - Manages chunk accumulation and callback invocation
-- **`_extract_text_from_chunk()`** - Delegates to `streaming_manager._extract_chunk_text()`
+- **`extract_chunk_text()`** - Delegates to `streaming_manager.extract_chunk_text()`
   - Provider-agnostic chunk text extraction
 - **Lazy initialization** via `_get_streaming_manager()` method
   - Creates StreamingManager only when needed
   - Propagates callbacks to the manager
 
 #### ToolSelector
-- **`_filter_tools_for_prompt()`** - Delegates to `tool_selector.filter_tools_for_prompt()`
+- **`filter_tools_for_prompt()`** - Delegates to `tool_selector.filter_tools_for_prompt()`
   - Filters tools based on prompt intent analysis
   - Returns relevant subset of tools to reduce token usage
-- **`_intent_requires_tools()`** - Delegates to `tool_selector.intent_requires_tools()`
+- **`intent_requires_tools()`** - Delegates to `tool_selector.intent_requires_tools()`
   - Detects whether tools are needed for a given prompt
   - Supports web, calc, time, files, and other intents
 - **Removed duplicate methods:**
