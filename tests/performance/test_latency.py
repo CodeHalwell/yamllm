@@ -152,7 +152,7 @@ class TestMemoryUsage:
     
     def test_embedding_cache_size_limit(self):
         """Test that embedding cache respects size limit."""
-        from yamllm.core.llm import OrderedDict
+        from collections import OrderedDict
         
         cache = OrderedDict()
         cache_size = 1000
