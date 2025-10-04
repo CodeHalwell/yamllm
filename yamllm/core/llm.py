@@ -23,6 +23,9 @@ from yamllm.core.error_handler import ErrorHandler
 from yamllm.core.memory_manager import MemoryManager
 from yamllm.core.tool_orchestrator import ToolOrchestrator
 from yamllm.core.thinking import ThinkingManager
+from yamllm.core.response_orchestrator import ResponseOrchestrator
+from yamllm.core.streaming_manager import StreamingManager
+from yamllm.core.tool_selector import ToolSelector
 from yamllm.providers.factory import ProviderFactory
 from yamllm.providers.capabilities import get_provider_capabilities
 from yamllm.tools.thread_safe_manager import ThreadSafeToolManager
@@ -142,6 +145,20 @@ class LLM:
         self.tool_orchestrator = self._initialize_tools()
         self.thinking_manager = self._initialize_thinking()
         
+        # Initialize modular components
+        self.response_orchestrator = ResponseOrchestrator(
+            provider_client=self.provider_client,
+            provider_name=self.provider_name,
+            model=self.model,
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+            top_p=self.top_p,
+            stop_sequences=self.stop_sequences,
+            logger=self.logger
+        )
+        
+        self.tool_selector = ToolSelector(logger=self.logger)
+        
         # Async components (lazy initialization)
         self._async_provider = None
         self._async_tool_manager = None
@@ -164,6 +181,9 @@ class LLM:
             "total_tokens": 0
         }
         self._tool_call_count = 0
+        
+        # StreamingManager will be initialized lazily when needed
+        self._streaming_manager: Optional[StreamingManager] = None
         
         # MCP client initialization
         self.mcp_client = self._initialize_mcp()
@@ -417,6 +437,23 @@ class LLM:
         # Default
         return 1536
     
+    def _get_streaming_manager(self) -> StreamingManager:
+        """Get or initialize streaming manager."""
+        if self._streaming_manager is None:
+            self._streaming_manager = StreamingManager(
+                provider_client=self.provider_client,
+                provider_name=self.provider_name,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences,
+                stream_callback=self.stream_callback,
+                event_callback=self.event_callback,
+                logger=self.logger
+            )
+        return self._streaming_manager
+    
     # Main query methods
     def query(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
@@ -623,132 +660,8 @@ class LLM:
         if not gate:
             return tools_param
         
-        # Get latest user message
-        prompt_text = ""
-        for m in reversed(messages or []):
-            if m.get("role") == "user":
-                prompt_text = str(m.get("content", ""))
-                break
-        
-        if not prompt_text:
-            return tools_param
-        
-        # Enhanced intent extraction
-        wants = self._extract_intent(prompt_text)
-        explicit_tool = self._extract_explicit_tool(prompt_text)
-
-        if not any(wants.values()) and not explicit_tool:
-            # No strong intent detected; return no tools to minimize token usage
-            return []
-
-        # Map tool intents to names
-        allow: set[str] = set()
-        if wants.get("web"):
-            allow.update({"web_search", "web_scraper", "url_metadata", "web_headlines", "weather"})
-        if wants.get("calc"):
-            allow.update({"calculator"})
-        if wants.get("convert"):
-            allow.update({"unit_converter"})
-        if wants.get("time"):
-            allow.update({"timezone", "datetime"})
-        if wants.get("files"):
-            allow.update({"file_read", "file_search", "csv_preview"})
-        if wants.get("url"):
-            allow.update({"url_metadata", "web_scraper"})
-        if wants.get("csv"):
-            allow.update({"csv_preview", "file_read"})
-        if wants.get("json"):
-            allow.update({"json_tool"})
-        if wants.get("regex"):
-            allow.update({"regex_extract"})
-        if wants.get("hash"):
-            allow.update({"hash_text"})
-        if wants.get("base64"):
-            allow.update({"base64_encode", "base64_decode"})
-        if wants.get("uuid"):
-            allow.update({"uuid"})
-        if explicit_tool:
-            allow.add(explicit_tool)
-
-        # Filter by function name where available
-        filtered: List[Dict[str, Any]] = []
-        for t in tools_param:
-            try:
-                name = t.get("function", {}).get("name") if t.get("type") == "function" else None
-                if not name or name in allow:
-                    filtered.append(t)
-            except Exception:
-                filtered.append(t)
-
-        if not filtered:
-            return tools_param
-        try:
-            self.logger.info(
-                "filtered_tools",
-                extra={
-                    "allow": sorted(allow),
-                    "selected": [
-                        t.get("function", {}).get("name")
-                        for t in filtered
-                        if isinstance(t, dict)
-                    ],
-                },
-            )
-        except Exception:
-            pass
-        return filtered
-
-    def _extract_intent(self, prompt_text: str) -> Dict[str, bool]:
-        """Extract lightweight intents from prompt to guide tool selection."""
-        text = (prompt_text or "").lower()
-        import re
-        domain_hint = re.search(r"\b(?:[a-z0-9-]+\.)+(?:[a-z]{2,})(?:/[^\s]*)?\b", text)
-        explicit_url = re.search(r"https?://[^\s]+", text)
-        command_match = re.search(r"(?:use|call|run|invoke)\s+(?:the\s+)?([a-z0-9_\-]+)\s+tool", text)
-        wants = {
-            "web": any(k in text for k in ("search", "look up", "latest", "today", "current", "news", "headline", "website", "site", "scrape", "scraper", "crawl", "fetch"))
-                    or bool(explicit_url) or bool(domain_hint),
-            "calc": any(k in text for k in ("calculate", "calc", "sum", "difference", "multiply", "divide", "percent", "product"))
-                    or bool(re.search(r"\b\d+\s*([\+\-\*/×÷])\s*\d+", text)),
-            "convert": any(k in text for k in ("convert", "units", "unit", "km", "miles", "celsius", "fahrenheit")),
-            "time": any(k in text for k in ("time in", "timezone", "utc", "pst", "est")),
-            "files": any(k in text for k in ("read file", "open file", "path", "search file", "grep")),
-            "url": bool(explicit_url) or bool(domain_hint),
-            "csv": "csv" in text,
-            "json": "json" in text and any(k in text for k in ("pretty", "minify", "validate")),
-            "regex": "regex" in text or bool(re.search(r"\/[a-zA-Z0-9_\-\.\+\*\?\|\(\)\[\]\{\}]+\/", text)),
-            "hash": "hash" in text or any(k in text for k in ("md5", "sha256", "sha1")),
-            "base64": "base64" in text or any(k in text for k in ("encode", "decode")),
-            "uuid": "uuid" in text,
-            "direct_tool": bool(command_match),
-        }
-        # Expand web intent if explicit URL present
-        if wants["url"]:
-            wants["web"] = True
-        return wants
-
-    def _extract_explicit_tool(self, prompt_text: str) -> Optional[str]:
-        text = (prompt_text or "").lower()
-        matches = re.findall(r"(?:use|call|run|invoke)\s+(?:the\s+)?([a-z0-9_\-]+)\s+tool", text)
-        if not matches:
-            bare_match = re.search(r"\buse\s+(webscrape|webscraper|web_scraper|webscraping)\b", text)
-            if bare_match:
-                matches = [bare_match.group(1)]
-        if not matches:
-            return None
-        alias_map = {
-            "webscrape": "web_scraper",
-            "webscraper": "web_scraper",
-            "web_scraper": "web_scraper",
-            "webscraping": "web_scraper",
-            "scrape": "web_scraper",
-            "scraper": "web_scraper",
-            "websearch": "web_search",
-            "search": "web_search",
-            "calc": "calculator",
-        }
-        requested = matches[-1].replace('-', '_')
-        return alias_map.get(requested, requested)
+        # Use ToolSelector for filtering
+        return self.tool_selector.filter_tools_for_prompt(tools_param, messages, gate=gate)
     
     def _process_thinking(self, prompt: str):
         """Process thinking mode if enabled."""
@@ -930,22 +843,7 @@ class LLM:
 
     def _intent_requires_tools(self, prompt_text: str) -> bool:
         """Heuristic to decide whether tools are likely needed for this prompt."""
-        text = (prompt_text or "").lower()
-        want_web = any(k in text for k in (
-            "search", "look up", "latest", "today", "current", "news", "headline", "website", "scrape", "scraper", "crawl", "fetch"
-        ))
-        if not want_web:
-            if re.search(r"https?://", text) or re.search(r"\b(?:[a-z0-9-]+\.)+(?:[a-z]{2,})(?:/[^\s]*)?\b", text):
-                want_web = True
-        want_calc = any(k in text for k in ("calculate", "calculator", "calc", "sum", "difference", "multiply", "divide", "percent"))
-        want_convert = any(k in text for k in ("convert", "units", "unit", "km", "miles", "celsius", "fahrenheit"))
-        want_time = any(k in text for k in ("time in", "timezone", "utc", "pst", "est"))
-        want_files = any(k in text for k in ("read file", "open file", "path", "csv", "search file", "grep"))
-        # Detect arithmetic expressions like 1234*4321, including unicode × ÷
-        if not want_calc:
-            if re.search(r"\b\d+\s*([\+\-\*/×÷])\s*\d+(\s*([\+\-\*/×÷])\s*\d+)*\b", text):
-                want_calc = True
-        return any([want_web, want_calc, want_convert, want_time, want_files])
+        return self.tool_selector.intent_requires_tools(prompt_text)
 
     def _get_last_user_message(self, messages: Optional[List[Dict[str, Any]]]) -> str:
         if not messages:
@@ -1138,25 +1036,8 @@ class LLM:
     def _handle_streaming_response(self, messages: List[Dict[str, str]]) -> str:
         """Handle streaming response from the model."""
         try:
-            response = self.provider_client.get_streaming_completion(
-                messages=messages,
-                model=self.model,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-                top_p=self.top_p,
-                stop_sequences=self.stop_sequences
-            )
-            
-            response_text = ""
-            for chunk in response:
-                chunk_text = self._extract_text_from_chunk(chunk)
-                if chunk_text:
-                    response_text += chunk_text
-                    if self.stream_callback:
-                        self.stream_callback(chunk_text)
-            
-            return response_text
-            
+            streaming_manager = self._get_streaming_manager()
+            return streaming_manager.handle_streaming_response(messages)
         except Exception as e:
             error = self.error_handler.handle_provider_error(
                 e, self.provider_name, {"model": self.model}
@@ -1202,34 +1083,17 @@ class LLM:
     
     def _extract_text_from_chunk(self, chunk) -> str:
         """Extract text from a streaming chunk."""
-        if self.provider_name.lower() in ("openai", "azure_openai", "mistral", "openrouter", "deepseek"):
-            if hasattr(chunk, 'choices') and chunk.choices:
-                if hasattr(chunk.choices[0], 'delta'):
-                    return chunk.choices[0].delta.content or ""
-        elif self.provider_name.lower() == "anthropic":
-            if isinstance(chunk, dict):
-                if chunk.get("type") == "content_block_delta":
-                    return chunk.get("delta", {}).get("text", "")
-        elif self.provider_name.lower() == "google":
-            return getattr(chunk, "text", "")
-        
-        return ""
+        # Prefer public method extract_chunk_text; fallback to private if not available
+        streaming_manager = self._get_streaming_manager()
+        if hasattr(streaming_manager, "extract_chunk_text"):
+            return streaming_manager.extract_chunk_text(chunk)
+        else:
+            # TODO: Remove fallback once extract_chunk_text is public in StreamingManager
+            return streaming_manager._extract_chunk_text(chunk)
     
     def _extract_text_from_response(self, response) -> str:
         """Extract text from a non-streaming response."""
-        if self.provider_name.lower() in ("openai", "azure_openai", "mistral", "openrouter", "deepseek"):
-            if hasattr(response, 'choices') and response.choices:
-                return response.choices[0].message.content or ""
-        elif self.provider_name.lower() == "anthropic":
-            if isinstance(response, dict):
-                content = response.get("content", [])
-                if content and isinstance(content[0], dict):
-                    return content[0].get("text", "")
-        elif self.provider_name.lower() == "google":
-            if hasattr(response, 'text'):
-                return response.text
-        
-        return str(response)
+        return self.response_orchestrator.extract_text_from_response(response)
     
     def _extract_tool_calls(self, response) -> Optional[List[Dict[str, Any]]]:
         """Extract tool calls from response if present."""
@@ -1397,25 +1261,60 @@ class LLM:
     def set_stream_callback(self, callback: Callable[[str], None]):
         """Set streaming callback."""
         self.stream_callback = callback
+        if self._streaming_manager:
+            self._streaming_manager.stream_callback = callback
     
     def clear_stream_callback(self):
         """Clear streaming callback."""
         self.stream_callback = None
+        if self._streaming_manager:
+            self._streaming_manager.stream_callback = None
     
     def set_event_callback(self, callback: Callable[[Dict[str, Any]], None]):
         """Set event callback."""
         self.event_callback = callback
+        if self._streaming_manager:
+            self._streaming_manager.event_callback = callback
     
     def clear_event_callback(self):
         """Clear event callback."""
         self.event_callback = None
+        if self._streaming_manager:
+            self._streaming_manager.event_callback = None
     
     # Utility methods
     def update_settings(self, **kwargs):
         """Update instance settings."""
+        # Track which settings affect components
+        component_affecting_keys = {
+            'provider_name', 'model', 'temperature', 'max_tokens', 
+            'top_p', 'stop_sequences'
+        }
+        
+        # Check if any component-affecting settings are being updated
+        reset_components = any(key in component_affecting_keys for key in kwargs.keys())
+        
+        # Update the settings
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
+        
+        # Reset cached components if their settings changed
+        if reset_components:
+            # Invalidate StreamingManager - will be recreated on next use
+            self._streaming_manager = None
+            
+            # Recreate ResponseOrchestrator with new settings
+            self.response_orchestrator = ResponseOrchestrator(
+                provider_client=self.provider_client,
+                provider_name=self.provider_name,
+                model=self.model,
+                temperature=self.temperature,
+                max_tokens=self.max_tokens,
+                top_p=self.top_p,
+                stop_sequences=self.stop_sequences,
+                logger=self.logger
+            )
     
     def print_settings(self):
         """Print current settings."""
