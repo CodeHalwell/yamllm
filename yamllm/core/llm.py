@@ -1083,7 +1083,13 @@ class LLM:
     
     def _extract_text_from_chunk(self, chunk) -> str:
         """Extract text from a streaming chunk."""
-        return self._get_streaming_manager()._extract_chunk_text(chunk)
+        # Prefer public method extract_chunk_text; fallback to private if not available
+        streaming_manager = self._get_streaming_manager()
+        if hasattr(streaming_manager, "extract_chunk_text"):
+            return streaming_manager.extract_chunk_text(chunk)
+        else:
+            # TODO: Remove fallback once extract_chunk_text is public in StreamingManager
+            return streaming_manager._extract_chunk_text(chunk)
     
     def _extract_text_from_response(self, response) -> str:
         """Extract text from a non-streaming response."""
