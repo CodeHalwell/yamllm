@@ -1,7 +1,7 @@
 """Collaborative multi-agent system for coordinated task execution."""
 
 import logging
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any, List
 from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime

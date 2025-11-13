@@ -1,14 +1,12 @@
 """CLI commands for P2 features: Multi-Agent and Learning System."""
 
 import click
-import logging
-from pathlib import Path
+import json
+
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.tree import Tree
 from rich import box
-import json
 
 
 console = Console()

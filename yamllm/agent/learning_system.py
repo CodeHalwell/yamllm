@@ -5,7 +5,6 @@ import json
 from typing import Optional, Dict, Any, List, Tuple
 from dataclasses import dataclass, field, asdict
 from datetime import datetime
-from pathlib import Path
 from collections import defaultdict
 from enum import Enum
 import sqlite3
@@ -178,42 +177,49 @@ class ExperienceStore:
         Returns:
             List of experiences
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
 
-            query = "SELECT * FROM experiences WHERE 1=1"
-            params = []
+                query = "SELECT * FROM experiences WHERE 1=1"
+                params = []
 
-            if outcome:
-                query += " AND outcome = ?"
-                params.append(outcome.value)
+                if outcome:
+                    query += " AND outcome = ?"
+                    params.append(outcome.value)
 
-            if task_pattern:
-                query += " AND task_description LIKE ?"
-                params.append(f"%{task_pattern}%")
+                if task_pattern:
+                    query += " AND task_description LIKE ?"
+                    params.append(f"%{task_pattern}%")
 
-            query += " ORDER BY timestamp DESC LIMIT ?"
-            params.append(limit)
+                query += " ORDER BY timestamp DESC LIMIT ?"
+                params.append(limit)
 
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
 
-            experiences = []
-            for row in rows:
-                experiences.append(Experience(
-                    experience_id=row[0],
-                    task_description=row[1],
-                    context=json.loads(row[2]) if row[2] else {},
-                    actions_taken=json.loads(row[3]) if row[3] else [],
-                    outcome=OutcomeType(row[4]),
-                    outcome_details=json.loads(row[5]) if row[5] else {},
-                    duration_seconds=row[6],
-                    timestamp=datetime.fromisoformat(row[7]),
-                    agent_state=json.loads(row[8]) if row[8] else None,
-                    metadata=json.loads(row[9]) if row[9] else {}
-                ))
+                experiences = []
+                for row in rows:
+                    try:
+                        experiences.append(Experience(
+                            experience_id=row[0],
+                            task_description=row[1],
+                            context=json.loads(row[2]) if row[2] else {},
+                            actions_taken=json.loads(row[3]) if row[3] else [],
+                            outcome=OutcomeType(row[4]),
+                            outcome_details=json.loads(row[5]) if row[5] else {},
+                            duration_seconds=row[6],
+                            timestamp=datetime.fromisoformat(row[7]),
+                            agent_state=json.loads(row[8]) if row[8] else None,
+                            metadata=json.loads(row[9]) if row[9] else {}
+                        ))
+                    except (json.JSONDecodeError, ValueError, KeyError):
+                        # Skip malformed rows
+                        continue
 
-            return experiences
+                return experiences
+        except sqlite3.Error as e:
+            raise RuntimeError(f"Failed to retrieve experiences: {e}") from e
 
     def store_insight(self, insight: LearningInsight):
         """Store a learning insight."""
@@ -255,37 +261,44 @@ class ExperienceStore:
         Returns:
             List of insights
         """
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
 
-            query = "SELECT * FROM insights WHERE confidence >= ?"
-            params = [min_confidence]
+                query = "SELECT * FROM insights WHERE confidence >= ?"
+                params = [min_confidence]
 
-            if improvement_type:
-                query += " AND improvement_type = ?"
-                params.append(improvement_type.value)
+                if improvement_type:
+                    query += " AND improvement_type = ?"
+                    params.append(improvement_type.value)
 
-            query += " ORDER BY confidence DESC, evidence_count DESC"
+                query += " ORDER BY confidence DESC, evidence_count DESC"
 
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
 
-            insights = []
-            for row in rows:
-                insights.append(LearningInsight(
-                    insight_id=row[0],
-                    improvement_type=ImprovementType(row[1]),
-                    pattern=row[2],
-                    confidence=row[3],
-                    evidence_count=row[4],
-                    success_rate=row[5],
-                    context_conditions=json.loads(row[6]) if row[6] else {},
-                    recommendation=row[7],
-                    created_at=datetime.fromisoformat(row[8]),
-                    last_updated=datetime.fromisoformat(row[9])
-                ))
+                insights = []
+                for row in rows:
+                    try:
+                        insights.append(LearningInsight(
+                            insight_id=row[0],
+                            improvement_type=ImprovementType(row[1]),
+                            pattern=row[2],
+                            confidence=row[3],
+                            evidence_count=row[4],
+                            success_rate=row[5],
+                            context_conditions=json.loads(row[6]) if row[6] else {},
+                            recommendation=row[7],
+                            created_at=datetime.fromisoformat(row[8]),
+                            last_updated=datetime.fromisoformat(row[9])
+                        ))
+                    except (json.JSONDecodeError, ValueError, KeyError):
+                        # Skip malformed rows
+                        continue
 
-            return insights
+                return insights
+        except sqlite3.Error as e:
+            raise RuntimeError(f"Failed to retrieve insights: {e}") from e
 
 
 class PatternAnalyzer:
@@ -667,29 +680,37 @@ class LearningSystem:
 
         Args:
             output_path: Path to export file
+
+        Raises:
+            RuntimeError: If export fails
         """
-        insights = self.experience_store.get_insights(min_confidence=0.3)
+        try:
+            insights = self.experience_store.get_insights(min_confidence=0.3)
 
-        knowledge = {
-            "exported_at": datetime.now().isoformat(),
-            "metrics": asdict(self.performance_metrics),
-            "insights": [
-                {
-                    "id": i.insight_id,
-                    "type": i.improvement_type.value,
-                    "pattern": i.pattern,
-                    "confidence": i.confidence,
-                    "evidence_count": i.evidence_count,
-                    "recommendation": i.recommendation
-                }
-                for i in insights
-            ]
-        }
+            knowledge = {
+                "exported_at": datetime.now().isoformat(),
+                "metrics": asdict(self.performance_metrics),
+                "insights": [
+                    {
+                        "id": i.insight_id,
+                        "type": i.improvement_type.value,
+                        "pattern": i.pattern,
+                        "confidence": i.confidence,
+                        "evidence_count": i.evidence_count,
+                        "recommendation": i.recommendation
+                    }
+                    for i in insights
+                ]
+            }
 
-        with open(output_path, 'w') as f:
-            json.dump(knowledge, f, indent=2)
+            with open(output_path, 'w') as f:
+                json.dump(knowledge, f, indent=2)
 
-        self.logger.info(f"Exported knowledge to {output_path}")
+            self.logger.info(f"Exported knowledge to {output_path}")
+        except (IOError, OSError) as e:
+            raise RuntimeError(f"Failed to export knowledge to {output_path}: {e}") from e
+        except Exception as e:
+            raise RuntimeError(f"Unexpected error during knowledge export: {e}") from e
 
     def import_knowledge(self, input_path: str):
         """
@@ -697,21 +718,36 @@ class LearningSystem:
 
         Args:
             input_path: Path to import file
+
+        Raises:
+            RuntimeError: If import fails
         """
-        with open(input_path, 'r') as f:
-            knowledge = json.load(f)
+        try:
+            with open(input_path, 'r') as f:
+                knowledge = json.load(f)
 
-        for insight_data in knowledge.get("insights", []):
-            insight = LearningInsight(
-                insight_id=insight_data["id"],
-                improvement_type=ImprovementType(insight_data["type"]),
-                pattern=insight_data["pattern"],
-                confidence=insight_data["confidence"],
-                evidence_count=insight_data["evidence_count"],
-                success_rate=0.0,  # Will be recalculated
-                context_conditions={},
-                recommendation=insight_data["recommendation"]
-            )
-            self.experience_store.store_insight(insight)
+            for insight_data in knowledge.get("insights", []):
+                try:
+                    insight = LearningInsight(
+                        insight_id=insight_data["id"],
+                        improvement_type=ImprovementType(insight_data["type"]),
+                        pattern=insight_data["pattern"],
+                        confidence=insight_data["confidence"],
+                        evidence_count=insight_data["evidence_count"],
+                        success_rate=0.0,  # Will be recalculated
+                        context_conditions={},
+                        recommendation=insight_data["recommendation"]
+                    )
+                    self.experience_store.store_insight(insight)
+                except (KeyError, ValueError) as e:
+                    # Skip malformed insight data
+                    self.logger.warning(f"Skipping malformed insight: {e}")
+                    continue
 
-        self.logger.info(f"Imported knowledge from {input_path}")
+            self.logger.info(f"Imported knowledge from {input_path}")
+        except (IOError, OSError) as e:
+            raise RuntimeError(f"Failed to read knowledge file {input_path}: {e}") from e
+        except json.JSONDecodeError as e:
+            raise RuntimeError(f"Invalid JSON in knowledge file {input_path}: {e}") from e
+        except Exception as e:
+            raise RuntimeError(f"Unexpected error during knowledge import: {e}") from e
