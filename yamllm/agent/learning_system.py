@@ -87,81 +87,79 @@ class ExperienceStore:
 
     def _init_database(self):
         """Initialize database schema."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
 
-        # Experiences table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS experiences (
-                experience_id TEXT PRIMARY KEY,
-                task_description TEXT NOT NULL,
-                context TEXT,
-                actions_taken TEXT,
-                outcome TEXT NOT NULL,
-                outcome_details TEXT,
-                duration_seconds REAL,
-                timestamp TEXT,
-                agent_state TEXT,
-                metadata TEXT
-            )
-        """)
+            # Experiences table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS experiences (
+                    experience_id TEXT PRIMARY KEY,
+                    task_description TEXT NOT NULL,
+                    context TEXT,
+                    actions_taken TEXT,
+                    outcome TEXT NOT NULL,
+                    outcome_details TEXT,
+                    duration_seconds REAL,
+                    timestamp TEXT,
+                    agent_state TEXT,
+                    metadata TEXT
+                )
+            """)
 
-        # Insights table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS insights (
-                insight_id TEXT PRIMARY KEY,
-                improvement_type TEXT NOT NULL,
-                pattern TEXT NOT NULL,
-                confidence REAL,
-                evidence_count INTEGER,
-                success_rate REAL,
-                context_conditions TEXT,
-                recommendation TEXT,
-                created_at TEXT,
-                last_updated TEXT
-            )
-        """)
+            # Insights table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS insights (
+                    insight_id TEXT PRIMARY KEY,
+                    improvement_type TEXT NOT NULL,
+                    pattern TEXT NOT NULL,
+                    confidence REAL,
+                    evidence_count INTEGER,
+                    success_rate REAL,
+                    context_conditions TEXT,
+                    recommendation TEXT,
+                    created_at TEXT,
+                    last_updated TEXT
+                )
+            """)
 
-        # Metrics table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS metrics (
-                metric_date TEXT PRIMARY KEY,
-                total_tasks INTEGER,
-                successful_tasks INTEGER,
-                failed_tasks INTEGER,
-                average_duration REAL,
-                success_rate REAL
-            )
-        """)
+            # Metrics table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS metrics (
+                    metric_date TEXT PRIMARY KEY,
+                    total_tasks INTEGER,
+                    successful_tasks INTEGER,
+                    failed_tasks INTEGER,
+                    average_duration REAL,
+                    success_rate REAL
+                )
+            """)
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
     def store_experience(self, experience: Experience):
         """Store an experience."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            INSERT OR REPLACE INTO experiences
-            (experience_id, task_description, context, actions_taken, outcome,
-             outcome_details, duration_seconds, timestamp, agent_state, metadata)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            experience.experience_id,
-            experience.task_description,
-            json.dumps(experience.context),
-            json.dumps(experience.actions_taken),
-            experience.outcome.value,
-            json.dumps(experience.outcome_details),
-            experience.duration_seconds,
-            experience.timestamp.isoformat(),
-            json.dumps(experience.agent_state) if experience.agent_state else None,
-            json.dumps(experience.metadata)
-        ))
+            cursor.execute("""
+                INSERT OR REPLACE INTO experiences
+                (experience_id, task_description, context, actions_taken, outcome,
+                 outcome_details, duration_seconds, timestamp, agent_state, metadata)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                experience.experience_id,
+                experience.task_description,
+                json.dumps(experience.context),
+                json.dumps(experience.actions_taken),
+                experience.outcome.value,
+                json.dumps(experience.outcome_details),
+                experience.duration_seconds,
+                experience.timestamp.isoformat(),
+                json.dumps(experience.agent_state) if experience.agent_state else None,
+                json.dumps(experience.metadata)
+            ))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
     def get_experiences(
         self,
@@ -180,69 +178,67 @@ class ExperienceStore:
         Returns:
             List of experiences
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
 
-        query = "SELECT * FROM experiences WHERE 1=1"
-        params = []
+            query = "SELECT * FROM experiences WHERE 1=1"
+            params = []
 
-        if outcome:
-            query += " AND outcome = ?"
-            params.append(outcome.value)
+            if outcome:
+                query += " AND outcome = ?"
+                params.append(outcome.value)
 
-        if task_pattern:
-            query += " AND task_description LIKE ?"
-            params.append(f"%{task_pattern}%")
+            if task_pattern:
+                query += " AND task_description LIKE ?"
+                params.append(f"%{task_pattern}%")
 
-        query += " ORDER BY timestamp DESC LIMIT ?"
-        params.append(limit)
+            query += " ORDER BY timestamp DESC LIMIT ?"
+            params.append(limit)
 
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        conn.close()
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
 
-        experiences = []
-        for row in rows:
-            experiences.append(Experience(
-                experience_id=row[0],
-                task_description=row[1],
-                context=json.loads(row[2]) if row[2] else {},
-                actions_taken=json.loads(row[3]) if row[3] else [],
-                outcome=OutcomeType(row[4]),
-                outcome_details=json.loads(row[5]) if row[5] else {},
-                duration_seconds=row[6],
-                timestamp=datetime.fromisoformat(row[7]),
-                agent_state=json.loads(row[8]) if row[8] else None,
-                metadata=json.loads(row[9]) if row[9] else {}
-            ))
+            experiences = []
+            for row in rows:
+                experiences.append(Experience(
+                    experience_id=row[0],
+                    task_description=row[1],
+                    context=json.loads(row[2]) if row[2] else {},
+                    actions_taken=json.loads(row[3]) if row[3] else [],
+                    outcome=OutcomeType(row[4]),
+                    outcome_details=json.loads(row[5]) if row[5] else {},
+                    duration_seconds=row[6],
+                    timestamp=datetime.fromisoformat(row[7]),
+                    agent_state=json.loads(row[8]) if row[8] else None,
+                    metadata=json.loads(row[9]) if row[9] else {}
+                ))
 
-        return experiences
+            return experiences
 
     def store_insight(self, insight: LearningInsight):
         """Store a learning insight."""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
 
-        cursor.execute("""
-            INSERT OR REPLACE INTO insights
-            (insight_id, improvement_type, pattern, confidence, evidence_count,
-             success_rate, context_conditions, recommendation, created_at, last_updated)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            insight.insight_id,
-            insight.improvement_type.value,
-            insight.pattern,
-            insight.confidence,
-            insight.evidence_count,
-            insight.success_rate,
-            json.dumps(insight.context_conditions),
-            insight.recommendation,
-            insight.created_at.isoformat(),
-            insight.last_updated.isoformat()
-        ))
+            cursor.execute("""
+                INSERT OR REPLACE INTO insights
+                (insight_id, improvement_type, pattern, confidence, evidence_count,
+                 success_rate, context_conditions, recommendation, created_at, last_updated)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                insight.insight_id,
+                insight.improvement_type.value,
+                insight.pattern,
+                insight.confidence,
+                insight.evidence_count,
+                insight.success_rate,
+                json.dumps(insight.context_conditions),
+                insight.recommendation,
+                insight.created_at.isoformat(),
+                insight.last_updated.isoformat()
+            ))
 
-        conn.commit()
-        conn.close()
+            conn.commit()
 
     def get_insights(
         self,
@@ -259,38 +255,37 @@ class ExperienceStore:
         Returns:
             List of insights
         """
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        with sqlite3.connect(self.db_path) as conn:
+            cursor = conn.cursor()
 
-        query = "SELECT * FROM insights WHERE confidence >= ?"
-        params = [min_confidence]
+            query = "SELECT * FROM insights WHERE confidence >= ?"
+            params = [min_confidence]
 
-        if improvement_type:
-            query += " AND improvement_type = ?"
-            params.append(improvement_type.value)
+            if improvement_type:
+                query += " AND improvement_type = ?"
+                params.append(improvement_type.value)
 
-        query += " ORDER BY confidence DESC, evidence_count DESC"
+            query += " ORDER BY confidence DESC, evidence_count DESC"
 
-        cursor.execute(query, params)
-        rows = cursor.fetchall()
-        conn.close()
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
 
-        insights = []
-        for row in rows:
-            insights.append(LearningInsight(
-                insight_id=row[0],
-                improvement_type=ImprovementType(row[1]),
-                pattern=row[2],
-                confidence=row[3],
-                evidence_count=row[4],
-                success_rate=row[5],
-                context_conditions=json.loads(row[6]) if row[6] else {},
-                recommendation=row[7],
-                created_at=datetime.fromisoformat(row[8]),
-                last_updated=datetime.fromisoformat(row[9])
-            ))
+            insights = []
+            for row in rows:
+                insights.append(LearningInsight(
+                    insight_id=row[0],
+                    improvement_type=ImprovementType(row[1]),
+                    pattern=row[2],
+                    confidence=row[3],
+                    evidence_count=row[4],
+                    success_rate=row[5],
+                    context_conditions=json.loads(row[6]) if row[6] else {},
+                    recommendation=row[7],
+                    created_at=datetime.fromisoformat(row[8]),
+                    last_updated=datetime.fromisoformat(row[9])
+                ))
 
-        return insights
+            return insights
 
 
 class PatternAnalyzer:

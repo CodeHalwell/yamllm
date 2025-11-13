@@ -14,6 +14,26 @@ import json
 console = Console()
 
 
+# Helper functions
+def _get_llm(config: str = None, model: str = "gpt-4"):
+    """
+    Get LLM instance from config or create default.
+
+    Args:
+        config: Optional config file path
+        model: Default model to use if no config provided
+
+    Returns:
+        LLM instance
+    """
+    from yamllm import LLM
+
+    if config:
+        return LLM(config_file=config)
+    else:
+        return LLM(provider="openai", model=model)
+
+
 @click.group(name="multi-agent")
 def multi_agent_group():
     """Multi-agent collaboration commands."""
@@ -34,7 +54,6 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
         yamllm multi-agent execute "Build a REST API" --roles coder --roles reviewer --roles tester
     """
     try:
-        from yamllm import LLM
         from yamllm.agent.multi_agent import (
             AgentCoordinator, CollaborativeAgent, AgentCapability, AgentRole
         )
@@ -43,11 +62,9 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
         console.print(f"[yellow]Goal:[/yellow] {goal}\n")
 
         # Load LLM
-        if config:
-            llm = LLM(config_file=config)
-        else:
+        llm = _get_llm(config)
+        if not config:
             console.print("[yellow]No config provided, using default OpenAI GPT-4[/yellow]")
-            llm = LLM(provider="openai", model="gpt-4")
 
         # Create coordinator
         coordinator = AgentCoordinator(coordinator_llm=llm)
@@ -165,14 +182,13 @@ def record_experience(task_description: str, outcome: str, duration: float, acti
     """
     try:
         from yamllm.agent.learning_system import LearningSystem, OutcomeType
-        from yamllm import LLM
 
         # Parse actions
         actions_list = json.loads(actions) if actions else []
         details_dict = json.loads(details) if details else {}
 
         # Create learning system (requires LLM for analysis)
-        llm = LLM(provider="openai", model="gpt-4")
+        llm = _get_llm()
         learning = LearningSystem(llm, storage_path=db)
 
         # Record experience
@@ -209,15 +225,11 @@ def analyze_learning(config: str, db: str, min_experiences: int, verbose: bool):
     """
     try:
         from yamllm.agent.learning_system import LearningSystem
-        from yamllm import LLM
 
         console.print("[bold cyan]Learning Analysis[/bold cyan]\n")
 
         # Load LLM
-        if config:
-            llm = LLM(config_file=config)
-        else:
-            llm = LLM(provider="openai", model="gpt-4")
+        llm = _get_llm(config)
 
         # Create learning system
         learning = LearningSystem(llm, storage_path=db)
@@ -275,15 +287,11 @@ def get_recommendations(task_description: str, config: str, db: str):
     """
     try:
         from yamllm.agent.learning_system import LearningSystem
-        from yamllm import LLM
 
         console.print(f"[bold cyan]Recommendations for:[/bold cyan] {task_description}\n")
 
         # Load LLM
-        if config:
-            llm = LLM(config_file=config)
-        else:
-            llm = LLM(provider="openai", model="gpt-4")
+        llm = _get_llm(config)
 
         # Create learning system
         learning = LearningSystem(llm, storage_path=db)
@@ -317,10 +325,9 @@ def show_metrics(db: str, export: str):
     """
     try:
         from yamllm.agent.learning_system import LearningSystem
-        from yamllm import LLM
 
         # Create learning system
-        llm = LLM(provider="openai", model="gpt-4")
+        llm = _get_llm()
         learning = LearningSystem(llm, storage_path=db)
 
         # Get metrics
@@ -388,13 +395,9 @@ def export_knowledge(output_path: str, config: str, db: str):
     """
     try:
         from yamllm.agent.learning_system import LearningSystem
-        from yamllm import LLM
 
         # Load LLM
-        if config:
-            llm = LLM(config_file=config)
-        else:
-            llm = LLM(provider="openai", model="gpt-4")
+        llm = _get_llm(config)
 
         # Create learning system
         learning = LearningSystem(llm, storage_path=db)
@@ -422,13 +425,9 @@ def import_knowledge(input_path: str, config: str, db: str):
     """
     try:
         from yamllm.agent.learning_system import LearningSystem
-        from yamllm import LLM
 
         # Load LLM
-        if config:
-            llm = LLM(config_file=config)
-        else:
-            llm = LLM(provider="openai", model="gpt-4")
+        llm = _get_llm(config)
 
         # Create learning system
         learning = LearningSystem(llm, storage_path=db)
