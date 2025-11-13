@@ -137,6 +137,6 @@ Important:
             if hasattr(self.llm, 'tool_orchestrator') and self.llm.tool_orchestrator:
                 tools = self.llm.tool_orchestrator.tool_manager.list()
                 return ", ".join(tools)
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.warning(f"Failed to list available tools: {e}")
         return "Tools available through LLM"
