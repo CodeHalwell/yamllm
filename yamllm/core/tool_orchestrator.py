@@ -19,6 +19,10 @@ from yamllm.tools.utility_tools import (
     LoremIpsumTool, FileReadTool, FileSearchTool, CSVPreviewTool,
     URLMetadataTool, WebHeadlinesTool, ToolsHelpTool
 )
+from yamllm.tools.git_tools import (
+    GitStatusTool, GitDiffTool, GitLogTool, GitBranchTool,
+    GitCommitTool, GitPushTool, GitPullTool
+)
 
 
 class ToolOrchestrator:
@@ -56,6 +60,13 @@ class ToolOrchestrator:
         "csv_preview": CSVPreviewTool,
         "url_metadata": URLMetadataTool,
         "web_headlines": WebHeadlinesTool,
+        "git_status": GitStatusTool,
+        "git_diff": GitDiffTool,
+        "git_log": GitLogTool,
+        "git_branch": GitBranchTool,
+        "git_commit": GitCommitTool,
+        "git_push": GitPushTool,
+        "git_pull": GitPullTool,
     }
     
     # Tool pack definitions
@@ -72,10 +83,15 @@ class ToolOrchestrator:
         "crypto": ["hash_text", "base64_encode", "base64_decode"],
         "numbers": ["random_number", "unit_converter"],
         "time": ["datetime", "timezone"],
+        "git": [
+            "git_status", "git_diff", "git_log", "git_branch",
+            "git_commit", "git_push", "git_pull"
+        ],
         "dev": [
             "json_tool", "regex_extract", "hash_text", "base64_encode",
             "base64_decode", "file_read", "file_search", "csv_preview",
-            "uuid", "random_string"
+            "uuid", "random_string", "git_status", "git_diff", "git_log",
+            "git_branch", "git_commit"
         ],
         "all": []  # Special case - includes all tools
     }
