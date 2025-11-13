@@ -35,6 +35,8 @@ def setup_agent_commands(subparsers):
     run_parser.add_argument("--context", help="JSON context file")
     run_parser.add_argument("--max-iterations", type=int, default=10, help="Max iterations")
     run_parser.add_argument("--simple", action="store_true", help="Use simple agent (no planning)")
+    run_parser.add_argument("--interactive", "-i", action="store_true", help="Enable interactive steering")
+    run_parser.add_argument("--auto-approve", action="store_true", help="Auto-approve all actions (with interactive)")
     run_parser.add_argument("--output", "-o", help="Save result to file")
     run_parser.set_defaults(func=run_agent)
 
@@ -98,23 +100,47 @@ def run_agent(args: argparse.Namespace) -> int:
             agent = Agent(llm, max_iterations=args.max_iterations)
             console.print(f"[cyan]Using full Agent (max {args.max_iterations} iterations)[/cyan]")
 
-        # Create UI
-        ui = AgentUI(console)
+        # Check for interactive mode
+        if args.interactive:
+            from yamllm.agent.interactive_steering import InteractiveAgent, InteractiveSteering
 
-        # Setup progress callback
-        def progress_callback(state):
-            ui.render_full_state(state)
+            console.print("[bold cyan]Interactive mode enabled![/bold cyan]")
+            console.print("[dim]You will be able to review and approve each action.[/dim]\n")
 
-        agent.progress_callback = progress_callback
+            # Create steering controller
+            steering = InteractiveSteering(
+                console=console,
+                auto_approve=args.auto_approve,
+                pause_before_action=True
+            )
 
-        # Execute
-        console.print(f"\n[bold green]Starting agent execution...[/bold green]\n")
-        console.print(f"[bold]Goal:[/bold] {args.goal}\n")
+            # Wrap agent with interactive control
+            interactive_agent = InteractiveAgent(agent, steering=steering)
 
-        state = agent.execute(args.goal, context)
+            # Execute with interactive control
+            console.print(f"\n[bold green]Starting interactive agent execution...[/bold green]\n")
+            console.print(f"[bold]Goal:[/bold] {args.goal}\n")
+
+            state = interactive_agent.execute(args.goal, context)
+        else:
+            # Create UI
+            ui = AgentUI(console)
+
+            # Setup progress callback
+            def progress_callback(state):
+                ui.render_full_state(state)
+
+            agent.progress_callback = progress_callback
+
+            # Execute
+            console.print(f"\n[bold green]Starting agent execution...[/bold green]\n")
+            console.print(f"[bold]Goal:[/bold] {args.goal}\n")
+
+            state = agent.execute(args.goal, context)
 
         # Show completion
         console.print("\n")
+        ui = AgentUI(console)
         ui.render_completion(state)
 
         # Save output if requested

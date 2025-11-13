@@ -18,6 +18,10 @@ from .tools.dynamic_tool_creator import ToolCreator, DynamicTool, ToolValidator
 from .code.context_intelligence import CodeContextIntelligence, CodeSymbol, SymbolType
 from .tools.advanced_git import AdvancedGitWorkflow, BranchStrategy, ConflictResolutionStrategy
 
+# P1+: Interactive Steering
+from .agent.interactive_steering import InteractiveAgent, InteractiveSteering, SteeringAction, SteeringDecision
+from .ui.steering_ui import SteeringUI
+
 __version__ = "0.1.12"
 
 __all__ = [
@@ -76,4 +80,10 @@ __all__ = [
     "AdvancedGitWorkflow",
     "BranchStrategy",
     "ConflictResolutionStrategy",
+    # P1+: Interactive Steering
+    "InteractiveAgent",
+    "InteractiveSteering",
+    "SteeringAction",
+    "SteeringDecision",
+    "SteeringUI",
 ]
