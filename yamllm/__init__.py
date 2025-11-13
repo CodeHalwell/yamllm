@@ -22,7 +22,19 @@ from .tools.advanced_git import AdvancedGitWorkflow, BranchStrategy, ConflictRes
 from .agent.interactive_steering import InteractiveAgent, InteractiveSteering, SteeringAction, SteeringDecision
 from .ui.steering_ui import SteeringUI
 
-__version__ = "0.1.12"
+# P2: Multi-Agent Collaboration
+from .agent.multi_agent import (
+    AgentRole, AgentMessage, AgentCapability, CollaborativeTask,
+    CollaborativeAgent, AgentCoordinator
+)
+
+# P2: Learning & Improvement
+from .agent.learning_system import (
+    LearningSystem, Experience, LearningInsight, PerformanceMetrics,
+    OutcomeType, ImprovementType, ExperienceStore, PatternAnalyzer
+)
+
+__version__ = "0.1.13"
 
 __all__ = [
     # Core
@@ -86,4 +98,20 @@ __all__ = [
     "SteeringAction",
     "SteeringDecision",
     "SteeringUI",
+    # P2: Multi-Agent Collaboration
+    "AgentRole",
+    "AgentMessage",
+    "AgentCapability",
+    "CollaborativeTask",
+    "CollaborativeAgent",
+    "AgentCoordinator",
+    # P2: Learning & Improvement
+    "LearningSystem",
+    "Experience",
+    "LearningInsight",
+    "PerformanceMetrics",
+    "OutcomeType",
+    "ImprovementType",
+    "ExperienceStore",
+    "PatternAnalyzer",
 ]
