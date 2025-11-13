@@ -1456,7 +1456,64 @@ class LLM:
         from yamllm.core.cost_tracker import CostOptimizer
         optimizer = CostOptimizer(self.cost_tracker)
         return optimizer.analyze()
-    
+
+    # Dynamic tool creation (P1)
+    def create_dynamic_tool(self, description: str, name: Optional[str] = None):
+        """
+        Create a custom tool from natural language description.
+
+        Args:
+            description: Natural language description of desired tool
+            name: Optional tool name (auto-generated if not provided)
+
+        Returns:
+            Created DynamicTool
+
+        Example:
+            tool = llm.create_dynamic_tool("A tool that converts markdown to HTML")
+        """
+        from yamllm.tools.dynamic_tool_creator import ToolCreator
+
+        creator = ToolCreator(self, self.logger)
+        tool = creator.create_tool(description, name=name)
+
+        # Register tool with orchestrator
+        if self.tool_orchestrator:
+            # Add to available tools (implementation depends on orchestrator design)
+            self.logger.info(f"Created dynamic tool: {tool.name}")
+
+        return tool
+
+    # Code context intelligence (P1)
+    def analyze_code_context(
+        self,
+        repo_path: str,
+        query: Optional[str] = None
+    ) -> str:
+        """
+        Analyze code repository and extract relevant context.
+
+        Args:
+            repo_path: Path to code repository
+            query: Optional query to find relevant context
+
+        Returns:
+            Formatted context string
+
+        Example:
+            context = llm.analyze_code_context("./my-project", "authentication system")
+        """
+        from yamllm.code.context_intelligence import CodeContextIntelligence
+
+        intel = CodeContextIntelligence(self, self.logger)
+        intel.analyze_project(repo_path)
+
+        if query:
+            return intel.get_relevant_context(query)
+        else:
+            return f"Analyzed project: {len(intel.project_context.files)} files, " \
+                   f"{len(intel.project_context.symbol_index)} symbols"
+
     # Utility methods
     def update_settings(self, **kwargs):
         """Update instance settings."""

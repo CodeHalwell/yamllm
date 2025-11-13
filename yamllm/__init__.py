@@ -7,11 +7,16 @@ from .memory.conversation_store import ConversationStore, VectorStore
 from .tools import Tool, WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
 from .agent import Agent, SimpleAgent, WorkflowManager, AgentState, Task
 
-# Advanced features
+# Advanced features (P0)
 from .core.cost_tracker import CostTracker, CostSummary, CostOptimizer, BudgetExceededError
 from .core.model_router import ModelRouter, TaskType, TaskComplexity
 from .core.ensemble import EnsembleManager, ParallelEnsembleManager, EnsembleStrategy, EnsembleResult
 from .agent.recording import SessionRecorder, SessionPlayer, RecordingManager
+
+# P1 features
+from .tools.dynamic_tool_creator import ToolCreator, DynamicTool, ToolValidator
+from .code.context_intelligence import CodeContextIntelligence, CodeSymbol, SymbolType
+from .tools.advanced_git import AdvancedGitWorkflow, BranchStrategy, ConflictResolutionStrategy
 
 __version__ = "0.1.12"
 
@@ -59,4 +64,16 @@ __all__ = [
     "SessionRecorder",
     "SessionPlayer",
     "RecordingManager",
+    # P1: Dynamic Tools
+    "ToolCreator",
+    "DynamicTool",
+    "ToolValidator",
+    # P1: Code Intelligence
+    "CodeContextIntelligence",
+    "CodeSymbol",
+    "SymbolType",
+    # P1: Advanced Git
+    "AdvancedGitWorkflow",
+    "BranchStrategy",
+    "ConflictResolutionStrategy",
 ]

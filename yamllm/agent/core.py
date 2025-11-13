@@ -29,7 +29,8 @@ class Agent:
         progress_callback: Optional[Callable[[AgentState], None]] = None,
         logger: Optional[logging.Logger] = None,
         enable_recording: bool = False,
-        recording_dir: Optional[str] = None
+        recording_dir: Optional[str] = None,
+        repo_path: Optional[str] = None
     ):
         """
         Initialize the agent.
@@ -43,6 +44,7 @@ class Agent:
             logger: Optional logger instance
             enable_recording: Whether to record sessions for replay
             recording_dir: Directory to save recordings (default: ./recordings)
+            repo_path: Optional repository path for git operations
         """
         self.llm = llm
         self.max_iterations = max_iterations
@@ -52,6 +54,7 @@ class Agent:
         self.logger = logger or logging.getLogger(__name__)
         self.enable_recording = enable_recording
         self.recording_dir = recording_dir or "./recordings"
+        self.repo_path = repo_path
 
         # Initialize components
         self.planner = TaskPlanner(llm, logger)
@@ -61,6 +64,15 @@ class Agent:
 
         # Session recorder
         self.recorder: Optional[SessionRecorder] = None
+
+        # Advanced git workflow (P1)
+        self.git_workflow = None
+        if repo_path:
+            try:
+                from yamllm.tools.advanced_git import AdvancedGitWorkflow
+                self.git_workflow = AdvancedGitWorkflow(repo_path, llm, logger)
+            except Exception as e:
+                self.logger.warning(f"Could not initialize git workflow: {e}")
 
     def execute(self, goal: str, context: Optional[Dict[str, Any]] = None) -> AgentState:
         """
