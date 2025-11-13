@@ -2,12 +2,14 @@
 
 import logging
 from typing import Optional, Dict, Any, Callable
+from pathlib import Path
 
 from .models import AgentState, Task, TaskStatus
 from .planner import TaskPlanner
 from .reasoner import Reasoner
 from .actor import Actor
 from .observer import Observer
+from .recording import SessionRecorder
 
 
 class Agent:
@@ -25,7 +27,9 @@ class Agent:
         enable_planning: bool = True,
         enable_reflection: bool = True,
         progress_callback: Optional[Callable[[AgentState], None]] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
+        enable_recording: bool = False,
+        recording_dir: Optional[str] = None
     ):
         """
         Initialize the agent.
@@ -37,6 +41,8 @@ class Agent:
             enable_reflection: Whether to enable periodic reflection
             progress_callback: Optional callback for progress updates
             logger: Optional logger instance
+            enable_recording: Whether to record sessions for replay
+            recording_dir: Directory to save recordings (default: ./recordings)
         """
         self.llm = llm
         self.max_iterations = max_iterations
@@ -44,12 +50,17 @@ class Agent:
         self.enable_reflection = enable_reflection
         self.progress_callback = progress_callback
         self.logger = logger or logging.getLogger(__name__)
+        self.enable_recording = enable_recording
+        self.recording_dir = recording_dir or "./recordings"
 
         # Initialize components
         self.planner = TaskPlanner(llm, logger)
         self.reasoner = Reasoner(llm, logger)
         self.actor = Actor(llm, logger)
         self.observer = Observer(llm, logger)
+
+        # Session recorder
+        self.recorder: Optional[SessionRecorder] = None
 
     def execute(self, goal: str, context: Optional[Dict[str, Any]] = None) -> AgentState:
         """
@@ -63,6 +74,15 @@ class Agent:
             Final AgentState with results
         """
         self.logger.info(f"Agent starting execution for goal: {goal}")
+
+        # Initialize session recorder
+        if self.enable_recording:
+            self.recorder = SessionRecorder(
+                session_id=None,  # Auto-generate
+                goal=goal,
+                context=context or {}
+            )
+            self.logger.info(f"Recording enabled: session {self.recorder.session_id}")
 
         # Initialize state
         state = AgentState(
@@ -120,6 +140,22 @@ class Agent:
                 state = self.observer.observe(action_result, state)
                 self._notify_progress(state)
 
+                # Record iteration if enabled
+                if self.recorder:
+                    self.recorder.record_iteration(
+                        iteration=state.iteration,
+                        thought=thought,
+                        action={
+                            "task_id": next_task.id,
+                            "description": next_task.description,
+                            "result": action_result.to_dict()
+                        },
+                        observation={
+                            "completed_tasks": len(state.get_completed_tasks()),
+                            "progress": state.get_progress()
+                        }
+                    )
+
                 # Step 4: Check completion
                 state = self._check_goal_completion(state)
 
@@ -136,11 +172,37 @@ class Agent:
 
             self.logger.info(f"Agent execution completed. Success: {state.success}")
 
+            # Save recording if enabled
+            if self.recorder:
+                try:
+                    # Create recording directory if needed
+                    Path(self.recording_dir).mkdir(parents=True, exist_ok=True)
+
+                    # Save recording
+                    recording_path = Path(self.recording_dir) / f"{self.recorder.session_id}.yaml"
+                    self.recorder.save(str(recording_path))
+                    self.logger.info(f"Session recording saved to: {recording_path}")
+
+                    # Add recording path to state metadata
+                    state.metadata["recording_path"] = str(recording_path)
+                except Exception as e:
+                    self.logger.error(f"Error saving recording: {e}")
+
         except Exception as e:
             self.logger.error(f"Agent execution failed: {e}", exc_info=True)
             state.completed = True
             state.success = False
             state.error = str(e)
+
+            # Save recording even on failure
+            if self.recorder:
+                try:
+                    Path(self.recording_dir).mkdir(parents=True, exist_ok=True)
+                    recording_path = Path(self.recording_dir) / f"{self.recorder.session_id}_failed.yaml"
+                    self.recorder.save(str(recording_path))
+                    self.logger.info(f"Failed session recording saved to: {recording_path}")
+                except Exception as rec_err:
+                    self.logger.error(f"Error saving failed recording: {rec_err}")
 
         return state
 

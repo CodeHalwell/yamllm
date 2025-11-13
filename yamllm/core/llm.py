@@ -23,6 +23,7 @@ from yamllm.core.error_handler import ErrorHandler
 from yamllm.core.memory_manager import MemoryManager
 from yamllm.core.tool_orchestrator import ToolOrchestrator
 from yamllm.core.thinking import ThinkingManager
+from yamllm.core.cost_tracker import CostTracker, CostSummary, BudgetExceededError
 from yamllm.providers.factory import ProviderFactory
 from yamllm.providers.capabilities import get_provider_capabilities
 from yamllm.tools.thread_safe_manager import ThreadSafeToolManager
@@ -164,7 +165,10 @@ class LLM:
             "total_tokens": 0
         }
         self._tool_call_count = 0
-        
+
+        # Cost tracking
+        self.cost_tracker = CostTracker(logger=self.logger)
+
         # MCP client initialization
         self.mcp_client = self._initialize_mcp()
     
@@ -1374,22 +1378,46 @@ class LLM:
                     return int(v or 0)
                 except Exception:
                     return 0
-            
+
             usage = None
             if hasattr(response, "usage"):
                 usage = response.usage
             elif isinstance(response, dict) and "usage" in response:
                 usage = response["usage"]
-            
+
             if usage:
+                prompt_tokens = _coerce(getattr(usage, "prompt_tokens", 0))
+                completion_tokens = _coerce(getattr(usage, "completion_tokens", 0))
+                total_tokens = _coerce(getattr(usage, "total_tokens", 0))
+
                 self._last_usage = {
-                    "prompt_tokens": _coerce(getattr(usage, "prompt_tokens", 0)),
-                    "completion_tokens": _coerce(getattr(usage, "completion_tokens", 0)),
-                    "total_tokens": _coerce(getattr(usage, "total_tokens", 0))
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens
                 }
-                
+
                 for k, v in self._last_usage.items():
                     self._total_usage[k] += v
+
+                # Record cost
+                try:
+                    self.cost_tracker.record_usage(
+                        provider=self.provider_name,
+                        model=self.model,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens
+                    )
+                except BudgetExceededError as e:
+                    self.logger.warning(f"Budget exceeded: {e}")
+                    if self.event_callback:
+                        self.event_callback({
+                            "type": "budget_warning",
+                            "message": str(e),
+                            "current_cost": e.current_cost,
+                            "budget": e.budget_limit
+                        })
+                except Exception as e:
+                    self.logger.debug(f"Error recording cost: {e}")
         except Exception:
             pass
     
@@ -1397,18 +1425,37 @@ class LLM:
     def set_stream_callback(self, callback: Callable[[str], None]):
         """Set streaming callback."""
         self.stream_callback = callback
-    
+
     def clear_stream_callback(self):
         """Clear streaming callback."""
         self.stream_callback = None
-    
+
     def set_event_callback(self, callback: Callable[[Dict[str, Any]], None]):
         """Set event callback."""
         self.event_callback = callback
-    
+
     def clear_event_callback(self):
         """Clear event callback."""
         self.event_callback = None
+
+    # Cost tracking methods
+    def get_cost_summary(self) -> CostSummary:
+        """Get cost summary for current session."""
+        return self.cost_tracker.get_summary()
+
+    def set_budget(self, limit: float, warning_threshold: float = 0.8):
+        """Set budget limit and warning threshold."""
+        self.cost_tracker.set_budget(limit, warning_threshold)
+
+    def reset_cost_tracking(self):
+        """Reset cost tracking for new session."""
+        self.cost_tracker.reset_session()
+
+    def get_cost_optimization_suggestions(self) -> Dict[str, Any]:
+        """Get cost optimization suggestions."""
+        from yamllm.core.cost_tracker import CostOptimizer
+        optimizer = CostOptimizer(self.cost_tracker)
+        return optimizer.analyze()
     
     # Utility methods
     def update_settings(self, **kwargs):
@@ -1419,6 +1466,9 @@ class LLM:
     
     def print_settings(self):
         """Print current settings."""
+        # Get cost summary
+        cost_summary = self.get_cost_summary()
+
         settings = {
             "Provider Settings": {
                 "Provider": self.provider_name,
@@ -1440,9 +1490,15 @@ class LLM:
                 "Enabled": self.tools_enabled,
                 "Timeout": self.tools_timeout
             },
-            "Usage Stats": self._total_usage
+            "Usage Stats": self._total_usage,
+            "Cost Stats": {
+                "Total Cost": f"${cost_summary.total_cost:.4f}",
+                "API Calls": cost_summary.total_calls,
+                "Total Tokens": cost_summary.total_tokens,
+                "Budget Limit": f"${cost_summary.budget_limit:.2f}" if cost_summary.budget_limit else "None"
+            }
         }
-        
+
         print("\nLLM Configuration Settings:")
         print("=" * 50)
         for category, values in settings.items():
