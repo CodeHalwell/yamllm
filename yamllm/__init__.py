@@ -5,13 +5,14 @@ from .llm import OpenAIGPT, MistralAI, DeepSeek, GoogleGemini, AnthropicAI
 from .core.config import Config
 from .memory.conversation_store import ConversationStore, VectorStore
 from .tools import Tool, WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
+from .agent import Agent, SimpleAgent, WorkflowManager, AgentState, Task
 
 __version__ = "0.1.12"
 
 __all__ = [
     "LLM",
     "OpenAIGPT",
-    "MistralAI", 
+    "MistralAI",
     "DeepSeek",
     "GoogleGemini",
     "AnthropicAI",
@@ -25,4 +26,9 @@ __all__ = [
     "UnitConverter",
     "WeatherTool",
     "WebScraper",
+    "Agent",
+    "SimpleAgent",
+    "WorkflowManager",
+    "AgentState",
+    "Task",
 ]

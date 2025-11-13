@@ -21,6 +21,7 @@ from .tools import setup_tools_commands
 from .config import setup_config_commands
 from .chat import setup_chat_commands
 from .memory import setup_memory_commands
+from .agent import setup_agent_commands
 
 __version__ = "0.1.12"
 
@@ -248,6 +249,7 @@ def main(argv: list[str] | None = None) -> int:
     setup_config_commands(sub)
     setup_chat_commands(sub)
     setup_memory_commands(sub)
+    setup_agent_commands(sub)
     
     # Quick start command
     quickstart_cmd = sub.add_parser("quickstart", help="Show quick start guide")
