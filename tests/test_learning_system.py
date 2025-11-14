@@ -556,7 +556,7 @@ def test_learning_system_integration(temp_db):
         )
 
     # 2. Analyze and learn
-    insights = learning.analyze_and_learn(min_experiences=10)
+    learning.analyze_and_learn(min_experiences=10)
 
     # 3. Get metrics
     metrics = learning.get_metrics()
