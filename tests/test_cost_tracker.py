@@ -70,10 +70,6 @@ def test_budget_warning():
     tracker = CostTracker()
     tracker.set_budget(1.0, warning_threshold=0.5)
 
-    warnings = []
-
-    def warning_handler(msg):
-        warnings.append(msg)
 
     # Record usage approaching threshold
     tracker.record_usage("openai", "gpt-4", 100000, 50000)
