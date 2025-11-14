@@ -297,7 +297,7 @@ class AgentCoordinator:
         self.logger.info(f"Starting collaborative execution for: {goal}")
 
         # Decompose goal into tasks
-        tasks = self._decompose_goal(goal)
+        self._decompose_goal(goal)
 
         # Execute tasks collaboratively
         results = {}
