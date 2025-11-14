@@ -103,7 +103,7 @@ def test_agent_progress_callback(mock_llm):
     agent = SimpleAgent(mock_llm)
     agent.progress_callback = callback
 
-    state = agent.execute("Test goal")
+    agent.execute("Test goal")
 
     # Callback should have been called
     assert len(callback_calls) > 0
