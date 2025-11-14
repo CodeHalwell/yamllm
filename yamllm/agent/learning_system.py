@@ -450,11 +450,18 @@ class PatternAnalyzer:
         # Generate insights from failure patterns
         for pattern in failure_patterns:
             if pattern["frequency"] >= 2:
+                # Confidence calculation for failure patterns:
+                # - Divide frequency by 10 to get confidence (10 occurrences = 1.0 confidence)
+                # - Cap at 0.9 to never be 100% certain about failure patterns
+                # - Rationale: We want high confidence for frequent errors but remain
+                #   humble about absolute certainty (leaves room for special cases)
+                failure_confidence = min(pattern["frequency"] / 10, 0.9)
+
                 insight = LearningInsight(
                     insight_id=f"insight_error_{pattern['error_type']}_{len(insights)}",
                     improvement_type=ImprovementType.ERROR_RECOVERY,
                     pattern=f"Common failure: {pattern['error_type']}",
-                    confidence=min(pattern["frequency"] / 10, 0.9),  # Cap at 0.9
+                    confidence=failure_confidence,
                     evidence_count=pattern["frequency"],
                     success_rate=0.0,  # Failure pattern
                     context_conditions=pattern["common_context"],
@@ -674,18 +681,20 @@ class LearningSystem:
             counts[insight.improvement_type.value] += 1
         return dict(counts)
 
-    def export_knowledge(self, output_path: str):
+    def export_knowledge(self, output_path: str, min_confidence: float = 0.3):
         """
         Export learned knowledge to a file.
 
         Args:
             output_path: Path to export file
+            min_confidence: Minimum confidence threshold for insights to export (default: 0.3)
+                           Lower values include more insights with less certainty
 
         Raises:
             RuntimeError: If export fails
         """
         try:
-            insights = self.experience_store.get_insights(min_confidence=0.3)
+            insights = self.experience_store.get_insights(min_confidence=min_confidence)
 
             knowledge = {
                 "exported_at": datetime.now().isoformat(),
@@ -728,13 +737,16 @@ class LearningSystem:
 
             for insight_data in knowledge.get("insights", []):
                 try:
+                    # Note: success_rate is reset to 0.0 on import because it depends on
+                    # local experience data. It will be recalculated when analyze_and_learn()
+                    # is next run with experiences matching this insight's pattern.
                     insight = LearningInsight(
                         insight_id=insight_data["id"],
                         improvement_type=ImprovementType(insight_data["type"]),
                         pattern=insight_data["pattern"],
                         confidence=insight_data["confidence"],
                         evidence_count=insight_data["evidence_count"],
-                        success_rate=0.0,  # Will be recalculated
+                        success_rate=0.0,  # Reset on import, recalculated by analyze_and_learn()
                         context_conditions={},
                         recommendation=insight_data["recommendation"]
                     )

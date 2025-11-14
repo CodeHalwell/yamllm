@@ -15,9 +15,21 @@ class GitError(Exception):
 class GitTool(Tool):
     """Base class for git operations with common functionality."""
 
-    def __init__(self, name: str, description: str, cwd: Optional[str] = None):
+    def __init__(self, name: str, description: str, cwd: Optional[str] = None, timeout: int = 30):
+        """
+        Initialize GitTool.
+
+        Args:
+            name: Tool name
+            description: Tool description
+            cwd: Working directory (defaults to current directory)
+            timeout: Command timeout in seconds (default: 30)
+                    Increase for large repositories where operations like
+                    'git log' or 'git diff' may take longer
+        """
         super().__init__(name=name, description=description)
         self.cwd = cwd or os.getcwd()
+        self.timeout = timeout
 
     def _run_git_command(self, args: list, capture_output: bool = True, check: bool = True) -> subprocess.CompletedProcess:
         """Execute a git command and return the result."""
@@ -28,13 +40,13 @@ class GitTool(Tool):
                 capture_output=capture_output,
                 text=True,
                 check=check,
-                timeout=30
+                timeout=self.timeout
             )
             return result
         except subprocess.CalledProcessError as e:
             raise GitError(f"Git command failed: {e.stderr}")
         except subprocess.TimeoutExpired:
-            raise GitError(f"Git command timed out after 30 seconds")
+            raise GitError(f"Git command timed out after {self.timeout} seconds")
         except FileNotFoundError:
             raise GitError("Git is not installed or not in PATH")
 

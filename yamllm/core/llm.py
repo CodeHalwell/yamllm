@@ -1459,8 +1459,10 @@ class LLM:
                         })
                 except Exception as e:
                     self.logger.debug(f"Error recording cost: {e}")
-        except Exception:
-            pass
+        except Exception as e:
+            # Log usage tracking errors at debug level to avoid noise
+            # but ensure they don't silently disappear
+            self.logger.debug(f"Error recording usage statistics: {e}")
     
     # Callback methods
     def set_stream_callback(self, callback: Callable[[str], None]):
