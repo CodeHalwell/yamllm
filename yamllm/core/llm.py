@@ -112,16 +112,17 @@ class LLM:
     delegating specific responsibilities to specialized components.
     """
     
-    def __init__(self, config_path: str, api_key: str):
+    def __init__(self, config_path: str, api_key: str = ""):
         """
         Initialize LLM with configuration.
-        
+
         Args:
             config_path: Path to YAML configuration file
-            api_key: API key for the LLM provider
+            api_key: API key for the LLM provider (defaults to empty string;
+                    providers will typically fall back to environment variables)
         """
         self.config_path = config_path
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or ""
         # Compatibility: allow tests to patch load_config()
         self.config = self.load_config()
         self.logger = setup_logging(self.config)
@@ -531,7 +532,47 @@ class LLM:
         if self.output_stream:
             return None
         return response_text
-    
+
+    def get_completion_with_tools(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get completion with detailed tool execution information.
+
+        This method provides structured output including the response content,
+        tool calls made, and tool results. Useful for agent systems that need
+        to inspect tool execution details.
+
+        Args:
+            prompt: User prompt
+            system_prompt: Optional system prompt
+
+        Returns:
+            Dictionary with 'content', 'tool_calls', and 'tool_results' keys
+        """
+        # Get the text response (tools are executed internally)
+        response_text = self.get_response(prompt, system_prompt)
+
+        # Get tool execution history from the orchestrator
+        tool_calls = []
+        tool_results = []
+
+        if self.tool_orchestrator.enabled and hasattr(self.tool_orchestrator, 'execution_history'):
+            for execution in self.tool_orchestrator.execution_history:
+                tool_calls.append({
+                    "name": execution.get("tool_name"),
+                    "arguments": execution.get("arguments", {})
+                })
+                tool_results.append({
+                    "tool": execution.get("tool_name"),
+                    "result": execution.get("result"),
+                    "error": execution.get("error")
+                })
+
+        return {
+            "content": response_text or "",
+            "tool_calls": tool_calls,
+            "tool_results": tool_results
+        }
+
     async def aquery(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Async query to the language model.

@@ -1,5 +1,6 @@
 """Cost tracking for LLM usage across all providers."""
 
+import logging
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 from datetime import datetime
@@ -137,8 +138,14 @@ class CostSummary:
 class CostTracker:
     """Track costs across all LLM providers."""
 
-    def __init__(self):
-        """Initialize cost tracker."""
+    def __init__(self, logger: Optional[logging.Logger] = None):
+        """
+        Initialize cost tracker.
+
+        Args:
+            logger: Optional logger instance
+        """
+        self.logger = logger or logging.getLogger(__name__)
         self.current_session = CostSummary()
         self.budget_limit: Optional[float] = None
         self.budget_warning_threshold: float = 0.8
