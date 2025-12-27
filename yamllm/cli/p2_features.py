@@ -19,13 +19,13 @@ def _get_llm(config: str = None, model: str = "gpt-4"):
 
     Args:
         config: Optional config file path
-        model: Default model to use if no config provided (deprecated, use config file)
+        model: Deprecated parameter, ignored. Use config file instead.
 
     Returns:
         LLM instance
     
     Raises:
-        ValueError: If no config file is provided or found
+        ValueError: If no config file is provided or found at default locations
     """
     from yamllm import LLM
     import os
@@ -45,7 +45,10 @@ def _get_llm(config: str = None, model: str = "gpt-4"):
         
         raise ValueError(
             "No config file provided or found. Please specify a config file path "
-            "or create one at config/openai.yaml"
+            "or create one at one of these locations:\n"
+            "  - config/openai.yaml\n"
+            "  - .config_examples/openai_example.yaml\n"
+            "  - ~/.yamllm/config.yaml"
         )
 
 
