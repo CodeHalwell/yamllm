@@ -127,10 +127,10 @@ def test_select_model_with_speed_priority():
         "Translate 'hello' to Spanish"
     )
 
-    # Should prefer faster models
+    # Should prefer faster models (lower speed_tier is faster)
     profile = MODEL_PROFILES.get(f"{provider}/{model}")
     if profile:
-        assert profile.speed_tier >= 2  # Higher = faster
+        assert profile.speed_tier <= 2  # Lower = faster
 
 
 def test_complexity_detection_trivial():
