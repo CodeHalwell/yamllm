@@ -1,0 +1,16 @@
+name: Nord
+description: "Arctic, north-bluish color palette with clean aesthetics."
+colors:
+  primary: "bright_cyan"
+  secondary: "blue"
+  success: "bright_green"
+  warning: "yellow"
+  error: "red"
+  info: "cyan"
+  dim: "grey70"
+layout:
+  show_ascii_art: true
+ascii_art: |
+  ╭───────────────────────────────╮
+  │   ❄️  NORD THEME ACTIVE  ❄️   │
+  ╰───────────────────────────────╯

@@ -1,0 +1,12 @@
+name: Minimal
+description: "Clean, distraction-free minimal theme for focus."
+colors:
+  primary: "white"
+  secondary: "grey70"
+  success: "green"
+  warning: "yellow"
+  error: "red"
+  info: "blue"
+  dim: "grey50"
+layout:
+  show_ascii_art: false

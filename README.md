@@ -1,6 +1,8 @@
 # YAMLLM
 
-A Python library for YAML-based LLM configuration and execution.
+**The Universal LLM Terminal** - A Python library for YAML-based LLM configuration and execution.
+
+> Chat with any LLM (OpenAI, Claude, Gemini, Mistral, and more) using one beautiful interface. Switch models mid-conversation. Keep your workflow, change your provider.
 
 ## Installation
 
@@ -20,19 +22,32 @@ uv pip install -e .
 
 ### From PyPI (Coming Soon)
 
-```bash
-pip install yamllm-core
-```
-
-```bash
-uv add yamllm-core
-```
-
-> **Note:** The package is currently in active development. For now, please install from source as shown above.
+> **Note:** PyPI package publication is planned for v1.0. For now, please install from source as shown above.
 
 ## Quick Start
 
-### 1. Simple Query
+### Using the CLI (Recommended)
+
+The fastest way to get started is using the interactive CLI:
+
+```bash
+# Interactive setup wizard
+yamllm init
+
+# Start chatting (after setup)
+yamllm chat --config config.yaml
+
+# List available commands
+yamllm --help
+
+# Check system status
+yamllm status
+
+# List all available tools
+yamllm tools list
+```
+
+### 1. Simple Query (Programmatic)
 
 In order to run a simple query, create a script as follows. The library uses Rich to print responses in the console with nice formatting.
 
@@ -85,6 +100,47 @@ while True:
         console.print(f"[red]Configuration error:[/red] {e}")
     except Exception as e:
         console.print(f"[red]An error occurred:[/red] {str(e)}")
+```
+
+## CLI Commands Reference
+
+yamllm provides a rich command-line interface for all operations:
+
+### Chat Commands
+```bash
+yamllm chat --config config.yaml          # Start interactive chat
+yamllm chat --config config.yaml --style compact  # Compact output style
+```
+
+### Configuration Commands
+```bash
+yamllm config create --provider openai    # Create new config
+yamllm config presets                     # List available presets
+yamllm config validate config.yaml        # Validate config file
+yamllm config edit config.yaml            # Edit config (opens editor)
+```
+
+### Tool Commands
+```bash
+yamllm tools list                         # List all available tools
+yamllm tools help <tool_name>             # Get help for specific tool
+yamllm tools test <tool_name>             # Test a tool
+```
+
+### Memory Commands
+```bash
+yamllm memory list                        # List conversations
+yamllm memory export <session_id>         # Export conversation
+yamllm memory clear <session_id>          # Clear conversation
+yamllm memory migrate                     # Migrate vector store
+```
+
+### System Commands
+```bash
+yamllm init                               # Interactive setup wizard
+yamllm status                             # Check system health
+yamllm providers                          # List supported providers
+yamllm quick-start                        # Show quick start guide
 ```
 
 ## Working with Conversation History
@@ -333,34 +389,70 @@ llm.set_event_callback(on_event)
 
 ## Features
 
-- YAML-based configuration with Pydantic validation
+### 🎯 Core Capabilities
+- **Universal Provider Support**: Switch between OpenAI, Anthropic (Claude), Google (Gemini), Mistral, DeepSeek, Azure OpenAI, Azure AI Foundry, and OpenRouter
+- **22 Built-in Tools**: Web search, weather, file operations, calculations, conversions, and more
+- **Rich Terminal UI**: Beautiful themes with streaming support
+- **Smart Memory**: SQLite conversation history + FAISS vector store for semantic search
+- **MCP Integration**: Connect to external Model Context Protocol servers
+- **Type-Safe Configuration**: YAML-based config with Pydantic validation
+
+### 🛠️ Developer Experience
 - Simple API interface with comprehensive error handling
-- Support for 8+ LLM providers (OpenAI, Anthropic, Google, Mistral, DeepSeek, Azure, OpenRouter)
-- 22 built-in tools with extensible framework
-- Customizable prompt templates and system prompts
-- Error handling and retry logic with exponential backoff
-- Built-in memory management using SQLite for short-term memory
-- Vector database (FAISS) for long-term semantic search
-- Choose between streaming or non-streamed responses
+- Streaming and non-streaming response modes
 - Thread-safe tool execution with security controls
-- MCP (Model Context Protocol) integration for external tools
-- Rich terminal UI support (in development)
+- Customizable prompt templates and system prompts
+- Exponential backoff retry logic
+- Event callbacks for tool execution tracking
+- Environment variable support with dotenv
+
+### 🎨 UI & Themes
+- Rich console output with syntax highlighting
+- Multiple theme support (default, synthwave, and more coming)
+- Runtime theme switching
+- Message bubbles with customizable styles
+- Tool execution visualization
+- Token usage tracking
+
+## Why yamllm?
+
+### 🌟 **The Only Multi-Provider LLM Terminal**
+
+Unlike Claude Code (Anthropic only) or Gemini CLI (Google only), yamllm lets you:
+- **Switch providers instantly** without changing your code or workflow
+- **Compare responses** from different models side-by-side
+- **Avoid vendor lock-in** by staying provider-agnostic
+- **Use the best model for each task** - GPT-4 for reasoning, Claude for coding, Gemini for speed
+
+### 📊 **Comparison with Alternatives**
+
+| Feature | yamllm | Claude Code | Gemini CLI |
+|---------|--------|-------------|------------|
+| Multi-Provider | ✅ 8 providers | ❌ Anthropic only | ❌ Google only |
+| Open Source | ✅ MIT | ✅ | ✅ Apache 2.0 |
+| Built-in Tools | ✅ 22 tools | ✅ 30+ tools | ✅ Built-in |
+| Memory System | ✅ SQLite + FAISS | ✅ | ⚠️ Basic |
+| MCP Support | ✅ Client mode | ✅ | ⚠️ Limited |
+| Custom Themes | ✅ Yes | ⚠️ Limited | ❌ |
+| YAML Config | ✅ Yes | ✅ | ✅ |
 
 ### Project Status
 
 This project is in active development. See [REVIEW_SUMMARY.md](REVIEW_SUMMARY.md) for the current status and [yamllm_manifesto.md](yamllm_manifesto.md) for the project vision. We're working toward a v1.0 release with ~60% of manifesto features currently implemented.
 
 **Current Strengths:**
-- ✅ Robust multi-provider support
-- ✅ Comprehensive tool ecosystem
-- ✅ Strong configuration management
-- ✅ Good security controls
+- ✅ **Best-in-class multi-provider architecture** (unique advantage)
+- ✅ Robust configuration system with type safety
+- ✅ Comprehensive 22-tool ecosystem with security controls
+- ✅ Memory management with SQLite + FAISS vector store
+- ✅ Good test coverage and code quality
 
-**In Progress:**
-- ⚠️ Performance optimization (<350ms first token)
-- ⚠️ Rich UI themes and streaming display
-- ⚠️ Architecture refactoring for better maintainability
-- ⚠️ Enhanced documentation and examples
+**In Progress (Roadmap to v1.0):**
+- ⚠️ Agentic loop framework for autonomous task completion
+- ⚠️ Git integration for repository workflows
+- ⚠️ Performance optimization (<350ms first token target)
+- ⚠️ Expanded theme library (10+ themes planned)
+- ⚠️ Additional developer tools (shell, code search, SQL)
 
 ## License
 

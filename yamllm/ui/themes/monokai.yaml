@@ -1,0 +1,16 @@
+name: Monokai
+description: "Classic Monokai with vibrant colors on dark background."
+colors:
+  primary: "bright_magenta"
+  secondary: "bright_yellow"
+  success: "bright_green"
+  warning: "yellow"
+  error: "bright_red"
+  info: "bright_cyan"
+  dim: "grey50"
+layout:
+  show_ascii_art: true
+ascii_art: |
+  ╔═══════════════════════════════╗
+  ║  ✨ MONOKAI THEME ACTIVE ✨   ║
+  ╚═══════════════════════════════╝

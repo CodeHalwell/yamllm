@@ -1,0 +1,16 @@
+name: Gruvbox
+description: "Retro groove with warm, earthy tones."
+colors:
+  primary: "yellow"
+  secondary: "bright_yellow"
+  success: "green"
+  warning: "bright_yellow"
+  error: "red"
+  info: "cyan"
+  dim: "grey62"
+layout:
+  show_ascii_art: true
+ascii_art: |
+  ┌───────────────────────────────┐
+  │  🎨 GRUVBOX THEME ACTIVE 🎨   │
+  └───────────────────────────────┘
