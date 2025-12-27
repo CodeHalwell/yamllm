@@ -27,9 +27,11 @@ def _get_llm(config: str = None, model: str = "gpt-4"):
     from yamllm import LLM
 
     if config:
-        return LLM(config_file=config)
+        return LLM(config)
     else:
-        return LLM(provider="openai", model=model)
+        # If no config provided, use default config path
+        # User should create this config file with their settings
+        return LLM("config/openai.yaml")
 
 
 @click.group(name="multi-agent")

@@ -3,8 +3,6 @@
 import argparse
 import json
 import sys
-from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -119,7 +117,7 @@ def run_ensemble(args: argparse.Namespace) -> int:
         # Load LLMs
         llms = {}
         for i, config_path in enumerate(args.config):
-            llm = LLM(config_path=config_path)
+            llm = LLM(config_path)
             provider_name = f"{llm.provider_name}_{i}" if len(args.config) > 1 else llm.provider_name
             llms[provider_name] = llm
 
@@ -201,7 +199,7 @@ def run_ensemble(args: argparse.Namespace) -> int:
 def show_cost_report(args: argparse.Namespace) -> int:
     """Show cost report for current session."""
     try:
-        llm = LLM(config_path=args.config)
+        llm = LLM(args.config)
         summary = llm.get_cost_summary()
 
         # Create cost report table
@@ -237,7 +235,7 @@ def show_cost_report(args: argparse.Namespace) -> int:
 def optimize_costs(args: argparse.Namespace) -> int:
     """Get cost optimization suggestions."""
     try:
-        llm = LLM(config_path=args.config)
+        llm = LLM(args.config)
         suggestions = llm.get_cost_optimization_suggestions()
 
         console.print("\n[bold cyan]Cost Optimization Suggestions:[/bold cyan]\n")

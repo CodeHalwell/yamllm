@@ -4,7 +4,6 @@ import pytest
 import tempfile
 import os
 from datetime import datetime
-from pathlib import Path
 from yamllm.agent.learning_system import (
     OutcomeType,
     ImprovementType,

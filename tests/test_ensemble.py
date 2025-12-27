@@ -1,7 +1,7 @@
 """Tests for ensemble execution."""
 
 import pytest
-from unittest.mock import Mock, MagicMock
+from unittest.mock import Mock
 from yamllm.core.ensemble import (
     EnsembleManager,
     EnsembleStrategy,

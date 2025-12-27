@@ -6,7 +6,7 @@ from typing import Dict, Any, List, Optional, Callable
 from datetime import datetime
 from pathlib import Path
 
-from .models import AgentState, Task, TaskStatus, ActionResult
+from .models import AgentState
 
 
 class SessionRecorder:
@@ -353,6 +353,7 @@ class RecordingManager:
                     "success": recording.get("success")
                 })
             except Exception:
+                # Skip invalid recording files
                 pass
 
         return sorted(recordings, key=lambda x: x.get("start_time", ""), reverse=True)

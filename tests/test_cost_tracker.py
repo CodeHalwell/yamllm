@@ -1,7 +1,6 @@
 """Tests for cost tracking functionality."""
 
 import pytest
-from datetime import datetime
 from yamllm.core.cost_tracker import (
     CostTracker,
     CostOptimizer,

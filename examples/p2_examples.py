@@ -32,8 +32,9 @@ def example_basic_multi_agent():
     print("Example 1: Basic Multi-Agent Collaboration")
     print("=" * 80)
 
-    # Create LLM
-    llm = LLM(provider="openai", model="gpt-4")
+    # Create LLM - Note: requires a config file with OpenAI settings
+    # Example: llm = LLM("config/openai_gpt4.yaml")
+    llm = LLM("config/openai.yaml")  # Update path to your config file
 
     # Create coordinator
     coordinator = AgentCoordinator(coordinator_llm=llm)
@@ -114,7 +115,8 @@ def example_software_dev_team():
     print("Example 2: Software Development Team")
     print("=" * 80)
 
-    llm = LLM(provider="openai", model="gpt-4")
+    # Create LLM - Note: requires a config file with OpenAI settings
+    llm = LLM("config/openai.yaml")  # Update path to your config file
     coordinator = AgentCoordinator(coordinator_llm=llm)
 
     # Create full development team
@@ -179,7 +181,8 @@ def example_basic_learning():
     print("Example 3: Basic Learning System")
     print("=" * 80)
 
-    llm = LLM(provider="openai", model="gpt-4")
+    # Create LLM - Note: requires a config file with OpenAI settings
+    llm = LLM("config/openai.yaml")  # Update path to your config file
     learning = LearningSystem(llm, storage_path="example_learning.db")
 
     print("\n📝 Recording experiences...")
@@ -292,7 +295,8 @@ def example_debugging_learning():
     print("Example 4: Learning from Debugging Sessions")
     print("=" * 80)
 
-    llm = LLM(provider="openai", model="gpt-4")
+    # Create LLM - Note: requires a config file with OpenAI settings
+    llm = LLM("config/openai.yaml")  # Update path to your config file
     learning = LearningSystem(llm, storage_path="debugging_learning.db")
 
     # Simulate debugging sessions
@@ -381,7 +385,8 @@ def example_combined_multi_agent_learning():
     print("Example 5: Multi-Agent Collaboration with Learning")
     print("=" * 80)
 
-    llm = LLM(provider="openai", model="gpt-4")
+    # Create LLM - Note: requires a config file with OpenAI settings
+    llm = LLM("config/openai.yaml")  # Update path to your config file
 
     # Setup multi-agent coordinator
     coordinator = AgentCoordinator(coordinator_llm=llm)
@@ -480,7 +485,8 @@ def example_knowledge_sharing():
     print("Example 6: Knowledge Export and Import")
     print("=" * 80)
 
-    llm = LLM(provider="openai", model="gpt-4")
+    # Create LLM - Note: requires a config file with OpenAI settings
+    llm = LLM("config/openai.yaml")  # Update path to your config file
 
     # Create first agent and record experiences
     print("\n🤖 Agent A: Recording experiences...")

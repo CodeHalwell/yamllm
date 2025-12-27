@@ -1,6 +1,5 @@
 """Tests for dynamic tool creation."""
 
-import pytest
 from unittest.mock import Mock
 from yamllm.tools.dynamic_tool_creator import (
     ToolCreator,
