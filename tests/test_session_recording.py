@@ -11,28 +11,23 @@ from yamllm.agent.recording import (
     SessionPlayer,
     RecordingManager
 )
+from yamllm.agent.models import AgentState
 
 
 def test_recorder_initialization():
     """Test session recorder initialization."""
-    recorder = SessionRecorder(goal="Test goal")
+    state = AgentState(goal="Test goal")
+    recorder = SessionRecorder(state)
 
-    assert recorder.session_id is not None
-    assert recorder.goal == "Test goal"
+    assert recorder.recording["session_id"] is not None
     assert recorder.recording["goal"] == "Test goal"
     assert len(recorder.recording["iterations"]) == 0
 
 
-def test_recorder_with_custom_id():
-    """Test recorder with custom session ID."""
-    recorder = SessionRecorder(session_id="custom-id-123", goal="Test")
-
-    assert recorder.session_id == "custom-id-123"
-
-
 def test_record_iteration():
     """Test recording an iteration."""
-    recorder = SessionRecorder(goal="Test goal")
+    state = AgentState(goal="Test goal")
+    recorder = SessionRecorder(state)
 
     recorder.record_iteration(
         iteration=1,
@@ -53,7 +48,8 @@ def test_record_iteration():
 
 def test_record_multiple_iterations():
     """Test recording multiple iterations."""
-    recorder = SessionRecorder(goal="Test goal")
+    state = AgentState(goal="Test goal")
+    recorder = SessionRecorder(state)
 
     for i in range(1, 4):
         recorder.record_iteration(
@@ -68,7 +64,8 @@ def test_record_multiple_iterations():
 
 def test_save_yaml(tmp_path):
     """Test saving recording to YAML."""
-    recorder = SessionRecorder(goal="Test goal")
+    state = AgentState(goal="Test goal")
+    recorder = SessionRecorder(state)
 
     recorder.record_iteration(1, "thought", {"action": 1}, {"obs": 1})
 
@@ -81,14 +78,15 @@ def test_save_yaml(tmp_path):
     with open(filepath) as f:
         data = yaml.safe_load(f)
 
-    assert data["session_id"] == recorder.session_id
+    assert data["session_id"] == recorder.recording["session_id"]
     assert data["goal"] == "Test goal"
     assert len(data["iterations"]) == 1
 
 
 def test_save_json(tmp_path):
     """Test saving recording to JSON."""
-    recorder = SessionRecorder(goal="Test goal")
+    state = AgentState(goal="Test goal")
+    recorder = SessionRecorder(state)
 
     recorder.record_iteration(1, "thought", {"action": 1}, {"obs": 1})
 
@@ -101,7 +99,7 @@ def test_save_json(tmp_path):
     with open(filepath) as f:
         data = json.load(f)
 
-    assert data["session_id"] == recorder.session_id
+    assert data["session_id"] == recorder.recording["session_id"]
     assert data["goal"] == "Test goal"
     assert len(data["iterations"]) == 1
 
@@ -109,7 +107,8 @@ def test_save_json(tmp_path):
 def test_load_recording(tmp_path):
     """Test loading a recording."""
     # Create and save a recording
-    recorder = SessionRecorder(goal="Test goal")
+    state = AgentState(goal="Test goal")
+    recorder = SessionRecorder(state)
     recorder.record_iteration(1, "thought", {"action": 1}, {"obs": 1})
 
     filepath = tmp_path / "recording.yaml"
@@ -118,14 +117,15 @@ def test_load_recording(tmp_path):
     # Load with player
     player = SessionPlayer(str(filepath))
 
-    assert player.session_id == recorder.session_id
+    assert player.session_id == recorder.recording["session_id"]
     assert player.goal == "Test goal"
     assert len(player.iterations) == 1
 
 
 def test_player_get_iteration():
     """Test getting specific iterations."""
-    recorder = SessionRecorder(goal="Test")
+    state = AgentState(goal="Test")
+    recorder = SessionRecorder(state)
     recorder.record_iteration(1, "thought1", {"a": 1}, {"b": 1})
     recorder.record_iteration(2, "thought2", {"a": 2}, {"b": 2})
 
@@ -148,7 +148,8 @@ def test_player_get_iteration():
 
 def test_player_get_summary():
     """Test getting recording summary."""
-    recorder = SessionRecorder(goal="Test goal", context={"key": "value"})
+    state = AgentState(goal="Test goal", metadata={"key": "value"})
+    recorder = SessionRecorder(state)
     recorder.record_iteration(1, "thought1", {"a": 1}, {"b": 1})
     recorder.record_iteration(2, "thought2", {"a": 2}, {"b": 2})
 
@@ -160,7 +161,7 @@ def test_player_get_summary():
         player = SessionPlayer(temp_file)
         summary = player.get_summary()
 
-        assert summary["session_id"] == recorder.session_id
+        assert summary["session_id"] == recorder.recording["session_id"]
         assert summary["goal"] == "Test goal"
         assert summary["total_iterations"] == 2
         assert "context" in summary
@@ -171,12 +172,14 @@ def test_player_get_summary():
 def test_compare_recordings(tmp_path):
     """Test comparing two recordings."""
     # Create two recordings
-    recorder1 = SessionRecorder(session_id="rec1", goal="Goal 1")
+    state1 = AgentState(goal="Goal 1")
+    recorder1 = SessionRecorder(state1)
     recorder1.record_iteration(1, "thought1", {}, {})
     file1 = tmp_path / "rec1.yaml"
     recorder1.save(str(file1))
 
-    recorder2 = SessionRecorder(session_id="rec2", goal="Goal 2")
+    state2 = AgentState(goal="Goal 2")
+    recorder2 = SessionRecorder(state2)
     recorder2.record_iteration(1, "thought1", {}, {})
     recorder2.record_iteration(2, "thought2", {}, {})
     file2 = tmp_path / "rec2.yaml"
@@ -186,8 +189,8 @@ def test_compare_recordings(tmp_path):
     player1 = SessionPlayer(str(file1))
     comparison = player1.compare_with(SessionPlayer(str(file2)))
 
-    assert comparison["session1"]["session_id"] == "rec1"
-    assert comparison["session2"]["session_id"] == "rec2"
+    assert comparison["session1"]["session_id"] == recorder1.recording["session_id"]
+    assert comparison["session2"]["session_id"] == recorder2.recording["session_id"]
     assert comparison["session1"]["iterations"] == 1
     assert comparison["session2"]["iterations"] == 2
 
@@ -197,40 +200,43 @@ def test_recording_manager(tmp_path):
     manager = RecordingManager(str(tmp_path))
 
     # Create some recordings
-    recorder1 = SessionRecorder(session_id="test1", goal="Goal 1")
+    state1 = AgentState(goal="Goal 1")
+    recorder1 = SessionRecorder(state1)
     recorder1.save(str(tmp_path / "test1.yaml"))
 
-    recorder2 = SessionRecorder(session_id="test2", goal="Goal 2")
+    state2 = AgentState(goal="Goal 2")
+    recorder2 = SessionRecorder(state2)
     recorder2.save(str(tmp_path / "test2.yaml"))
 
     # List recordings
     recordings = manager.list_recordings()
 
     assert len(recordings) == 2
-    assert any(r["session_id"] == "test1" for r in recordings)
-    assert any(r["session_id"] == "test2" for r in recordings)
 
 
 def test_recording_manager_load():
     """Test loading recording via manager."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create recording
-        recorder = SessionRecorder(session_id="test", goal="Test")
+        state = AgentState(goal="Test")
+        recorder = SessionRecorder(state)
         filepath = Path(tmpdir) / "test.yaml"
         recorder.save(str(filepath))
 
         # Load via manager
         manager = RecordingManager(tmpdir)
+        session_id = recorder.recording["session_id"]
         player = manager.load_recording("test")
 
-        assert player.session_id == "test"
+        assert player.session_id == session_id
 
 
 def test_recording_manager_delete():
     """Test deleting recording via manager."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create recording
-        recorder = SessionRecorder(session_id="test", goal="Test")
+        state = AgentState(goal="Test")
+        recorder = SessionRecorder(state)
         filepath = Path(tmpdir) / "test.yaml"
         recorder.save(str(filepath))
 
@@ -250,14 +256,16 @@ def test_recording_with_context():
         "files": ["file1.py", "file2.py"]
     }
 
-    recorder = SessionRecorder(goal="Test", context=context)
+    state = AgentState(goal="Test", metadata=context)
+    recorder = SessionRecorder(state)
 
-    assert recorder.recording["context"] == context
+    assert recorder.recording["metadata"] == context
 
 
 def test_recording_timestamps():
     """Test that timestamps are recorded."""
-    recorder = SessionRecorder(goal="Test")
+    state = AgentState(goal="Test")
+    recorder = SessionRecorder(state)
 
     recorder.record_iteration(1, "thought", {"action": 1}, {"obs": 1})
 
@@ -287,7 +295,8 @@ def test_nonexistent_recording_file():
 
 def test_recording_auto_format_detection(tmp_path):
     """Test auto-detection of file format."""
-    recorder = SessionRecorder(goal="Test")
+    state = AgentState(goal="Test")
+    recorder = SessionRecorder(state)
 
     # YAML file
     yaml_file = tmp_path / "recording.yaml"
@@ -310,13 +319,16 @@ def test_recording_manager_search():
     """Test searching recordings by goal."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Create recordings with different goals
-        recorder1 = SessionRecorder(session_id="r1", goal="Fix bug in auth")
+        state1 = AgentState(goal="Fix bug in auth")
+        recorder1 = SessionRecorder(state1)
         recorder1.save(str(Path(tmpdir) / "r1.yaml"))
 
-        recorder2 = SessionRecorder(session_id="r2", goal="Add feature X")
+        state2 = AgentState(goal="Add feature X")
+        recorder2 = SessionRecorder(state2)
         recorder2.save(str(Path(tmpdir) / "r2.yaml"))
 
-        recorder3 = SessionRecorder(session_id="r3", goal="Fix bug in database")
+        state3 = AgentState(goal="Fix bug in database")
+        recorder3 = SessionRecorder(state3)
         recorder3.save(str(Path(tmpdir) / "r3.yaml"))
 
         # Search

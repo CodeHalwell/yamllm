@@ -87,15 +87,6 @@ class Agent:
         """
         self.logger.info(f"Agent starting execution for goal: {goal}")
 
-        # Initialize session recorder
-        if self.enable_recording:
-            self.recorder = SessionRecorder(
-                session_id=None,  # Auto-generate
-                goal=goal,
-                context=context or {}
-            )
-            self.logger.info(f"Recording enabled: session {self.recorder.session_id}")
-
         # Initialize state
         state = AgentState(
             goal=goal,
@@ -109,6 +100,11 @@ class Agent:
             success=False,
             metadata=context or {}
         )
+
+        # Initialize session recorder with agent state
+        if self.enable_recording:
+            self.recorder = SessionRecorder(state)
+            self.logger.info(f"Recording enabled: session {self.recorder.recording['session_id']}")
 
         try:
             # Phase 1: Planning

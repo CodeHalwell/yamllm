@@ -1,6 +1,5 @@
 """Tests for multi-agent collaboration system."""
 
-import pytest
 from datetime import datetime
 from yamllm.agent.multi_agent import (
     AgentRole,

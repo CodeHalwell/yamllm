@@ -6,7 +6,6 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn
-from rich.live import Live
 from rich.layout import Layout
 from rich.text import Text
 from rich import box

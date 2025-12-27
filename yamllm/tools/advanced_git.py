@@ -4,7 +4,7 @@ import subprocess
 import os
 import re
 import logging
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path

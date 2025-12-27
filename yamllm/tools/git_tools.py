@@ -4,7 +4,6 @@ from .base import Tool
 from typing import Dict, Any, Optional
 import subprocess
 import os
-from pathlib import Path
 
 
 class GitError(Exception):

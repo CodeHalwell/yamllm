@@ -1,7 +1,7 @@
 """Multi-model ensemble system for consensus and voting."""
 
 import asyncio
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
 import logging

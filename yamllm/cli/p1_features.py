@@ -1,14 +1,12 @@
 """CLI commands for P1 features (dynamic tools, code intelligence, advanced git)."""
 
 import argparse
-import sys
 import json
 from pathlib import Path
 
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.syntax import Syntax
 
 from yamllm import LLM
 
@@ -122,7 +120,7 @@ def create_dynamic_tool(args: argparse.Namespace) -> int:
         console.print(f"[dim]{args.description}[/dim]\n")
 
         # Load LLM
-        with LLM(config_path=args.config) as llm:
+        with LLM(args.config) as llm:
             tool = llm.create_dynamic_tool(args.description, name=args.name)
 
         console.print(Panel.fit(
@@ -163,7 +161,7 @@ def analyze_code(args: argparse.Namespace) -> int:
         # Initialize intelligence
         llm = None
         if args.config:
-            llm = LLM(config_path=args.config)
+            llm = LLM(args.config)
 
         intel = CodeContextIntelligence(llm)
         context = intel.analyze_project(args.path)
@@ -236,7 +234,7 @@ def get_code_context(args: argparse.Namespace) -> int:
 
         llm = None
         if args.config:
-            llm = LLM(config_path=args.config)
+            llm = LLM(args.config)
 
         intel = CodeContextIntelligence(llm)
         intel.analyze_project(args.path)
@@ -266,7 +264,7 @@ def smart_commit(args: argparse.Namespace) -> int:
 
         llm = None
         if args.config:
-            llm = LLM(config_path=args.config)
+            llm = LLM(args.config)
 
         git = AdvancedGitWorkflow(args.repo, llm)
 
@@ -335,7 +333,7 @@ def auto_pr(args: argparse.Namespace) -> int:
 
         llm = None
         if args.config:
-            llm = LLM(config_path=args.config)
+            llm = LLM(args.config)
 
         git = AdvancedGitWorkflow(args.repo, llm)
 

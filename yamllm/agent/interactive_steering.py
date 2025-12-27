@@ -8,7 +8,6 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.table import Table
-from rich.syntax import Syntax
 
 
 class SteeringAction(Enum):

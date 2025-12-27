@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Tuple, List, Optional
 
-from .models import Task, AgentState, TaskStatus
+from .models import Task, AgentState
 
 
 class Reasoner:

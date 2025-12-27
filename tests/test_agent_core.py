@@ -1,7 +1,7 @@
 """Tests for agent core functionality."""
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, patch
 
 from yamllm.agent import Agent, SimpleAgent
 from yamllm.agent.models import TaskStatus

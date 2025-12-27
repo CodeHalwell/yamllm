@@ -19,17 +19,37 @@ def _get_llm(config: str = None, model: str = "gpt-4"):
 
     Args:
         config: Optional config file path
-        model: Default model to use if no config provided
+        model: Deprecated parameter, ignored. Use config file instead.
 
     Returns:
         LLM instance
+    
+    Raises:
+        ValueError: If no config file is provided or found at default locations
     """
     from yamllm import LLM
+    import os
 
-    if config:
-        return LLM(config_file=config)
+    if config and os.path.exists(config):
+        return LLM(config)
     else:
-        return LLM(provider="openai", model=model)
+        # Try default config locations
+        default_configs = [
+            "config/openai.yaml",
+            ".config_examples/openai_example.yaml",
+            os.path.expanduser("~/.yamllm/config.yaml")
+        ]
+        for default_config in default_configs:
+            if os.path.exists(default_config):
+                return LLM(default_config)
+        
+        raise ValueError(
+            "No config file provided or found. Please specify a config file path "
+            "or create one at one of these locations:\n"
+            "  - config/openai.yaml\n"
+            "  - .config_examples/openai_example.yaml\n"
+            "  - ~/.yamllm/config.yaml"
+        )
 
 
 @click.group(name="multi-agent")

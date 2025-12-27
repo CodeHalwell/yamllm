@@ -2,9 +2,6 @@
 
 import argparse
 import json
-import sys
-from pathlib import Path
-from typing import Optional
 
 from rich.console import Console
 
@@ -84,7 +81,7 @@ def run_agent(args: argparse.Namespace) -> int:
     try:
         # Load LLM
         console.print(f"[cyan]Loading LLM from {args.config}...[/cyan]")
-        llm = LLM(config_path=args.config)
+        llm = LLM(args.config)
 
         # Load context if provided
         context = None
@@ -159,7 +156,7 @@ def run_workflow(args: argparse.Namespace) -> int:
     """Run predefined workflow."""
     try:
         # Load LLM
-        llm = LLM(config_path=args.config)
+        llm = LLM(args.config)
 
         # Create agent and workflow manager
         agent = Agent(llm)
@@ -216,7 +213,7 @@ def run_workflow(args: argparse.Namespace) -> int:
 def debug_bug(args: argparse.Namespace) -> int:
     """Debug a bug using debug workflow."""
     try:
-        llm = LLM(config_path=args.config)
+        llm = LLM(args.config)
         agent = Agent(llm)
         manager = WorkflowManager(agent)
 
@@ -248,7 +245,7 @@ def debug_bug(args: argparse.Namespace) -> int:
 def implement_feature(args: argparse.Namespace) -> int:
     """Implement a feature using implement workflow."""
     try:
-        llm = LLM(config_path=args.config)
+        llm = LLM(args.config)
         agent = Agent(llm)
         manager = WorkflowManager(agent)
 

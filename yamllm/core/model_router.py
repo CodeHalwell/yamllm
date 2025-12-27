@@ -1,6 +1,5 @@
 """Intelligent model routing system."""
 
-import re
 from typing import Dict, Optional, List, Tuple
 from dataclasses import dataclass
 from enum import Enum
