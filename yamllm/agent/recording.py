@@ -91,22 +91,27 @@ class SessionRecorder:
             ]
         }
 
-    def save(self, filepath: str, format: str = "yaml") -> None:
+    def save(self, filepath: str, format: Optional[str] = None) -> None:
         """
-        Save recording to file.
-
-        Args:
-            filepath: Path to save to
-            format: Format (yaml or json)
+        Save recording to file. Format is auto-detected from the extension
+        when not given (.json → json, .yaml/.yml → yaml).
         """
         filepath = Path(filepath)
         filepath.parent.mkdir(parents=True, exist_ok=True)
 
+        if format is None:
+            if filepath.suffix == ".json":
+                format = "json"
+            elif filepath.suffix in (".yaml", ".yml"):
+                format = "yaml"
+            else:
+                format = "yaml"
+
         if format == "yaml":
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 yaml.dump(self.recording, f, default_flow_style=False, sort_keys=False)
         elif format == "json":
-            with open(filepath, 'w') as f:
+            with open(filepath, "w") as f:
                 json.dump(self.recording, f, indent=2)
         else:
             raise ValueError(f"Unknown format: {format}")
@@ -119,39 +124,57 @@ class SessionRecorder:
 class SessionPlayer:
     """Replay recorded agent sessions."""
 
-    def __init__(self, recording: Dict[str, Any]):
+    def __init__(self, source):
         """
-        Initialize player with recording.
+        Initialize player from a recording dict or a path to a recording file.
 
         Args:
-            recording: Recording data
+            source: Either a recording dict or a path (str/Path) to a saved
+                recording (.yaml/.yml/.json).
         """
-        self.recording = recording
+        if isinstance(source, dict):
+            self.recording = source
+        else:
+            self.recording = self._load_from_path(source)
+
         self.current_iteration = 0
+
+    @staticmethod
+    def _load_from_path(filepath) -> Dict[str, Any]:
+        path = Path(filepath)
+        if not path.exists():
+            raise FileNotFoundError(f"Recording not found: {filepath}")
+
+        if path.suffix in (".yaml", ".yml"):
+            with open(path, "r") as f:
+                recording = yaml.safe_load(f)
+        elif path.suffix == ".json":
+            with open(path, "r") as f:
+                recording = json.load(f)
+        else:
+            raise ValueError(f"Unknown file format: {path.suffix}")
+
+        if not isinstance(recording, dict) or "session_id" not in recording:
+            raise ValueError(f"Invalid recording file: {filepath}")
+
+        return recording
+
+    @property
+    def session_id(self) -> Optional[str]:
+        return self.recording.get("session_id")
+
+    @property
+    def goal(self) -> Optional[str]:
+        return self.recording.get("goal")
+
+    @property
+    def iterations(self) -> List[Dict[str, Any]]:
+        return self.recording.get("iterations", [])
 
     @classmethod
     def load(cls, filepath: str) -> "SessionPlayer":
-        """
-        Load recording from file.
-
-        Args:
-            filepath: Path to recording file
-
-        Returns:
-            SessionPlayer instance
-        """
-        filepath = Path(filepath)
-
-        if filepath.suffix in ['.yaml', '.yml']:
-            with open(filepath, 'r') as f:
-                recording = yaml.safe_load(f)
-        elif filepath.suffix == '.json':
-            with open(filepath, 'r') as f:
-                recording = json.load(f)
-        else:
-            raise ValueError(f"Unknown file format: {filepath.suffix}")
-
-        return cls(recording)
+        """Load recording from file (kept for backwards compatibility)."""
+        return cls(filepath)
 
     def replay(
         self,
@@ -262,7 +285,8 @@ class SessionPlayer:
             "end_time": self.recording.get("end_time"),
             "success": self.recording.get("success"),
             "total_iterations": len(iterations),
-            "error": self.recording.get("error")
+            "error": self.recording.get("error"),
+            "context": self.recording.get("metadata", {}),
         }
 
     def compare_with(self, other: "SessionPlayer") -> Dict[str, Any]:
@@ -279,21 +303,23 @@ class SessionPlayer:
         other_summary = other.get_summary()
 
         return {
-            "session_1": {
-                "id": my_summary["session_id"],
+            "session1": {
+                "session_id": my_summary["session_id"],
                 "iterations": my_summary["total_iterations"],
-                "success": my_summary["success"]
+                "success": my_summary["success"],
+                "goal": my_summary["goal"],
             },
-            "session_2": {
-                "id": other_summary["session_id"],
+            "session2": {
+                "session_id": other_summary["session_id"],
                 "iterations": other_summary["total_iterations"],
-                "success": other_summary["success"]
+                "success": other_summary["success"],
+                "goal": other_summary["goal"],
             },
             "comparison": {
                 "iteration_diff": my_summary["total_iterations"] - other_summary["total_iterations"],
-                "both_succeeded": my_summary["success"] and other_summary["success"],
-                "same_goal": my_summary["goal"] == other_summary["goal"]
-            }
+                "both_succeeded": bool(my_summary["success"]) and bool(other_summary["success"]),
+                "same_goal": my_summary["goal"] == other_summary["goal"],
+            },
         }
 
 
@@ -373,6 +399,15 @@ class RecordingManager:
         filepath = self.recordings_dir / name
 
         return SessionPlayer.load(str(filepath))
+
+    def search_by_goal(self, query: str) -> List[Dict[str, Any]]:
+        """Return recordings whose goal contains the (case-insensitive) query."""
+        query_lower = query.lower()
+        return [
+            rec
+            for rec in self.list_recordings()
+            if query_lower in (rec.get("goal") or "").lower()
+        ]
 
     def delete_recording(self, name: str) -> bool:
         """

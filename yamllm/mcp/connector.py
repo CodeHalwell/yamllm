@@ -214,15 +214,34 @@ class MCPConnector:
         self._cached_tools = tools
         return tools
 
+    # Hard cap on the size of a single MCP response payload. A misbehaving
+    # or hostile server otherwise lets us read unbounded memory.
+    MAX_RESPONSE_BYTES = 8 * 1024 * 1024  # 8 MiB
+
+    def _decode_response(self, payload) -> Dict[str, Any]:
+        """Decode a payload, enforcing a maximum size."""
+        if isinstance(payload, bytes):
+            if len(payload) > self.MAX_RESPONSE_BYTES:
+                raise MCPError(
+                    f"MCP response from {self.name} exceeds {self.MAX_RESPONSE_BYTES} bytes"
+                )
+            payload = payload.decode("utf-8", errors="replace")
+        elif isinstance(payload, str):
+            if len(payload.encode("utf-8")) > self.MAX_RESPONSE_BYTES:
+                raise MCPError(
+                    f"MCP response from {self.name} exceeds {self.MAX_RESPONSE_BYTES} bytes"
+                )
+        return json.loads(payload)
+
     async def _send_websocket_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Send message via WebSocket and return response."""
         if not self._connection:
             raise MCPError("WebSocket not connected")
-        
+
         try:
             await self._connection.send(json.dumps(message))
             response = await asyncio.wait_for(self._connection.recv(), timeout=30)
-            return json.loads(response)
+            return self._decode_response(response)
         except (ConnectionClosed, asyncio.TimeoutError) as e:
             # Try to reconnect once and resend
             self.logger.warning(f"WebSocket communication error for {self.name}: {e}; attempting reconnect")
@@ -230,27 +249,42 @@ class MCPConnector:
             try:
                 await self._connection.send(json.dumps(message))
                 response = await asyncio.wait_for(self._connection.recv(), timeout=30)
-                return json.loads(response)
+                return self._decode_response(response)
             except Exception as e2:
                 raise MCPError(f"WebSocket communication failed after reconnect: {e2}") from e2
-    
+
     async def _send_stdio_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Send message via stdio and return response."""
         if not self._process:
             raise MCPError("Stdio process not connected")
-        
+
+        async def _read_bounded_line() -> bytes:
+            # Manually accumulate up to MAX_RESPONSE_BYTES so a malicious peer
+            # can't exhaust memory by withholding a newline.
+            assert self._process is not None and self._process.stdout is not None
+            buf = bytearray()
+            while True:
+                chunk = await asyncio.wait_for(self._process.stdout.read(64 * 1024), timeout=30)
+                if not chunk:
+                    break
+                buf.extend(chunk)
+                if len(buf) > self.MAX_RESPONSE_BYTES:
+                    raise MCPError(
+                        f"MCP stdio response from {self.name} exceeds "
+                        f"{self.MAX_RESPONSE_BYTES} bytes"
+                    )
+                if b"\n" in chunk:
+                    break
+            return bytes(buf).split(b"\n", 1)[0]
+
         try:
             # Send message
             message_str = json.dumps(message) + "\n"
             self._process.stdin.write(message_str.encode())
             await self._process.stdin.drain()
-            
-            # Read response
-            response_line = await asyncio.wait_for(
-                self._process.stdout.readline(), 
-                timeout=30
-            )
-            return json.loads(response_line.decode())
+
+            response_line = await _read_bounded_line()
+            return self._decode_response(response_line)
         except (asyncio.TimeoutError, json.JSONDecodeError) as e:
             # Try to reconnect once and resend
             self.logger.warning(f"Stdio communication error for {self.name}: {e}; attempting reconnect")
@@ -259,8 +293,8 @@ class MCPConnector:
                 message_str = json.dumps(message) + "\n"
                 self._process.stdin.write(message_str.encode())
                 await self._process.stdin.drain()
-                response_line = await asyncio.wait_for(self._process.stdout.readline(), timeout=30)
-                return json.loads(response_line.decode())
+                response_line = await _read_bounded_line()
+                return self._decode_response(response_line)
             except Exception as e2:
                 raise MCPError(f"Stdio communication failed after reconnect: {e2}") from e2
 

@@ -28,7 +28,7 @@ def mock_llm():
     mock_config.logging.rotate_backup_count = 3
 
     with patch("yamllm.core.llm.LLM.load_config", return_value=mock_config):
-        llm = LLM(config_path="config.yaml", api_key=os.environ.get("OPENAI_API_KEY"))
+        llm = LLM(config_path="config.yaml", api_key=os.environ.get("OPENAI_API_KEY", "test-fake-key"))
         llm.get_response = MagicMock(return_value="Mocked response")
         yield llm
 

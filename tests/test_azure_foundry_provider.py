@@ -1,9 +1,26 @@
 import unittest
+import importlib.util
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from yamllm.providers.azure_foundry import AzureFoundryProvider
 
 
+def _has_module(name: str) -> bool:
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ModuleNotFoundError):
+        return False
+
+
+_AZURE_AVAILABLE = _has_module("azure.ai.inference") and _has_module("azure.identity")
+
+
+@pytest.mark.skipif(
+    not _AZURE_AVAILABLE,
+    reason="azure-ai-inference / azure-identity not installed",
+)
 class TestAzureFoundryProvider(unittest.TestCase):
     """Test cases for AzureFoundryProvider."""
 

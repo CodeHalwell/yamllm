@@ -267,9 +267,11 @@ class EnsembleManager:
 
         For code/structured output, votes on best approach.
         """
-        # For simplicity, use consensus-like approach
-        # In practice, would use LLM to vote on responses
-        return self._consensus(valid_responses, all_responses)
+        # Delegate the agreement logic to consensus, but tag the result with
+        # the VOTING strategy so callers can distinguish it.
+        result = self._consensus(valid_responses, all_responses)
+        result.strategy = EnsembleStrategy.VOTING
+        return result
 
     def _first_success(
         self,

@@ -5,19 +5,17 @@ Test for the Anthropic provider implementation.
 import sys
 from unittest.mock import MagicMock, patch
 
-# Mock the dependencies we don't need for our unit tests
-sys.modules['faiss'] = MagicMock()
-sys.modules['numpy'] = MagicMock()
-sys.modules['sqlite3'] = MagicMock()
-sys.modules['pandas'] = MagicMock()
-sys.modules['sklearn'] = MagicMock()
-sys.modules['scikit-learn'] = MagicMock()
-sys.modules['pickle'] = MagicMock()
-sys.modules['rich'] = MagicMock()
-sys.modules['openai'] = MagicMock()
+# Only inject lightweight stand-ins for modules that aren't actually installed.
+# Replacing already-imported modules (like `rich` or `openai`) with MagicMocks
+# leaks across the test session and breaks every later test that imports them.
+_OPTIONAL_DEPS = ['faiss', 'pandas', 'sklearn', 'scikit-learn']
+for _dep in _OPTIONAL_DEPS:
+    if _dep not in sys.modules:
+        try:
+            __import__(_dep)
+        except ImportError:
+            sys.modules[_dep] = MagicMock()
 
-# Directly import AnthropicProvider without going through the main module
-sys.path.append('/home/runner/work/yamllm/yamllm')
 from yamllm.providers.anthropic import AnthropicProvider
 
 

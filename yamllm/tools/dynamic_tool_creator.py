@@ -274,26 +274,54 @@ Generate the tool specification now:"""
             self.logger.error(f"Failed to parse LLM response: {e}")
             raise ValueError(f"Failed to parse tool specification: {e}")
 
+    # Builtins exposed to dynamically-generated tool code. We deliberately
+    # exclude everything that lets the code escape the sandbox: open, exec,
+    # eval, compile, __import__, getattr, setattr, delattr, globals, locals,
+    # vars, breakpoint, help, input, exit, quit, etc.
+    _SAFE_BUILTINS = {
+        name: getattr(__builtins__, name) if hasattr(__builtins__, name) else __builtins__[name]
+        for name in (
+            "abs", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
+            "chr", "complex", "dict", "divmod", "enumerate", "filter", "float",
+            "format", "frozenset", "hash", "hex", "id", "int", "isinstance",
+            "issubclass", "iter", "len", "list", "map", "max", "min", "next",
+            "object", "oct", "ord", "pow", "print", "range", "repr", "reversed",
+            "round", "set", "slice", "sorted", "str", "sum", "tuple", "type",
+            "zip", "True", "False", "None",
+            "Exception", "ValueError", "TypeError", "KeyError", "IndexError",
+            "AttributeError", "ArithmeticError", "ZeroDivisionError",
+            "OverflowError", "RuntimeError", "StopIteration",
+        )
+        if (hasattr(__builtins__, name) if hasattr(__builtins__, "__name__") else name in __builtins__)
+    }
+
     def _compile_tool_function(self, code: str, name: str) -> Callable:
-        """Compile tool code into executable function."""
-        # Create namespace for execution
-        namespace = {
+        """Compile tool code into executable function inside a sandboxed namespace."""
+        import re as _re
+        import math as _math
+        import datetime as _datetime
+        import time as _time
+        import random as _random
+        import collections as _collections
+        import itertools as _itertools
+        import functools as _functools
+
+        namespace: Dict[str, Any] = {
+            "__builtins__": dict(self._SAFE_BUILTINS),
             "json": json,
-            "re": __import__("re"),
-            "math": __import__("math"),
-            "datetime": __import__("datetime"),
-            "time": __import__("time"),
-            "random": __import__("random"),
-            "collections": __import__("collections"),
-            "itertools": __import__("itertools"),
-            "functools": __import__("functools"),
+            "re": _re,
+            "math": _math,
+            "datetime": _datetime,
+            "time": _time,
+            "random": _random,
+            "collections": _collections,
+            "itertools": _itertools,
+            "functools": _functools,
         }
 
         try:
-            # Execute code in namespace
             exec(code, namespace)
 
-            # Extract execute function
             if "execute" not in namespace:
                 raise ValueError("Generated code must define 'execute' function")
 

@@ -62,10 +62,16 @@ def setup_logging(config):
         pass
     
     # Create handler
+    def _coerce_int(value, default):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     if getattr(config.logging, "rotate", False):
         from logging.handlers import RotatingFileHandler
-        max_bytes = getattr(config.logging, "rotate_max_bytes", 1048576)
-        backup_count = getattr(config.logging, "rotate_backup_count", 3)
+        max_bytes = _coerce_int(getattr(config.logging, "rotate_max_bytes", 1048576), 1048576)
+        backup_count = _coerce_int(getattr(config.logging, "rotate_backup_count", 3), 3)
         file_handler = RotatingFileHandler(
             log_path, maxBytes=max_bytes, backupCount=backup_count
         )
@@ -1593,7 +1599,7 @@ class LLM:
             "Usage Stats": self._total_usage,
             "Cost Stats": {
                 "Total Cost": f"${cost_summary.total_cost:.4f}",
-                "API Calls": cost_summary.request_count,
+                "API Calls": cost_summary.total_calls,
                 "Total Tokens": cost_summary.total_tokens,
                 "Budget Limit": f"${cost_summary.budget_limit:.2f}" if cost_summary.budget_limit else "None"
             }

@@ -246,18 +246,58 @@ class AgentCoordinator:
         required_roles: List[AgentRole],
         dependencies: Optional[List[str]] = None
     ) -> CollaborativeTask:
-        """Create a collaborative task."""
+        """Create a collaborative task.
+
+        Raises ValueError if adding this task would introduce a cyclic
+        dependency in the task graph.
+        """
+        deps = list(dependencies or [])
+        if self._would_create_cycle(task_id, deps):
+            raise ValueError(
+                f"Cyclic dependency detected when creating task {task_id!r} "
+                f"with dependencies {deps!r}"
+            )
+
         task = CollaborativeTask(
             task_id=task_id,
             description=description,
             required_roles=required_roles,
-            dependencies=dependencies or []
+            dependencies=deps,
         )
 
         self.tasks[task_id] = task
         self.task_queue.append(task_id)
 
         return task
+
+    def _would_create_cycle(self, new_task_id: str, dependencies: List[str]) -> bool:
+        """Check whether adding new_task_id with the given deps creates a cycle.
+
+        Performs a DFS over the existing task graph starting from each declared
+        dependency and reports a cycle if we can reach new_task_id from any of
+        them, or if any dependency already has a cycle reachable from itself.
+        """
+        graph: Dict[str, List[str]] = {
+            tid: list(t.dependencies) for tid, t in self.tasks.items()
+        }
+        graph[new_task_id] = list(dependencies)
+
+        WHITE, GRAY, BLACK = 0, 1, 2
+        color: Dict[str, int] = {tid: WHITE for tid in graph}
+
+        def dfs(node: str) -> bool:
+            color[node] = GRAY
+            for neighbour in graph.get(node, []):
+                if neighbour not in color:
+                    color[neighbour] = WHITE  # unknown task — treat as leaf
+                if color[neighbour] == GRAY:
+                    return True
+                if color[neighbour] == WHITE and dfs(neighbour):
+                    return True
+            color[node] = BLACK
+            return False
+
+        return dfs(new_task_id)
 
     def assign_agents(self, task_id: str) -> bool:
         """Assign agents to a task based on roles."""

@@ -21,12 +21,19 @@ def temp_repo():
         subprocess.run(['git', 'init'], cwd=tmpdir, check=True, capture_output=True)
         subprocess.run(['git', 'config', 'user.email', 'test@test.com'], cwd=tmpdir, check=True)
         subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=tmpdir, check=True)
+        # Disable commit signing locally so the suite is portable to environments
+        # that have global commit.gpgsign enabled.
+        subprocess.run(['git', 'config', 'commit.gpgsign', 'false'], cwd=tmpdir, check=True)
+        subprocess.run(['git', 'config', 'tag.gpgsign', 'false'], cwd=tmpdir, check=True)
 
         # Create initial commit
         test_file = Path(tmpdir) / 'README.md'
         test_file.write_text('# Test Repo\n')
         subprocess.run(['git', 'add', '.'], cwd=tmpdir, check=True)
         subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=tmpdir, check=True)
+        # Normalize the default branch name. `git init` may produce either
+        # `main` or `master` depending on the environment; tests assume `main`.
+        subprocess.run(['git', 'branch', '-M', 'main'], cwd=tmpdir, check=True)
 
         yield tmpdir
 

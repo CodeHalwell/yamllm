@@ -111,8 +111,8 @@ def test_agent_progress_callback(mock_llm):
 
 def test_agent_handles_execution_error(mock_llm):
     """Test agent handles execution errors gracefully."""
-    # Make LLM raise error
-    mock_llm.query.side_effect = Exception("Test error")
+    # Make LLM raise error on the path the actor uses.
+    mock_llm.get_completion_with_tools.side_effect = Exception("Test error")
 
     agent = SimpleAgent(mock_llm)
     state = agent.execute("Test goal")
