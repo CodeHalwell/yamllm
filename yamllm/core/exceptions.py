@@ -59,10 +59,12 @@ class MemoryStoreError(YAMLLMException):
 
 
 # Backwards-compatible alias. Internally we use MemoryStoreError; this name is
-# only kept so that callers who imported ``MemoryError`` from this module keep
-# working. Note: this alias does NOT shadow the builtin in callers' namespaces
-# unless they explicitly `from yamllm.core.exceptions import MemoryError`.
-LegacyMemoryError = MemoryStoreError
+# only kept so that callers who did
+#   ``from yamllm.core.exceptions import MemoryError``
+# keep working. The alias does not affect any module that doesn't explicitly
+# import this symbol — the Python builtin remains intact globally.
+MemoryError = MemoryStoreError  # noqa: A001 - intentional builtin alias for compat
+LegacyMemoryError = MemoryStoreError  # older alias, kept for one release
 
 
 class ProviderError(YAMLLMException):

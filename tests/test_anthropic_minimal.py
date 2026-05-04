@@ -19,8 +19,8 @@ class TestAnthropicProvider(unittest.TestCase):
     @patch('yamllm.providers.anthropic.Anthropic')
     def test_init(self, mock_anthropic):
         """Test initializing the AnthropicProvider."""
-        provider = AnthropicProvider(api_key="test_key", base_url="https://test.api")
-        
+        AnthropicProvider(api_key="test_key", base_url="https://test.api")
+
         # Check that the Anthropic client was initialized correctly
         mock_anthropic.assert_called_once_with(
             api_key="test_key",

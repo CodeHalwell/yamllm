@@ -18,6 +18,8 @@ PROVIDER_PRICING = {
         "gpt-4o": {"input": 5.0, "output": 15.0},
         "gpt-4o-mini": {"input": 0.15, "output": 0.60},
         "gpt-3.5-turbo": {"input": 0.50, "output": 1.50},
+        "o1": {"input": 15.0, "output": 60.0},
+        "o1-mini": {"input": 3.0, "output": 12.0},
     },
     "anthropic": {
         "claude-3-opus": {"input": 15.0, "output": 75.0},
@@ -105,7 +107,13 @@ class CostSummary:
     completion_tokens: int = 0
     total_calls: int = 0
     provider_breakdown: Dict[str, float] = field(default_factory=dict)
+    # Bare-model-name view, kept for human-readable summaries and
+    # backwards-compatible callers that look up by ``model_breakdown["gpt-4o"]``.
     model_breakdown: Dict[str, float] = field(default_factory=dict)
+    # Disambiguated view keyed by ``"<provider>/<model>"``. Use this when the
+    # answer matters per-provider (e.g. distinguishing OpenAI's gpt-4o from
+    # Azure's gpt-4o for cost optimisation recommendations).
+    by_provider_model: Dict[str, float] = field(default_factory=dict)
     records: List[UsageRecord] = field(default_factory=list)
     budget_limit: Optional[float] = None
 
@@ -125,6 +133,16 @@ class CostSummary:
             return 0.0
         return self.total_cost / self.total_calls
 
+    # Older callers used by_provider / by_model. Keep these as aliases so we
+    # don't break existing integrations on this rename.
+    @property
+    def by_provider(self) -> Dict[str, float]:
+        return self.provider_breakdown
+
+    @property
+    def by_model(self) -> Dict[str, float]:
+        return self.model_breakdown
+
     def add_record(self, record: UsageRecord) -> None:
         self.total_cost += record.cost
         self.total_tokens += record.total_tokens
@@ -138,11 +156,18 @@ class CostSummary:
         self.model_breakdown[record.model] = (
             self.model_breakdown.get(record.model, 0.0) + record.cost
         )
+        composite = f"{record.provider}/{record.model}"
+        self.by_provider_model[composite] = (
+            self.by_provider_model.get(composite, 0.0) + record.cost
+        )
 
         self.records.append(record)
 
     def get_top_costs(self, n: int = 5) -> List[tuple]:
-        return sorted(self.model_breakdown.items(), key=lambda x: x[1], reverse=True)[:n]
+        # Use the disambiguated view so OpenAI gpt-4o and Azure gpt-4o aren't
+        # collapsed; optimisation suggestions need to know which provider is
+        # responsible for the spend.
+        return sorted(self.by_provider_model.items(), key=lambda x: x[1], reverse=True)[:n]
 
     def to_dict(self) -> Dict:
         return {
@@ -153,6 +178,7 @@ class CostSummary:
             "total_calls": self.total_calls,
             "provider_breakdown": self.provider_breakdown,
             "model_breakdown": self.model_breakdown,
+            "by_provider_model": self.by_provider_model,
             "budget_limit": self.budget_limit,
             "records": [r.to_dict() for r in self.records],
         }
@@ -203,6 +229,41 @@ class CostTracker:
         output_cost = (completion_tokens / 1_000_000) * pricing["output"]
         return input_cost + output_cost
 
+    def _enforce_budget(self) -> None:
+        """Raise BudgetExceededError if the running total is over budget.
+
+        Centralised here so any future code path that records usage stays
+        consistent — call this before recording, never inline the check.
+        """
+        if self.budget_limit is None:
+            return
+        if self.current_session.total_cost > self.budget_limit:
+            raise BudgetExceededError(
+                f"Budget limit ${self.budget_limit:.2f} exceeded. "
+                f"Current cost: ${self.current_session.total_cost:.2f}",
+                current_cost=self.current_session.total_cost,
+                budget_limit=self.budget_limit,
+            )
+
+    def _maybe_warn_near_budget(self) -> None:
+        """Emit a warning if we're past the warning threshold but still under.
+
+        Matches the bracket of (warning_threshold * limit, limit). Outside
+        that range the warning is irrelevant: under the threshold means we
+        haven't gotten close yet; at-or-over the limit means _enforce_budget
+        already raised.
+        """
+        if self.budget_limit is None:
+            return
+        running = self.current_session.total_cost
+        if (
+            running > self.budget_limit * self.budget_warning_threshold
+            and running < self.budget_limit
+        ):
+            warnings.warn(
+                f"Approaching budget limit: ${running:.2f} / ${self.budget_limit:.2f}"
+            )
+
     def record_usage(
         self,
         provider: str,
@@ -215,13 +276,7 @@ class CostTracker:
         # Budget check happens *before* recording so the first call after
         # set_budget always succeeds, and the next call that finds the running
         # total already over the limit raises.
-        if self.budget_limit is not None and self.current_session.total_cost > self.budget_limit:
-            raise BudgetExceededError(
-                f"Budget limit ${self.budget_limit:.2f} exceeded. "
-                f"Current cost: ${self.current_session.total_cost:.2f}",
-                current_cost=self.current_session.total_cost,
-                budget_limit=self.budget_limit,
-            )
+        self._enforce_budget()
 
         cost = self.calculate_cost(provider, model, prompt_tokens, completion_tokens)
         record = UsageRecord(
@@ -237,15 +292,7 @@ class CostTracker:
         )
         self.current_session.add_record(record)
 
-        if (
-            self.budget_limit is not None
-            and self.current_session.total_cost > self.budget_limit * self.budget_warning_threshold
-            and self.current_session.total_cost < self.budget_limit
-        ):
-            warnings.warn(
-                f"Approaching budget limit: ${self.current_session.total_cost:.2f} "
-                f"/ ${self.budget_limit:.2f}"
-            )
+        self._maybe_warn_near_budget()
 
         return record
 

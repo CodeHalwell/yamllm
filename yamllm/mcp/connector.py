@@ -44,6 +44,10 @@ class MCPConnector:
         self._connection = None
         self._process = None
         self._connected = False
+        # Stdio reads can return bytes past the first newline; keep the
+        # leftover here so subsequent reads pick them up instead of dropping
+        # them on the floor.
+        self._stdio_leftover: bytes = b""
         # Enable HTTP/2 and connection reuse for lower overhead on repeated calls
         self._http_client = httpx.AsyncClient(headers=self._get_headers(), timeout=10, http2=True)
         # Reconnection/backoff settings
@@ -259,23 +263,41 @@ class MCPConnector:
             raise MCPError("Stdio process not connected")
 
         async def _read_bounded_line() -> bytes:
-            # Manually accumulate up to MAX_RESPONSE_BYTES so a malicious peer
-            # can't exhaust memory by withholding a newline.
+            """Read up to (but not including) the next newline, bounded.
+
+            Manually accumulates so a malicious peer can't exhaust memory by
+            withholding a newline. Crucially, anything we read past the first
+            newline is preserved on ``self._stdio_leftover`` so the next call
+            sees it — otherwise back-to-back JSON lines on stdout would be
+            silently dropped and the transport would desynchronize.
+            """
             assert self._process is not None and self._process.stdout is not None
-            buf = bytearray()
-            while True:
-                chunk = await asyncio.wait_for(self._process.stdout.read(64 * 1024), timeout=30)
-                if not chunk:
-                    break
-                buf.extend(chunk)
+
+            buf = bytearray(self._stdio_leftover)
+            self._stdio_leftover = b""
+
+            while b"\n" not in buf:
                 if len(buf) > self.MAX_RESPONSE_BYTES:
                     raise MCPError(
                         f"MCP stdio response from {self.name} exceeds "
                         f"{self.MAX_RESPONSE_BYTES} bytes"
                     )
-                if b"\n" in chunk:
-                    break
-            return bytes(buf).split(b"\n", 1)[0]
+                chunk = await asyncio.wait_for(
+                    self._process.stdout.read(64 * 1024), timeout=30
+                )
+                if not chunk:
+                    # EOF without newline — return whatever we have.
+                    return bytes(buf)
+                buf.extend(chunk)
+
+            line, _, rest = bytes(buf).partition(b"\n")
+            self._stdio_leftover = rest
+            if len(line) > self.MAX_RESPONSE_BYTES:
+                raise MCPError(
+                    f"MCP stdio response from {self.name} exceeds "
+                    f"{self.MAX_RESPONSE_BYTES} bytes"
+                )
+            return line
 
         try:
             # Send message
@@ -386,6 +408,8 @@ class MCPConnector:
         if self.transport != MCPTransportType.STDIO:
             return
         self._connected = False
+        # The leftover buffer was bound to the previous, now-closed stream.
+        self._stdio_leftover = b""
         attempts = 0
         while attempts < self._max_reconnect_attempts:
             attempts += 1

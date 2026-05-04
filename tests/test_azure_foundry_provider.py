@@ -71,8 +71,8 @@ class TestAzureFoundryProvider(unittest.TestCase):
     def test_init_with_default_credential(self):
         """Test initialization with DefaultAzureCredential."""
         # Create provider with 'default' api_key
-        provider = AzureFoundryProvider(api_key="default", base_url=self.base_url)
-        
+        AzureFoundryProvider(api_key="default", base_url=self.base_url)
+
         # Assert that DefaultAzureCredential was created
         self.mock_credential.assert_called_once()
         

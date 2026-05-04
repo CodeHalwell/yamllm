@@ -4,6 +4,13 @@ import json
 import pytest
 from unittest.mock import MagicMock, patch
 
+from yamllm.providers.openai_provider import OpenAIProvider
+from yamllm.providers.google import GoogleGeminiProvider
+from yamllm.providers.mistral import MistralProvider
+from yamllm.providers.deepseek_provider import DeepSeekProvider
+from yamllm.providers.azure_openai_provider import AzureOpenAIProvider
+from yamllm.providers.azure_foundry_provider import AzureFoundryProvider
+
 
 def _has_module(name: str) -> bool:
     """Safely check whether a (possibly nested) module is importable."""
@@ -14,13 +21,6 @@ def _has_module(name: str) -> bool:
 
 
 _AZURE_AVAILABLE = _has_module("azure.ai.inference") and _has_module("azure.identity")
-
-from yamllm.providers.openai_provider import OpenAIProvider
-from yamllm.providers.google import GoogleGeminiProvider
-from yamllm.providers.mistral import MistralProvider
-from yamllm.providers.deepseek_provider import DeepSeekProvider
-from yamllm.providers.azure_openai_provider import AzureOpenAIProvider
-from yamllm.providers.azure_foundry_provider import AzureFoundryProvider
 
 
 class TestToolFormatting:

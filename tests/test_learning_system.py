@@ -562,8 +562,8 @@ def test_learning_system_integration(temp_db):
     assert metrics.total_tasks == 15
     assert metrics.successful_tasks == 12
 
-    # 4. Get recommendations
-    recommendations = learning.get_recommendations("Implement new feature")
+    # 4. Get recommendations (smoke test — must not raise)
+    learning.get_recommendations("Implement new feature")
 
     # 5. Get summary
     summary = learning.get_learning_summary()

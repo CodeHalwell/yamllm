@@ -16,14 +16,14 @@ for _dep in _OPTIONAL_DEPS:
         except ImportError:
             sys.modules[_dep] = MagicMock()
 
-from yamllm.providers.anthropic import AnthropicProvider
+from yamllm.providers.anthropic import AnthropicProvider  # noqa: E402
 
 
 def test_anthropic_provider_init():
     """Test initializing the AnthropicProvider."""
     with patch('yamllm.providers.anthropic.Anthropic') as mock_anthropic:
-        provider = AnthropicProvider(api_key="test_key", base_url="https://test.api")
-        
+        AnthropicProvider(api_key="test_key", base_url="https://test.api")
+
         # Check that the Anthropic client was initialized correctly
         mock_anthropic.assert_called_once_with(
             api_key="test_key",

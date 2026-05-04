@@ -302,24 +302,38 @@ class SessionPlayer:
         my_summary = self.get_summary()
         other_summary = other.get_summary()
 
+        differences: List[str] = []
+        iter_diff = my_summary["total_iterations"] - other_summary["total_iterations"]
+        if iter_diff != 0:
+            differences.append(
+                f"Iteration count differs by {iter_diff:+d}"
+            )
+        if my_summary["goal"] != other_summary["goal"]:
+            differences.append("Goals differ")
+        if bool(my_summary.get("success")) != bool(other_summary.get("success")):
+            differences.append("Outcome (success) differs")
+
         return {
             "session1": {
                 "session_id": my_summary["session_id"],
                 "iterations": my_summary["total_iterations"],
                 "success": my_summary["success"],
                 "goal": my_summary["goal"],
+                "timestamp": my_summary.get("start_time", ""),
             },
             "session2": {
                 "session_id": other_summary["session_id"],
                 "iterations": other_summary["total_iterations"],
                 "success": other_summary["success"],
                 "goal": other_summary["goal"],
+                "timestamp": other_summary.get("start_time", ""),
             },
             "comparison": {
-                "iteration_diff": my_summary["total_iterations"] - other_summary["total_iterations"],
+                "iteration_diff": iter_diff,
                 "both_succeeded": bool(my_summary["success"]) and bool(other_summary["success"]),
                 "same_goal": my_summary["goal"] == other_summary["goal"],
             },
+            "differences": differences,
         }
 
 
