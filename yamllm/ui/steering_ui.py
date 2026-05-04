@@ -85,7 +85,7 @@ class SteeringUI:
         content.append(f"\n[bold yellow]Reasoning:[/bold yellow]\n{thought[:200]}")
 
         # Planned action
-        content.append(f"\n[bold green]Next Action:[/bold green]")
+        content.append("\n[bold green]Next Action:[/bold green]")
         for key, value in list(action.items())[:3]:
             content.append(f"  {key}: {str(value)[:50]}")
 

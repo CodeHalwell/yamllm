@@ -42,6 +42,7 @@ file.py
 .mypy_cache
 settings.json
 yamllm.log
+yamllm.log.*
 .vscode/settings.json
 MagicMock/
 docs/_site/

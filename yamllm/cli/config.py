@@ -6,10 +6,8 @@ This module contains all configuration-related CLI commands.
 
 import argparse
 import os
-from pathlib import Path
 from rich.console import Console
 from rich.table import Table
-from rich.panel import Panel
 from rich import box
 
 from yamllm.core.parser import parse_yaml_config
@@ -51,7 +49,7 @@ def validate_config(args: argparse.Namespace) -> int:
         console.print("[green]✓ Configuration is valid[/green]")
         
         # Show summary
-        console.print(f"\n[bold]Summary:[/bold]")
+        console.print("\n[bold]Summary:[/bold]")
         console.print(f"  Provider: {config.provider.name}")
         console.print(f"  Model: {config.provider.model}")
         console.print(f"  Temperature: {config.model_settings.temperature}")
@@ -73,7 +71,7 @@ def create_config(args: argparse.Namespace) -> int:
     preset = args.preset
     output_path = args.output or f"{provider}_{preset}.yaml"
     
-    console.print(f"\n[bold cyan]Creating configuration...[/bold cyan]\n")
+    console.print("\n[bold cyan]Creating configuration...[/bold cyan]\n")
     console.print(f"Provider: {provider}")
     console.print(f"Preset: {preset}")
     console.print(f"Output: {output_path}")
@@ -111,8 +109,8 @@ def create_config(args: argparse.Namespace) -> int:
             yaml.dump(template, f, default_flow_style=False, sort_keys=False)
         
         console.print(f"\n[green]✓ Configuration created: {output_path}[/green]")
-        console.print(f"\n[dim]Edit this file to customize your settings.[/dim]")
-        console.print(f"[dim]Remember to set your API key in environment variables.[/dim]")
+        console.print("\n[dim]Edit this file to customize your settings.[/dim]")
+        console.print("[dim]Remember to set your API key in environment variables.[/dim]")
         
         return 0
         
@@ -140,7 +138,7 @@ def list_presets(args: argparse.Namespace) -> int:
         )
     
     console.print(table)
-    console.print(f"\n[dim]Use 'yamllm config create --preset <preset>' to create a config[/dim]")
+    console.print("\n[dim]Use 'yamllm config create --preset <preset>' to create a config[/dim]")
     
     return 0
 
@@ -178,7 +176,7 @@ def list_models(args: argparse.Namespace) -> int:
         
         console.print(table)
     
-    console.print(f"\n[dim]Use 'yamllm config create --model <model>' to specify a model[/dim]")
+    console.print("\n[dim]Use 'yamllm config create --model <model>' to specify a model[/dim]")
     
     return 0
 

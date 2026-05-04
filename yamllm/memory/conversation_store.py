@@ -6,6 +6,8 @@ import faiss
 import numpy as np
 from contextlib import contextmanager
 
+from yamllm.core.exceptions import MemoryError
+
 class ConversationStore:
     """
     A class to manage conversation history stored in a SQLite database.
@@ -205,8 +207,6 @@ class ConversationStore:
         # SQLite connections are opened/closed per operation in this implementation
         # So there's nothing persistent to clean up
         pass
-        
-from yamllm.core.exceptions import MemoryError
 
 
 class VectorStore:

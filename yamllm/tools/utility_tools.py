@@ -11,11 +11,11 @@ from bs4 import BeautifulSoup
 import math
 import re
 
+from .network_base import NetworkTool, NetworkError
+from .security import SecurityManager, ToolExecutionError
+
 # Load environment variables from .env file if it exists
 dotenv.load_dotenv()
-
-# Import network base early to use in classes below
-from .network_base import NetworkTool, NetworkError
 
 
 def _request_with_retries(session: requests.Session, method: str, url: str, *, timeout: int, max_retries: int, **kwargs) -> requests.Response:
@@ -40,7 +40,7 @@ def _request_with_retries(session: requests.Session, method: str, url: str, *, t
             import time as _t
             _t.sleep(0.5 * attempt)
     raise RuntimeError(f"Request failed after {max_retries} attempts: {last_error}")
-from .security import SecurityManager, ToolExecutionError
+
 
 class WeatherTool(NetworkTool):
     "Tool to get current weather information from OpenWeatherMap API. Query is performed by city name."
@@ -731,7 +731,6 @@ class JSONTool(Tool):
         super().__init__(name="json_tool", description="Pretty-print, minify or validate JSON")
 
     def execute(self, text: str, mode: str = "pretty") -> Dict:
-        import json
         try:
             obj = json.loads(text)
             if mode == "pretty":

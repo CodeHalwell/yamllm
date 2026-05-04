@@ -116,7 +116,7 @@ def setup_p1_commands(subparsers):
 def create_dynamic_tool(args: argparse.Namespace) -> int:
     """Create a dynamic tool from natural language."""
     try:
-        console.print(f"[cyan]Creating tool from description...[/cyan]")
+        console.print("[cyan]Creating tool from description...[/cyan]")
         console.print(f"[dim]{args.description}[/dim]\n")
 
         # Load LLM
@@ -204,7 +204,7 @@ def analyze_code(args: argparse.Namespace) -> int:
 
         # Show architecture summary if available
         if context.architecture_summary:
-            console.print(f"\n[bold cyan]Architecture Summary:[/bold cyan]\n")
+            console.print("\n[bold cyan]Architecture Summary:[/bold cyan]\n")
             console.print(context.architecture_summary)
 
         # Save if requested

@@ -24,6 +24,11 @@ class TaskType(Enum):
     CREATIVE = "creative"
     TRANSLATION = "translation"
     SUMMARIZATION = "summarization"
+    DATA_ANALYSIS = "data_analysis"
+    DOCUMENTATION = "documentation"
+    Q_AND_A = "q_and_a"
+    EXPERT = "expert"
+    SIMPLE = "simple"
     GENERAL = "general"
 
 

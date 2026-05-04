@@ -240,7 +240,9 @@ class CostTracker:
         if self.budget_limit and self.current_session.total_cost > self.budget_limit:
             raise BudgetExceededError(
                 f"Budget limit ${self.budget_limit:.2f} exceeded. "
-                f"Current cost: ${self.current_session.total_cost:.2f}"
+                f"Current cost: ${self.current_session.total_cost:.2f}",
+                current_cost=self.current_session.total_cost,
+                budget_limit=self.budget_limit,
             )
 
         # Warn if approaching budget
@@ -311,7 +313,11 @@ class CostTracker:
 
 class BudgetExceededError(Exception):
     """Raised when budget limit is exceeded."""
-    pass
+
+    def __init__(self, message: str, current_cost: float = 0.0, budget_limit: float = 0.0):
+        super().__init__(message)
+        self.current_cost = current_cost
+        self.budget_limit = budget_limit
 
 
 class CostOptimizer:

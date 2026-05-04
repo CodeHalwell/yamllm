@@ -127,7 +127,7 @@ class AdvancedGitWorkflow:
                 untracked.append(filepath)
 
         # Ahead/behind
-        result = self._run_git('rev-list', '--left-right', '--count', f'HEAD...@{{u}}', check=False)
+        result = self._run_git('rev-list', '--left-right', '--count', 'HEAD...@{u}', check=False)
         ahead, behind = 0, 0
         if result.returncode == 0:
             parts = result.stdout.strip().split()

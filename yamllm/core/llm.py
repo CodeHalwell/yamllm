@@ -1159,8 +1159,8 @@ class LLM:
                         if self.stream_callback:
                             self.stream_callback(chunk_text)
                     # Cooperative cancellation
-                        if getattr(self, "_cancel_requested", False):
-                            break
+                    if getattr(self, "_cancel_requested", False):
+                        break
                 if response_text:
                     return response_text
                 # If streaming yielded no visible output (some providers may suppress final deltas),
@@ -1593,7 +1593,7 @@ class LLM:
             "Usage Stats": self._total_usage,
             "Cost Stats": {
                 "Total Cost": f"${cost_summary.total_cost:.4f}",
-                "API Calls": cost_summary.total_calls,
+                "API Calls": cost_summary.request_count,
                 "Total Tokens": cost_summary.total_tokens,
                 "Budget Limit": f"${cost_summary.budget_limit:.2f}" if cost_summary.budget_limit else "None"
             }

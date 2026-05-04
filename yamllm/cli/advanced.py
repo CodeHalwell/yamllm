@@ -2,7 +2,6 @@
 
 import argparse
 import json
-import sys
 
 from rich.console import Console
 from rich.table import Table
@@ -276,7 +275,7 @@ def route_model(args: argparse.Namespace) -> int:
 
         if args.explain:
             task_type, complexity = router.analyze_task(args.prompt)
-            console.print(f"\n[bold]Task Analysis:[/bold]")
+            console.print("\n[bold]Task Analysis:[/bold]")
             console.print(f"  Type: {task_type.value}")
             console.print(f"  Complexity: {complexity.value}")
 
