@@ -76,7 +76,7 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
             AgentCoordinator, CollaborativeAgent, AgentCapability, AgentRole
         )
 
-        console.print(f"[bold cyan]Multi-Agent Collaborative Execution[/bold cyan]\n")
+        console.print("[bold cyan]Multi-Agent Collaborative Execution[/bold cyan]\n")
         console.print(f"[yellow]Goal:[/yellow] {goal}\n")
 
         # Load LLM
@@ -150,7 +150,7 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
             result = coordinator.execute_collaborative_task(goal, max_iterations=max_iterations)
 
         # Display results
-        console.print(f"\n[bold cyan]═══ Results ═══[/bold cyan]\n")
+        console.print("\n[bold cyan]═══ Results ═══[/bold cyan]\n")
         console.print(f"[green]✓ Completed {result['tasks_completed']} tasks in {result['iterations']} iterations[/green]\n")
 
         # Show task results

@@ -168,10 +168,9 @@ def diagnose(args: argparse.Namespace) -> int:
         console.print(f"YAMLLM: [green]{__version__}[/green]")
 
         # Config, if provided
-        cfg = None
         if getattr(args, 'config', None):
             try:
-                cfg = parse_yaml_config(args.config)
+                parse_yaml_config(args.config)
                 console.print(f"Config: [green]{args.config}[/green]")
             except Exception as e:
                 console.print(f"Config: [red]invalid ({e})[/red]")

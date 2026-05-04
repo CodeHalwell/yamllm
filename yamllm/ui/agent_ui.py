@@ -2,6 +2,7 @@
 
 from typing import Optional
 from rich.console import Console
+from rich.live import Live
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
@@ -38,10 +39,10 @@ class AgentUI:
 
         # Create progress text
         text = Text()
-        text.append(f"Iteration: ", style="dim")
+        text.append("Iteration: ", style="dim")
         text.append(f"{state.iteration}/{state.max_iterations}", style=self.theme.colors.info)
         text.append(" | ", style="dim")
-        text.append(f"Progress: ", style="dim")
+        text.append("Progress: ", style="dim")
         text.append(f"{progress_pct:.0f}%", style=self.theme.colors.success)
         text.append(f" ({completed}/{total} tasks)", style="dim")
 

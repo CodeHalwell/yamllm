@@ -62,10 +62,16 @@ def setup_logging(config):
         pass
     
     # Create handler
+    def _coerce_int(value, default):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     if getattr(config.logging, "rotate", False):
         from logging.handlers import RotatingFileHandler
-        max_bytes = getattr(config.logging, "rotate_max_bytes", 1048576)
-        backup_count = getattr(config.logging, "rotate_backup_count", 3)
+        max_bytes = _coerce_int(getattr(config.logging, "rotate_max_bytes", 1048576), 1048576)
+        backup_count = _coerce_int(getattr(config.logging, "rotate_backup_count", 3), 3)
         file_handler = RotatingFileHandler(
             log_path, maxBytes=max_bytes, backupCount=backup_count
         )
@@ -1159,8 +1165,8 @@ class LLM:
                         if self.stream_callback:
                             self.stream_callback(chunk_text)
                     # Cooperative cancellation
-                        if getattr(self, "_cancel_requested", False):
-                            break
+                    if getattr(self, "_cancel_requested", False):
+                        break
                 if response_text:
                     return response_text
                 # If streaming yielded no visible output (some providers may suppress final deltas),

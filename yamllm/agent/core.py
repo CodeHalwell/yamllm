@@ -322,7 +322,16 @@ class SimpleAgent(Agent):
 
         # Execute task directly
         task = state.tasks[0]
-        action_result = self.actor.act(task, state)
+        try:
+            action_result = self.actor.act(task, state)
+        except Exception as exc:
+            self.logger.error(f"SimpleAgent execution failed: {exc}")
+            state.completed = True
+            state.success = False
+            state.error = str(exc)
+            self._notify_progress(state)
+            return state
+
         state.add_action(action_result.to_dict())
 
         # Observe result
@@ -331,5 +340,15 @@ class SimpleAgent(Agent):
         # Set completion
         state.completed = True
         state.success = action_result.success
+        if not action_result.success and not state.error:
+            state.error = action_result.error or "Task did not succeed"
 
+        self._notify_progress(state)
         return state
+
+    def _notify_progress(self, state: AgentState) -> None:
+        if self.progress_callback:
+            try:
+                self.progress_callback(state)
+            except Exception as exc:
+                self.logger.warning(f"progress_callback raised: {exc}")

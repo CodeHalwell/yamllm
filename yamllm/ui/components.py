@@ -257,7 +257,7 @@ class YAMLLMConsole:
                     line_numbers=False
                 )
                 content_parts.append(syntax)
-            except:
+            except (json.JSONDecodeError, ValueError):
                 content_parts.append(Text(content))
         else:
             content_parts.append(Text(content))

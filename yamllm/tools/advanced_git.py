@@ -104,9 +104,11 @@ class AdvancedGitWorkflow:
         result = self._run_git('branch', '--show-current')
         branch = result.stdout.strip()
 
-        # Status
+        # Status. Don't .strip() the whole stdout — porcelain output starts with
+        # a literal space for unstaged-only files (" M file") and stripping it
+        # silently corrupts the parse.
         result = self._run_git('status', '--porcelain')
-        lines = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        lines = [line for line in result.stdout.split('\n') if line]
 
         staged = []
         unstaged = []
@@ -127,7 +129,7 @@ class AdvancedGitWorkflow:
                 untracked.append(filepath)
 
         # Ahead/behind
-        result = self._run_git('rev-list', '--left-right', '--count', f'HEAD...@{{u}}', check=False)
+        result = self._run_git('rev-list', '--left-right', '--count', 'HEAD...@{u}', check=False)
         ahead, behind = 0, 0
         if result.returncode == 0:
             parts = result.stdout.strip().split()
@@ -239,21 +241,30 @@ class AdvancedGitWorkflow:
         )
 
     def _detect_components(self, files: List[str]) -> List[str]:
-        """Detect affected components from file paths."""
-        components = set()
+        """Detect affected components from file paths.
+
+        Top-level directories are preferred; filename prefixes are only used
+        when no top-level directory is present (a flat file like "main.py").
+        """
+        ordered: List[str] = []
+        seen = set()
+
+        def _add(name: str) -> None:
+            if name and name not in seen:
+                seen.add(name)
+                ordered.append(name)
 
         for filepath in files:
             parts = filepath.split('/')
             if len(parts) > 1:
-                # Add directory as component
-                components.add(parts[0])
+                _add(parts[0])
+                continue
 
-            # Detect component from filename
             filename = os.path.basename(filepath)
             if '_' in filename:
-                components.add(filename.split('_')[0])
+                _add(filename.split('_')[0])
 
-        return list(components)[:3]  # Top 3 components
+        return ordered[:3]
 
     def _detect_breaking_changes(self, diff: str) -> bool:
         """Detect potential breaking changes in diff."""
@@ -351,13 +362,13 @@ Commit message:"""
 
         # Apply strategy prefix
         if strategy == BranchStrategy.GITFLOW:
-            # Detect type
-            if any(word in task.lower() for word in ['fix', 'bug', 'error']):
+            task_lower = task.lower()
+            if any(word in task_lower for word in ['fix', 'bug', 'error', 'patch']):
                 prefix = 'hotfix'
-            elif any(word in task.lower() for word in ['feature', 'add', 'new']):
-                prefix = 'feature'
             else:
-                prefix = 'develop'
+                # Default to feature/ — broader than the previous narrow keyword
+                # list, so tasks like "Implement payment system" land correctly.
+                prefix = 'feature'
             return f"{prefix}/{clean_task}"
 
         elif strategy == BranchStrategy.GITHUB_FLOW:

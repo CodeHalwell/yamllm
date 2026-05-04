@@ -9,7 +9,7 @@ Tests may patch `Console` here; provide a harmless placeholder.
 class Console:  # pragma: no cover - test-only compatibility
     pass
 
-from yamllm.providers.azure_foundry import AzureFoundryProvider  # re-export
+from yamllm.providers.azure_foundry import AzureFoundryProvider  # noqa: E402  re-export
 
 __all__ = ["AzureFoundryProvider", "Console"]
 

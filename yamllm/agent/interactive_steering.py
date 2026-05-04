@@ -110,15 +110,14 @@ class InteractiveSteering:
         Returns:
             SteeringDecision from human
         """
-        # Check if we should pause
-        should_pause = (
-            self.pause_before_action
-            or self.is_paused
-            or self.check_watchpoints(point)
-        )
+        # Auto-approve mode skips the prompt unless an explicit override
+        # (paused or a triggered watchpoint) demands user attention.
+        force_pause = self.is_paused or self.check_watchpoints(point)
 
-        if self.auto_approve and not should_pause:
-            return SteeringDecision(action=SteeringAction.APPROVE)
+        if self.auto_approve and not force_pause:
+            decision = SteeringDecision(action=SteeringAction.APPROVE)
+            self.decision_history.append(decision)
+            return decision
 
         # Display steering point
         self._display_steering_point(point)

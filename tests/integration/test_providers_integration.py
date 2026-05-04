@@ -259,7 +259,7 @@ class TestProvidersIntegration:
 class TestAsyncProvidersIntegration:
     """Integration tests for async providers."""
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     @pytest.mark.parametrize("provider_name,config", [
         (name, conf) for name, conf in PROVIDER_CONFIGS.items()
         if ProviderFactory.supports_async(name)
@@ -300,7 +300,7 @@ class TestAsyncProvidersIntegration:
             assert len(text) > 0
             assert "hello" in text.lower() or "async" in text.lower()
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     @pytest.mark.parametrize("provider_name,config", [
         (name, conf) for name, conf in PROVIDER_CONFIGS.items()
         if ProviderFactory.supports_async(name)
@@ -345,7 +345,7 @@ class TestAsyncProvidersIntegration:
             full_text = "".join(chunks)
             assert len(full_text) > 0
     
-    @pytest.mark.asyncio
+    @pytest.mark.anyio
     async def test_concurrent_async_requests(self):
         """Test concurrent requests across multiple providers."""
         # Get available providers with API keys

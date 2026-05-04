@@ -15,7 +15,6 @@ import os
 import sys
 from pathlib import Path
 from typing import Iterable, Optional
-import re
 
 from dotenv import load_dotenv
 

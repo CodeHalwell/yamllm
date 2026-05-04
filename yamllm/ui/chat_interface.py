@@ -55,8 +55,7 @@ class ChatInterface:
                 # Tool is being called
                 self.tool_call_count += 1
                 tool_name = event.get("name")
-                args = event.get("args", {})
-                
+
                 # Show tool execution start
                 self.console.console.print(
                     f"\n[{self.console.theme['tool']}]🔧 Calling {tool_name}...[/{self.console.theme['tool']}]"
@@ -71,7 +70,7 @@ class ChatInterface:
                 if isinstance(result, str):
                     try:
                         result = json.loads(result)
-                    except:
+                    except (json.JSONDecodeError, ValueError):
                         pass
                 
                 # Show tool result (simplified)

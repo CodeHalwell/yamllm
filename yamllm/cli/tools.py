@@ -85,7 +85,7 @@ def list_tools(args: argparse.Namespace) -> int:
         )
     
     console.print(tools_table)
-    console.print(f"\n[dim]Use 'yamllm tools info <tool>' for detailed information[/dim]")
+    console.print("\n[dim]Use 'yamllm tools info <tool>' for detailed information[/dim]")
     
     return 0
 
@@ -131,7 +131,7 @@ def show_tool_info(args: argparse.Namespace) -> int:
     # Show example
     example = info.get('example')
     if example:
-        console.print(f"\n[bold]Example:[/bold]")
+        console.print("\n[bold]Example:[/bold]")
         console.print(Panel(str(example), border_style="dim"))
     
     return 0

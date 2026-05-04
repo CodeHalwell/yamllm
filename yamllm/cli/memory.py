@@ -16,7 +16,7 @@ def migrate_index(args: argparse.Namespace) -> int:
     """Migrate or purge FAISS vector index."""
     try:
         import faiss
-    except Exception as e:
+    except Exception:
         console.print("[red]FAISS is not installed. Install 'faiss-cpu' to manage vector indexes.[/red]")
         return 1
     

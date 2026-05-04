@@ -115,7 +115,7 @@ def run_agent(args: argparse.Namespace) -> int:
             interactive_agent = InteractiveAgent(agent, steering=steering)
 
             # Execute with interactive control
-            console.print(f"\n[bold green]Starting interactive agent execution...[/bold green]\n")
+            console.print("\n[bold green]Starting interactive agent execution...[/bold green]\n")
             console.print(f"[bold]Goal:[/bold] {args.goal}\n")
 
             state = interactive_agent.execute(args.goal, context)
@@ -130,7 +130,7 @@ def run_agent(args: argparse.Namespace) -> int:
             agent.progress_callback = progress_callback
 
             # Execute
-            console.print(f"\n[bold green]Starting agent execution...[/bold green]\n")
+            console.print("\n[bold green]Starting agent execution...[/bold green]\n")
             console.print(f"[bold]Goal:[/bold] {args.goal}\n")
 
             state = agent.execute(args.goal, context)
@@ -182,7 +182,7 @@ def run_workflow(args: argparse.Namespace) -> int:
             info = manager.get_workflow_info(args.workflow)
             console.print(f"\n[bold cyan]{info['name']}[/bold cyan]\n")
             console.print(f"[bold]Description:[/bold] {info['description']}\n")
-            console.print(f"[bold]Steps:[/bold]")
+            console.print("[bold]Steps:[/bold]")
             for i, step in enumerate(info['steps'], 1):
                 console.print(f"  {i}. {step}")
             console.print()

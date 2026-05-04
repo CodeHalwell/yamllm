@@ -44,6 +44,10 @@ class MCPConnector:
         self._connection = None
         self._process = None
         self._connected = False
+        # Stdio reads can return bytes past the first newline; keep the
+        # leftover here so subsequent reads pick them up instead of dropping
+        # them on the floor.
+        self._stdio_leftover: bytes = b""
         # Enable HTTP/2 and connection reuse for lower overhead on repeated calls
         self._http_client = httpx.AsyncClient(headers=self._get_headers(), timeout=10, http2=True)
         # Reconnection/backoff settings
@@ -214,15 +218,34 @@ class MCPConnector:
         self._cached_tools = tools
         return tools
 
+    # Hard cap on the size of a single MCP response payload. A misbehaving
+    # or hostile server otherwise lets us read unbounded memory.
+    MAX_RESPONSE_BYTES = 8 * 1024 * 1024  # 8 MiB
+
+    def _decode_response(self, payload) -> Dict[str, Any]:
+        """Decode a payload, enforcing a maximum size."""
+        if isinstance(payload, bytes):
+            if len(payload) > self.MAX_RESPONSE_BYTES:
+                raise MCPError(
+                    f"MCP response from {self.name} exceeds {self.MAX_RESPONSE_BYTES} bytes"
+                )
+            payload = payload.decode("utf-8", errors="replace")
+        elif isinstance(payload, str):
+            if len(payload.encode("utf-8")) > self.MAX_RESPONSE_BYTES:
+                raise MCPError(
+                    f"MCP response from {self.name} exceeds {self.MAX_RESPONSE_BYTES} bytes"
+                )
+        return json.loads(payload)
+
     async def _send_websocket_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Send message via WebSocket and return response."""
         if not self._connection:
             raise MCPError("WebSocket not connected")
-        
+
         try:
             await self._connection.send(json.dumps(message))
             response = await asyncio.wait_for(self._connection.recv(), timeout=30)
-            return json.loads(response)
+            return self._decode_response(response)
         except (ConnectionClosed, asyncio.TimeoutError) as e:
             # Try to reconnect once and resend
             self.logger.warning(f"WebSocket communication error for {self.name}: {e}; attempting reconnect")
@@ -230,27 +253,60 @@ class MCPConnector:
             try:
                 await self._connection.send(json.dumps(message))
                 response = await asyncio.wait_for(self._connection.recv(), timeout=30)
-                return json.loads(response)
+                return self._decode_response(response)
             except Exception as e2:
                 raise MCPError(f"WebSocket communication failed after reconnect: {e2}") from e2
-    
+
     async def _send_stdio_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Send message via stdio and return response."""
         if not self._process:
             raise MCPError("Stdio process not connected")
-        
+
+        async def _read_bounded_line() -> bytes:
+            """Read up to (but not including) the next newline, bounded.
+
+            Manually accumulates so a malicious peer can't exhaust memory by
+            withholding a newline. Crucially, anything we read past the first
+            newline is preserved on ``self._stdio_leftover`` so the next call
+            sees it — otherwise back-to-back JSON lines on stdout would be
+            silently dropped and the transport would desynchronize.
+            """
+            assert self._process is not None and self._process.stdout is not None
+
+            buf = bytearray(self._stdio_leftover)
+            self._stdio_leftover = b""
+
+            while b"\n" not in buf:
+                if len(buf) > self.MAX_RESPONSE_BYTES:
+                    raise MCPError(
+                        f"MCP stdio response from {self.name} exceeds "
+                        f"{self.MAX_RESPONSE_BYTES} bytes"
+                    )
+                chunk = await asyncio.wait_for(
+                    self._process.stdout.read(64 * 1024), timeout=30
+                )
+                if not chunk:
+                    # EOF without newline — return whatever we have.
+                    return bytes(buf)
+                buf.extend(chunk)
+
+            line, _, rest = bytes(buf).partition(b"\n")
+            self._stdio_leftover = rest
+            if len(line) > self.MAX_RESPONSE_BYTES:
+                raise MCPError(
+                    f"MCP stdio response from {self.name} exceeds "
+                    f"{self.MAX_RESPONSE_BYTES} bytes"
+                )
+            return line
+
         try:
             # Send message
             message_str = json.dumps(message) + "\n"
             self._process.stdin.write(message_str.encode())
             await self._process.stdin.drain()
-            
-            # Read response
-            response_line = await asyncio.wait_for(
-                self._process.stdout.readline(), 
-                timeout=30
-            )
-            return json.loads(response_line.decode())
+
+            response_line = await _read_bounded_line()
+            return self._decode_response(response_line)
         except (asyncio.TimeoutError, json.JSONDecodeError) as e:
             # Try to reconnect once and resend
             self.logger.warning(f"Stdio communication error for {self.name}: {e}; attempting reconnect")
@@ -259,8 +315,8 @@ class MCPConnector:
                 message_str = json.dumps(message) + "\n"
                 self._process.stdin.write(message_str.encode())
                 await self._process.stdin.drain()
-                response_line = await asyncio.wait_for(self._process.stdout.readline(), timeout=30)
-                return json.loads(response_line.decode())
+                response_line = await _read_bounded_line()
+                return self._decode_response(response_line)
             except Exception as e2:
                 raise MCPError(f"Stdio communication failed after reconnect: {e2}") from e2
 
@@ -352,6 +408,8 @@ class MCPConnector:
         if self.transport != MCPTransportType.STDIO:
             return
         self._connected = False
+        # The leftover buffer was bound to the previous, now-closed stream.
+        self._stdio_leftover = b""
         attempts = 0
         while attempts < self._max_reconnect_attempts:
             attempts += 1
