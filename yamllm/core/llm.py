@@ -26,6 +26,7 @@ from yamllm.core.memory_manager import MemoryManager
 from yamllm.core.tool_orchestrator import ToolOrchestrator
 from yamllm.core.thinking import ThinkingManager
 from yamllm.core.metrics import MetricsTracker
+from yamllm.core.cost_tracker import CostTracker, CostSummary, BudgetExceededError
 from yamllm.providers.factory import ProviderFactory
 from yamllm.providers.capabilities import get_provider_capabilities
 from yamllm.tools.thread_safe_manager import ThreadSafeToolManager
@@ -64,10 +65,16 @@ def setup_logging(config):
         pass
     
     # Create handler
+    def _coerce_int(value, default):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     if getattr(config.logging, "rotate", False):
         from logging.handlers import RotatingFileHandler
-        max_bytes = getattr(config.logging, "rotate_max_bytes", 1048576)
-        backup_count = getattr(config.logging, "rotate_backup_count", 3)
+        max_bytes = _coerce_int(getattr(config.logging, "rotate_max_bytes", 1048576), 1048576)
+        backup_count = _coerce_int(getattr(config.logging, "rotate_backup_count", 3), 3)
         file_handler = RotatingFileHandler(
             log_path, maxBytes=max_bytes, backupCount=backup_count
         )
@@ -114,16 +121,17 @@ class LLM:
     delegating specific responsibilities to specialized components.
     """
     
-    def __init__(self, config_path: str, api_key: str):
+    def __init__(self, config_path: str, api_key: str = ""):
         """
         Initialize LLM with configuration.
-        
+
         Args:
             config_path: Path to YAML configuration file
-            api_key: API key for the LLM provider
+            api_key: API key for the LLM provider (defaults to empty string;
+                    providers will typically fall back to environment variables)
         """
         self.config_path = config_path
-        self.api_key = api_key
+        self.api_key = api_key or os.getenv("OPENAI_API_KEY") or ""
         # Compatibility: allow tests to patch load_config()
         self.config = self.load_config()
         self.logger = setup_logging(self.config)
@@ -171,7 +179,10 @@ class LLM:
             "total_tokens": 0
         }
         self._tool_call_count = 0
-        
+
+        # Cost tracking
+        self.cost_tracker = CostTracker(logger=self.logger)
+
         # MCP client initialization
         self.mcp_client = self._initialize_mcp()
     
@@ -534,7 +545,47 @@ class LLM:
         if self.output_stream:
             return None
         return response_text
-    
+
+    def get_completion_with_tools(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get completion with detailed tool execution information.
+
+        This method provides structured output including the response content,
+        tool calls made, and tool results. Useful for agent systems that need
+        to inspect tool execution details.
+
+        Args:
+            prompt: User prompt
+            system_prompt: Optional system prompt
+
+        Returns:
+            Dictionary with 'content', 'tool_calls', and 'tool_results' keys
+        """
+        # Get the text response (tools are executed internally)
+        response_text = self.get_response(prompt, system_prompt)
+
+        # Get tool execution history from the orchestrator
+        tool_calls = []
+        tool_results = []
+
+        if self.tool_orchestrator.enabled and hasattr(self.tool_orchestrator, 'execution_history'):
+            for execution in self.tool_orchestrator.execution_history:
+                tool_calls.append({
+                    "name": execution.get("tool_name"),
+                    "arguments": execution.get("arguments", {})
+                })
+                tool_results.append({
+                    "tool": execution.get("tool_name"),
+                    "result": execution.get("result"),
+                    "error": execution.get("error")
+                })
+
+        return {
+            "content": response_text or "",
+            "tool_calls": tool_calls,
+            "tool_results": tool_results
+        }
+
     async def aquery(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Async query to the language model.
@@ -1121,8 +1172,8 @@ class LLM:
                         if self.stream_callback:
                             self.stream_callback(chunk_text)
                     # Cooperative cancellation
-                        if getattr(self, "_cancel_requested", False):
-                            break
+                    if getattr(self, "_cancel_requested", False):
+                        break
                 if response_text:
                     return response_text
                 # If streaming yielded no visible output (some providers may suppress final deltas),
@@ -1391,47 +1442,73 @@ class LLM:
                     return int(v or 0)
                 except Exception:
                     return 0
-            
+
             usage = None
             if hasattr(response, "usage"):
                 usage = response.usage
             elif isinstance(response, dict) and "usage" in response:
                 usage = response["usage"]
-            
+
             if usage:
+                prompt_tokens = _coerce(getattr(usage, "prompt_tokens", 0))
+                completion_tokens = _coerce(getattr(usage, "completion_tokens", 0))
+                total_tokens = _coerce(getattr(usage, "total_tokens", 0))
+
                 self._last_usage = {
-                    "prompt_tokens": _coerce(getattr(usage, "prompt_tokens", 0)),
-                    "completion_tokens": _coerce(getattr(usage, "completion_tokens", 0)),
-                    "total_tokens": _coerce(getattr(usage, "total_tokens", 0))
+                    "prompt_tokens": prompt_tokens,
+                    "completion_tokens": completion_tokens,
+                    "total_tokens": total_tokens
                 }
-                
+
                 for k, v in self._last_usage.items():
                     self._total_usage[k] += v
-        except Exception:
-            pass
+
+                # Record cost
+                try:
+                    self.cost_tracker.record_usage(
+                        provider=self.provider_name,
+                        model=self.model,
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens
+                    )
+                except BudgetExceededError as e:
+                    self.logger.warning(f"Budget exceeded: {e}")
+                    if self.event_callback:
+                        self.event_callback({
+                            "type": "budget_warning",
+                            "message": str(e),
+                            "current_cost": e.current_cost,
+                            "budget": e.budget_limit
+                        })
+                except Exception as e:
+                    self.logger.debug(f"Error recording cost: {e}")
+        except Exception as e:
+            # Log usage tracking errors at debug level to avoid noise
+            # but ensure they don't silently disappear
+            self.logger.debug(f"Error recording usage statistics: {e}")
     
     # Callback methods
     def set_stream_callback(self, callback: Callable[[str], None]):
         """Set streaming callback."""
         self.stream_callback = callback
-    
+
     def clear_stream_callback(self):
         """Clear streaming callback."""
         self.stream_callback = None
-    
+
     def set_event_callback(self, callback: Callable[[Dict[str, Any]], None]):
         """Set event callback."""
         self.event_callback = callback
-    
+
     def clear_event_callback(self):
         """Clear event callback."""
         self.event_callback = None
-    
+
     # Performance metrics methods
     def get_metrics_summary(self) -> Dict[str, Any]:
         """
         Get performance metrics summary.
-        
+
         Returns:
             Dictionary containing performance metrics including:
             - Request count and average time
@@ -1441,20 +1518,97 @@ class LLM:
             - Cache hit rates
         """
         return self.metrics.get_summary()
-    
+
     def get_prometheus_metrics(self) -> str:
         """
         Get performance metrics in Prometheus format.
-        
+
         Returns:
             String containing metrics in Prometheus exposition format
         """
         return self.metrics.format_prometheus()
-    
+
     def reset_metrics(self):
         """Reset all performance metrics."""
         self.metrics.reset()
-    
+
+    # Cost tracking methods
+    def get_cost_summary(self) -> CostSummary:
+        """Get cost summary for current session."""
+        return self.cost_tracker.get_summary()
+
+    def set_budget(self, limit: float, warning_threshold: float = 0.8):
+        """Set budget limit and warning threshold."""
+        self.cost_tracker.set_budget(limit, warning_threshold)
+
+    def reset_cost_tracking(self):
+        """Reset cost tracking for new session."""
+        self.cost_tracker.reset_session()
+
+    def get_cost_optimization_suggestions(self) -> Dict[str, Any]:
+        """Get cost optimization suggestions."""
+        from yamllm.core.cost_tracker import CostOptimizer
+        optimizer = CostOptimizer(self.cost_tracker)
+        return optimizer.analyze()
+
+    # Dynamic tool creation (P1)
+    def create_dynamic_tool(self, description: str, name: Optional[str] = None):
+        """
+        Create a custom tool from natural language description.
+
+        Args:
+            description: Natural language description of desired tool
+            name: Optional tool name (auto-generated if not provided)
+
+        Returns:
+            Created DynamicTool
+
+        Example:
+            tool = llm.create_dynamic_tool("A tool that converts markdown to HTML")
+        """
+        from yamllm.tools.dynamic_tool_creator import ToolCreator
+
+        creator = ToolCreator(self, self.logger)
+        tool = creator.create_tool(description, name=name)
+
+        # Register tool with orchestrator
+        if self.tool_orchestrator:
+            # Add to available tools (implementation depends on orchestrator design)
+            self.logger.info(f"Created dynamic tool: {tool.name}")
+
+        return tool
+
+    # Code context intelligence (P1)
+    def analyze_code_context(
+        self,
+        repo_path: str,
+        query: Optional[str] = None
+    ) -> str:
+        """
+        Analyze code repository and extract relevant context.
+
+        Args:
+            repo_path: Path to code repository
+            query: Optional query to find relevant context
+
+        Returns:
+            Formatted context string
+
+        Example:
+            context = llm.analyze_code_context("./my-project", "authentication system")
+        """
+        from yamllm.code.context_intelligence import CodeContextIntelligence
+
+        intel = CodeContextIntelligence(self, self.logger)
+        intel.analyze_project(repo_path)
+
+        if query:
+            return intel.get_relevant_context(query)
+        else:
+            return f"Analyzed project: {len(intel.project_context.files)} files, " \
+                   f"{len(intel.project_context.symbol_index)} symbols"
+
+
     # Utility methods
     def update_settings(self, **kwargs):
         """Update instance settings."""
@@ -1464,6 +1618,9 @@ class LLM:
     
     def print_settings(self):
         """Print current settings."""
+        # Get cost summary
+        cost_summary = self.get_cost_summary()
+
         settings = {
             "Provider Settings": {
                 "Provider": self.provider_name,
@@ -1485,9 +1642,15 @@ class LLM:
                 "Enabled": self.tools_enabled,
                 "Timeout": self.tools_timeout
             },
-            "Usage Stats": self._total_usage
+            "Usage Stats": self._total_usage,
+            "Cost Stats": {
+                "Total Cost": f"${cost_summary.total_cost:.4f}",
+                "API Calls": cost_summary.total_calls,
+                "Total Tokens": cost_summary.total_tokens,
+                "Budget Limit": f"${cost_summary.budget_limit:.2f}" if cost_summary.budget_limit else "None"
+            }
         }
-        
+
         print("\nLLM Configuration Settings:")
         print("=" * 50)
         for category, values in settings.items():

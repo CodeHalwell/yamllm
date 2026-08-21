@@ -9,7 +9,7 @@ Tests may patch `Console` here; provide a harmless placeholder.
 class Console:  # pragma: no cover - test-only compatibility
     pass
 
-from yamllm.providers.azure_openai import AzureOpenAIProvider  # re-export
+from yamllm.providers.azure_openai import AzureOpenAIProvider  # noqa: E402  re-export
 
 __all__ = ["AzureOpenAIProvider", "Console"]
 

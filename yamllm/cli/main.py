@@ -21,6 +21,9 @@ from .tools import setup_tools_commands
 from .config import setup_config_commands
 from .chat import setup_chat_commands
 from .memory import setup_memory_commands
+from .agent import setup_agent_commands
+from .advanced import setup_advanced_commands
+from .p1_features import setup_p1_commands
 
 __version__ = "0.1.12"
 
@@ -165,10 +168,9 @@ def diagnose(args: argparse.Namespace) -> int:
         console.print(f"YAMLLM: [green]{__version__}[/green]")
 
         # Config, if provided
-        cfg = None
         if getattr(args, 'config', None):
             try:
-                cfg = parse_yaml_config(args.config)
+                parse_yaml_config(args.config)
                 console.print(f"Config: [green]{args.config}[/green]")
             except Exception as e:
                 console.print(f"Config: [red]invalid ({e})[/red]")
@@ -248,6 +250,9 @@ def main(argv: list[str] | None = None) -> int:
     setup_config_commands(sub)
     setup_chat_commands(sub)
     setup_memory_commands(sub)
+    setup_agent_commands(sub)
+    setup_advanced_commands(sub)
+    setup_p1_commands(sub)
     
     # Quick start command
     quickstart_cmd = sub.add_parser("quickstart", help="Show quick start guide")

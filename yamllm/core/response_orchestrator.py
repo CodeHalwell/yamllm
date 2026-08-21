@@ -5,7 +5,7 @@ This module handles coordinating responses between the provider,
 tools, and memory management.
 """
 
-from typing import Dict, List, Any, Optional, Callable
+from typing import Dict, List, Any, Optional
 import logging
 
 

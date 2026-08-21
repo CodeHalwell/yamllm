@@ -1,0 +1,16 @@
+name: Dracula
+description: "The popular Dracula theme with deep purples and vibrant colors."
+colors:
+  primary: "bright_magenta"
+  secondary: "bright_cyan"
+  success: "bright_green"
+  warning: "bright_yellow"
+  error: "bright_red"
+  info: "cyan"
+  dim: "grey50"
+layout:
+  show_ascii_art: true
+ascii_art: |
+  ╔═══════════════════════════════╗
+  ║   🧛 DRACULA THEME ACTIVE 🧛   ║
+  ╚═══════════════════════════════╝
