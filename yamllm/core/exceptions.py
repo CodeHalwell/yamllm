@@ -41,9 +41,14 @@ class ConfigurationError(YAMLLMException):
         super().__init__(message, details)
 
 
-class MemoryError(YAMLLMException):
-    """Memory storage/retrieval errors (conversation/vector stores)."""
-    
+class MemoryStoreError(YAMLLMException):
+    """Memory storage/retrieval errors (conversation/vector stores).
+
+    Renamed from ``MemoryError`` to avoid shadowing the Python builtin
+    ``MemoryError``. The old name is exported as an alias for backwards
+    compatibility — prefer ``MemoryStoreError`` in new code.
+    """
+
     def __init__(self, message: str, operation: Optional[str] = None,
                  store_type: Optional[str] = None):
         details = {
@@ -51,6 +56,15 @@ class MemoryError(YAMLLMException):
             "store_type": store_type
         }
         super().__init__(message, details)
+
+
+# Backwards-compatible alias. Internally we use MemoryStoreError; this name is
+# only kept so that callers who did
+#   ``from yamllm.core.exceptions import MemoryError``
+# keep working. The alias does not affect any module that doesn't explicitly
+# import this symbol — the Python builtin remains intact globally.
+MemoryError = MemoryStoreError  # noqa: A001 - intentional builtin alias for compat
+LegacyMemoryError = MemoryStoreError  # older alias, kept for one release
 
 
 class ProviderError(YAMLLMException):

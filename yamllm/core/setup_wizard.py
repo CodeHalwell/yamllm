@@ -400,7 +400,7 @@ class SetupWizard:
             ) as progress:
                 task = progress.add_task("Creating configuration...", total=100)
                 
-                config = template_manager.create_config(
+                template_manager.create_config(
                     provider=self.selected_provider,
                     preset=self.selected_preset,
                     output_path=filename,

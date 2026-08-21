@@ -1,6 +1,8 @@
+import importlib.util
+import json
+
 import pytest
 from unittest.mock import MagicMock, patch
-import json
 
 from yamllm.providers.openai_provider import OpenAIProvider
 from yamllm.providers.google import GoogleGeminiProvider
@@ -8,6 +10,17 @@ from yamllm.providers.mistral import MistralProvider
 from yamllm.providers.deepseek_provider import DeepSeekProvider
 from yamllm.providers.azure_openai_provider import AzureOpenAIProvider
 from yamllm.providers.azure_foundry_provider import AzureFoundryProvider
+
+
+def _has_module(name: str) -> bool:
+    """Safely check whether a (possibly nested) module is importable."""
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ModuleNotFoundError):
+        return False
+
+
+_AZURE_AVAILABLE = _has_module("azure.ai.inference") and _has_module("azure.identity")
 
 
 class TestToolFormatting:
@@ -196,6 +209,10 @@ class TestToolFormatting:
         assert formatted_calls[0]["function"]["name"] == "web_search"
         assert json.loads(formatted_calls[0]["function"]["arguments"]) == {"query": "current weather in New York"}
     
+    @pytest.mark.skipif(
+        not _AZURE_AVAILABLE,
+        reason="azure-ai-inference / azure-identity not installed",
+    )
     def test_azure_foundry_format_tool_calls(self, tool_calls_data):
         """Test Azure Foundry provider tool call formatting"""
         # Setup

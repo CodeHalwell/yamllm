@@ -6,6 +6,8 @@ import faiss
 import numpy as np
 from contextlib import contextmanager
 
+from yamllm.core.exceptions import MemoryStoreError
+
 class ConversationStore:
     """
     A class to manage conversation history stored in a SQLite database.
@@ -205,8 +207,6 @@ class ConversationStore:
         # SQLite connections are opened/closed per operation in this implementation
         # So there's nothing persistent to clean up
         pass
-        
-from yamllm.core.exceptions import MemoryError
 
 
 class VectorStore:
@@ -242,7 +242,7 @@ class VectorStore:
             self.index = faiss.read_index(self.index_path)
             # Dimension mismatch indicates a different embedding model was used.
             if getattr(self.index, "d", vector_dim) != vector_dim:
-                raise MemoryError(
+                raise MemoryStoreError(
                     f"Vector index dimension mismatch: index has {getattr(self.index, 'd', 'unknown')}, "
                     f"but configured dimension is {vector_dim}. "
                     f"To migrate, consider purging the index with: \n"
@@ -282,7 +282,7 @@ class VectorStore:
         except sqlite3.Error as e:
             if conn:
                 conn.rollback()
-            raise MemoryError(f"Vector store database error: {e}")
+            raise MemoryStoreError(f"Vector store database error: {e}")
         finally:
             if conn:
                 conn.close()
@@ -325,7 +325,7 @@ class VectorStore:
             Updates are automatically saved to disk.
         """
         if len(vector) != self.vector_dim:
-            raise MemoryError(
+            raise MemoryStoreError(
                 f"Vector dimension mismatch: expected {self.vector_dim}, got {len(vector)}"
             )
         vector_np = np.array([vector]).astype('float32')
@@ -365,7 +365,7 @@ class VectorStore:
             faiss.write_index(self.index, self.index_path)
             # Metadata is now stored in database, no need for separate file
         except Exception as e:
-            raise MemoryError(f"Failed to persist vector store: {e}")
+            raise MemoryStoreError(f"Failed to persist vector store: {e}")
 
     def search(self, query_vector: List[float], k) -> List[Dict[str, Any]]:
         """
@@ -383,7 +383,7 @@ class VectorStore:
                 - similarity (float): Similarity score
         """
         if len(query_vector) != self.vector_dim:
-            raise MemoryError(
+            raise MemoryStoreError(
                 f"Query vector dimension mismatch: expected {self.vector_dim}, got {len(query_vector)}"
             )
         if self.index.ntotal == 0:

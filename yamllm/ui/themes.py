@@ -1,7 +1,6 @@
-import os
 from pathlib import Path
 import yaml
-from typing import Dict, Optional, Any
+from typing import Dict, Optional
 from pydantic import BaseModel
 
 class ThemeColors(BaseModel):
