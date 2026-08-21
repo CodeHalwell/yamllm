@@ -12,7 +12,9 @@ The refactoring addressed four key areas:
 
 ## Completed Changes
 
-### Phase 1: LLM Class Decomposition (Partial)
+### Phase 1: LLM Class Decomposition ✅
+
+**Status**: **COMPLETE** - Components created and fully integrated into LLM class
 
 **Created new component modules:**
 
@@ -34,6 +36,7 @@ The refactoring addressed four key areas:
   - `_extract_tool_call()`: Tool call detection in streams
 - **Lines**: ~254 lines
 - **Extracted from**: LLM class streaming logic
+- **Bug fixes**: Method names corrected to match provider interface
 
 #### `yamllm/core/tool_selector.py`
 - **Purpose**: Intelligent tool filtering and selection
@@ -46,16 +49,25 @@ The refactoring addressed four key areas:
 - **Lines**: ~228 lines
 - **Extracted from**: LLM class tool filtering logic (lines 616-752)
 
-**Status**: Components created but not yet integrated into main LLM class. This allows for:
-- Clean separation of concerns
-- Easier testing of individual components
-- Future integration without breaking existing functionality
+**Integration Complete**:
+- ✅ LLM class instantiates all three components in `__init__`
+- ✅ Methods delegated to components:
+  - `_extract_text_from_response()` → ResponseOrchestrator
+  - `_handle_streaming_response()` → StreamingManager
+  - `_extract_text_from_chunk()` → StreamingManager
+  - `_filter_tools_for_prompt()` → ToolSelector
+  - `_intent_requires_tools()` → ToolSelector
+- ✅ Removed duplicate code (~134 lines)
+- ✅ StreamingManager uses lazy initialization
+- ✅ Callbacks propagate to StreamingManager
+- ✅ All backward compatibility maintained
+- ✅ Comprehensive integration tests created and passing
 
-**Next Steps** (for future work):
-1. Update LLM class to instantiate and use these components
-2. Migrate existing methods to delegate to new components
-3. Update tests to cover new component interfaces
-4. Target: Reduce main LLM class from 1,547 lines to <500 lines
+**Results**:
+- **Before**: 1,547 lines
+- **After**: 1,413 lines  
+- **Reduction**: 134 lines (8.7%)
+- **See**: `INTEGRATION_SUMMARY.md` for detailed documentation
 
 ### Phase 2: Sync/Async Architecture Unification
 
@@ -188,19 +200,20 @@ The refactoring addressed four key areas:
 |-----------|--------|-------|-----------|
 | CLI | 1,140 lines | 23 lines wrapper + modular | 98% wrapper reduction |
 | Tool Management | Confusing dual names | Clear ToolExecutor vs ToolOrchestrator | N/A |
-| LLM Components | Monolithic (1,547 lines) | Extracted (637 lines in 3 modules) | Components ready for integration |
+| LLM Class | 1,547 lines | 1,413 lines | 134 lines (8.7%) |
+| LLM Components | N/A | Extracted & integrated (637 lines in 3 modules) | ✅ Complete |
 
 ## Future Work
 
 ### Short-term
-1. **Integrate extracted LLM components**
-   - Update LLM class to use ResponseOrchestrator, StreamingManager, ToolSelector
-   - Migrate existing method implementations
-   - Update tests
-   - Target: Reduce LLM class to <500 lines
+1. ~~**Integrate extracted LLM components**~~ ✅ **COMPLETE**
+   - ✅ Update LLM class to use ResponseOrchestrator, StreamingManager, ToolSelector
+   - ✅ Migrate existing method implementations
+   - ✅ Integration tests created and passing
+   - Note: Further reduction to <500 lines would require extracting core orchestration logic
 
 2. **Complete test coverage**
-   - Add tests for new component modules
+   - ✅ Integration tests for new component modules
    - Update existing tests for renamed classes
    - Add integration tests for CLI modules
 
@@ -284,7 +297,16 @@ This refactoring successfully addresses the architectural concerns identified in
 
 ✅ **CLI Modularization** - Complete (1,140 lines → modular structure)
 ✅ **Tool Management Clarification** - Complete (ToolManager → ToolExecutor)
-✅ **LLM Component Extraction** - Partial (components created, integration pending)
+✅ **LLM Component Extraction & Integration** - Complete (1,547 lines → 1,413 lines)
 ⏳ **Sync/Async Unification** - Planned for future work
 
 The codebase is now more maintainable, testable, and extensible while maintaining full backward compatibility.
+
+### Key Achievements
+- Extracted provider-agnostic logic into reusable components
+- Reduced code duplication by 134 lines (8.7%)
+- Improved separation of concerns
+- Maintained 100% backward compatibility
+- Created comprehensive integration tests
+
+See `INTEGRATION_SUMMARY.md` for detailed documentation of the LLM component integration.
