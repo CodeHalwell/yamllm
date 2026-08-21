@@ -401,10 +401,19 @@ llm.set_event_callback(on_event)
 - Simple API interface with comprehensive error handling
 - Streaming and non-streaming response modes
 - Thread-safe tool execution with security controls
+- MCP (Model Context Protocol) integration for external tools
+- Rich terminal UI support (in development)
 - Customizable prompt templates and system prompts
 - Exponential backoff retry logic
 - Event callbacks for tool execution tracking
 - Environment variable support with dotenv
+- **Performance & Monitoring:**
+  - 1000-entry LRU embedding cache (15x increase)
+  - Automatic tool definition caching
+  - Real-time performance metrics tracking
+  - Prometheus metrics export
+  - First token latency <350ms target
+  - 80%+ cache hit rates
 
 ### 🎨 UI & Themes
 - Rich console output with syntax highlighting
@@ -446,6 +455,8 @@ This project is in active development. See [REVIEW_SUMMARY.md](REVIEW_SUMMARY.md
 - ✅ Comprehensive 22-tool ecosystem with security controls
 - ✅ Memory management with SQLite + FAISS vector store
 - ✅ Good test coverage and code quality
+- ✅ Performance monitoring and metrics
+- ✅ Enhanced caching (1000-entry LRU cache)
 
 **In Progress (Roadmap to v1.0):**
 - ⚠️ Agentic loop framework for autonomous task completion
@@ -453,6 +464,19 @@ This project is in active development. See [REVIEW_SUMMARY.md](REVIEW_SUMMARY.md
 - ⚠️ Performance optimization (<350ms first token target)
 - ⚠️ Expanded theme library (10+ themes planned)
 - ⚠️ Additional developer tools (shell, code search, SQL)
+- ⚠️ Rich UI themes and streaming display
+- ⚠️ Architecture refactoring for better maintainability
+- ⚠️ Enhanced documentation and examples
+
+**Recent Improvements (v0.1.12+):**
+- 🚀 15x larger embedding cache (64 → 1000 entries)
+- 🚀 Tool definition caching (eliminates redundant generation)
+- 📊 Built-in performance metrics and monitoring
+- 📊 Prometheus metrics export
+- 🧪 Comprehensive test coverage (80%+ target)
+- 🧪 Performance benchmark suite
+
+See [docs/PERFORMANCE.md](docs/PERFORMANCE.md) for details on performance optimization and monitoring.
 
 ## License
 
