@@ -414,6 +414,48 @@ def test_budget_stop_saves_checkpoint(tmp_path):
     assert list(tmp_path.glob("*.json")), "budget stop should leave a checkpoint"
 
 
+def test_planning_disabled_seeds_single_task():
+    llm = make_llm()
+    harness = AgentHarness(llm, max_iterations=3, enable_planning=False)
+
+    state = harness.run("Just do it")
+
+    assert state.completed and state.success
+    assert len(state.tasks) == 1
+    assert state.tasks[0].description == "Just do it"
+    assert llm.get_completion_with_tools.call_count == 1
+
+
+def test_pre_planning_stop_checkpoint_is_resumable(tmp_path):
+    harness = AgentHarness(make_llm(), max_iterations=5, checkpoint_dir=str(tmp_path))
+    harness.request_stop()
+    state = harness.run("Do the thing")
+    assert state.completed and not state.success and not state.tasks
+
+    checkpoint = load_checkpoint(state.metadata["checkpoint_path"])
+    resumed = AgentHarness(make_llm(), max_iterations=5).run(
+        "ignored", initial_state=checkpoint
+    )
+
+    assert resumed.completed and resumed.success
+    assert resumed.tasks  # planning ran on resume
+
+
+def test_action_started_payload_shows_task_in_progress():
+    harness = AgentHarness(
+        make_llm(
+            plan_tasks=[{"id": "task_1", "description": "Only", "dependencies": []}]
+        ),
+        max_iterations=3,
+    )
+    events = collect_events(harness)
+
+    harness.run("Do the thing")
+
+    started = [e for e in events if e.kind == EventKind.ACTION_STARTED]
+    assert started and started[0].payload["task"]["status"] == "in_progress"
+
+
 def test_stop_during_reasoning_prevents_action():
     """A stop arriving mid-reason must not let the action execute (NEVER policy)."""
     llm = make_llm()

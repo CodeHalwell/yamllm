@@ -190,9 +190,15 @@ class AgentHarness:
             if context:
                 # Freshly supplied context overrides stale checkpoint metadata
                 state.metadata.update(context)
-            if state.completed and not state.success and state.get_pending_tasks():
+            if (
+                state.completed
+                and not state.success
+                and (state.get_pending_tasks() or not state.tasks)
+            ):
                 # A stopped or budget-exhausted checkpoint resumes as a live
                 # run rather than immediately returning its terminal state.
+                # A taskless stopped checkpoint (cancelled before planning)
+                # re-enters planning below.
                 state.completed = False
                 state.error = None
         else:
@@ -245,7 +251,16 @@ class AgentHarness:
                     state.error = "Could not decompose goal into tasks"
                     self._finish(state)
                     return state
-            elif state.tasks:
+            elif not state.tasks:
+                # Planning disabled with no seeded tasks: execute the goal
+                # directly as a single task (SimpleAgent semantics).
+                state.tasks = [Task.create(state.goal)]
+                self._emit(
+                    EventKind.PLAN_CREATED,
+                    {"tasks": [t.to_dict() for t in state.tasks]},
+                )
+                self._notify_state(state)
+            else:
                 self._emit(
                     EventKind.PLAN_CREATED,
                     {"tasks": [t.to_dict() for t in state.tasks]},
@@ -319,7 +334,9 @@ class AgentHarness:
                     self._save_checkpoint(state)
                     break
 
-                # ACT
+                # ACT — mark the task active first so subscribers (e.g. the
+                # TUI board) show it as in progress for the action's duration
+                next_task.status = TaskStatus.IN_PROGRESS
                 self._emit(EventKind.ACTION_STARTED, {"task": next_task.to_dict()})
                 action_result = self.actor.act(next_task, state)
                 # Operator guidance from a MODIFY decision applies to the
