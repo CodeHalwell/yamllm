@@ -369,6 +369,49 @@ def test_resume_grants_fresh_iteration_budget():
     assert resumed.completed and resumed.success
 
 
+def test_actor_consumes_modify_feedback_directly():
+    """Feedback applies once even when Actor is driven outside the harness."""
+    from yamllm.agent.actor import Actor
+
+    llm = make_llm()
+    actor = Actor(llm)
+    state = AgentState(
+        goal="g",
+        tasks=[Task.create("first"), Task.create("second")],
+        metadata={"user_feedback": "be careful"},
+    )
+
+    actor.act(state.tasks[0], state)
+    actor.act(state.tasks[1], state)
+
+    prompts = [c.args[0] for c in llm.get_completion_with_tools.call_args_list]
+    assert "be careful" in prompts[0]
+    assert "be careful" not in prompts[1]
+    assert "user_feedback" not in state.metadata
+
+
+def test_resume_replanning_uses_saved_context(tmp_path):
+    harness = AgentHarness(make_llm(), max_iterations=5, checkpoint_dir=str(tmp_path))
+    harness.request_stop()
+    state = harness.run("Do the thing", context={"repo": "/srv/app"})
+    checkpoint = load_checkpoint(state.metadata["checkpoint_path"])
+
+    llm2 = make_llm()
+    AgentHarness(llm2, max_iterations=5).run("ignored", initial_state=checkpoint)
+
+    # The planner prompt on resume carries the checkpoint's saved context
+    planning_prompt = llm2.query.call_args_list[0].args[0]
+    assert "/srv/app" in planning_prompt
+
+
+def test_checkpoint_leaves_no_temp_files(tmp_path):
+    harness = AgentHarness(make_llm(), max_iterations=5, checkpoint_dir=str(tmp_path))
+    harness.run("Do the thing")
+
+    assert list(tmp_path.glob("*.json"))
+    assert not list(tmp_path.glob("*.tmp"))
+
+
 def test_state_roundtrip():
     state = AgentState(goal="g", tasks=[Task.create("do it")], iteration=2)
     state.tasks[0].status = TaskStatus.COMPLETED

@@ -41,8 +41,10 @@ class Actor:
         # Update task status
         task.status = TaskStatus.IN_PROGRESS
 
-        # Build action prompt
+        # Build action prompt, consuming any operator MODIFY guidance so it
+        # applies to this action only (regardless of which loop drives us)
         prompt = self._build_action_prompt(task, state)
+        state.metadata.pop("user_feedback", None)
 
         start_time = time.time()
 

@@ -16,6 +16,7 @@ a UI event loop (e.g. Textual's asyncio loop) renders the event stream.
 
 import logging
 import json
+import os
 import threading
 import time
 import uuid
@@ -238,7 +239,12 @@ class AgentHarness:
                 return state
 
             if self.enable_planning and not state.tasks:
-                state = self.planner.decompose_goal(state.goal, context, state)
+                # Plan from the merged metadata so a resumed checkpoint's
+                # saved context survives replanning (fresh runs have
+                # metadata == context here).
+                state = self.planner.decompose_goal(
+                    state.goal, state.metadata or None, state
+                )
                 self._emit(
                     EventKind.PLAN_CREATED,
                     {"tasks": [t.to_dict() for t in state.tasks]},
@@ -335,13 +341,11 @@ class AgentHarness:
                     break
 
                 # ACT — mark the task active first so subscribers (e.g. the
-                # TUI board) show it as in progress for the action's duration
+                # TUI board) show it as in progress for the action's duration.
+                # (Actor.act consumes any MODIFY guidance from metadata.)
                 next_task.status = TaskStatus.IN_PROGRESS
                 self._emit(EventKind.ACTION_STARTED, {"task": next_task.to_dict()})
                 action_result = self.actor.act(next_task, state)
-                # Operator guidance from a MODIFY decision applies to the
-                # action it modified, not every later one.
-                state.metadata.pop("user_feedback", None)
                 state.add_action(action_result.to_dict())
                 self._emit(
                     EventKind.ACTION_FINISHED,
@@ -552,8 +556,12 @@ class AgentHarness:
             directory = Path(self.checkpoint_dir)
             directory.mkdir(parents=True, exist_ok=True)
             path = directory / f"{self.run_id}.json"
-            with open(path, "w") as f:
+            # Write to a temp file and replace atomically so a crash
+            # mid-write can never corrupt the last valid checkpoint.
+            tmp_path = directory / f"{self.run_id}.json.tmp"
+            with open(tmp_path, "w") as f:
                 json.dump(state.to_dict(), f, indent=2, default=str)
+            os.replace(tmp_path, path)
             state.metadata["checkpoint_path"] = str(path)
             self._emit(EventKind.CHECKPOINT_SAVED, {"path": str(path)})
         except Exception as e:
