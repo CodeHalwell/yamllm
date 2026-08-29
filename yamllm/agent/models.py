@@ -8,6 +8,7 @@ import uuid
 
 class TaskStatus(Enum):
     """Status of a task in the agent workflow."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -28,13 +29,15 @@ class Task:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def create(cls, description: str, dependencies: Optional[List[str]] = None, **metadata) -> "Task":
+    def create(
+        cls, description: str, dependencies: Optional[List[str]] = None, **metadata
+    ) -> "Task":
         """Create a new task with auto-generated ID."""
         return cls(
             id=str(uuid.uuid4())[:8],
             description=description,
             dependencies=dependencies or [],
-            metadata=metadata
+            metadata=metadata,
         )
 
     def to_dict(self) -> Dict[str, Any]:
@@ -92,12 +95,20 @@ class AgentState:
         return [t for t in self.tasks if t.status == TaskStatus.PENDING]
 
     def get_available_tasks(self) -> List[Task]:
-        """Get tasks that can be executed (dependencies met, not completed)."""
+        """Get tasks that can be executed (dependencies met, not terminal).
+
+        FAILED is terminal: a task that failed or was rejected by an
+        operator must not be offered for execution again.
+        """
         available = []
         completed_ids = {t.id for t in self.tasks if t.status == TaskStatus.COMPLETED}
 
         for task in self.tasks:
-            if task.status in [TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS]:
+            if task.status in [
+                TaskStatus.COMPLETED,
+                TaskStatus.IN_PROGRESS,
+                TaskStatus.FAILED,
+            ]:
                 continue
 
             # Check if all dependencies are completed
@@ -178,7 +189,7 @@ class ActionResult:
             "tool_calls": self.tool_calls,
             "tool_results": self.tool_results,
             "error": self.error,
-            "execution_time": self.execution_time
+            "execution_time": self.execution_time,
         }
 
 
@@ -200,5 +211,5 @@ class Observation:
             learned=data.get("learned", ""),
             unblocked_tasks=data.get("unblocked_tasks", []),
             progress_made=data.get("progress_made", ""),
-            plan_adjustments=data.get("plan_adjustments", "")
+            plan_adjustments=data.get("plan_adjustments", ""),
         )

@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.text import Text
 
 from yamllm import LLM
-from yamllm.agent import Agent, WorkflowManager, SimpleAgent
+from yamllm.agent import Agent, WorkflowManager
 from yamllm.agent.events import AgentEvent, EventKind
 from yamllm.agent.harness import AgentHarness, ApprovalPolicy, load_checkpoint
 from yamllm.agent.interactive_steering import SteeringAction, SteeringDecision
@@ -206,15 +206,6 @@ def run_agent(args: argparse.Namespace) -> int:
         if args.context:
             with open(args.context, "r") as f:
                 context = json.load(f)
-
-        # Simple mode: single task, no planning. When approvals or the TUI
-        # are requested the run goes through the harness below instead, so
-        # gating still applies.
-        if args.simple and not (args.interactive or args.tui):
-            console.print("[yellow]Using SimpleAgent (no planning)[/yellow]")
-            agent = SimpleAgent(llm)
-            state = agent.execute(args.goal, context)
-            return _report_result(state, args)
 
         # Resume support
         initial_state = None

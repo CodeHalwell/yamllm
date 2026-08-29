@@ -100,7 +100,12 @@ def test_wall_time_budget_stops_run():
 
 
 def test_consecutive_failures_budget():
-    llm = make_llm()
+    llm = make_llm(
+        plan_tasks=[
+            {"id": f"task_{i}", "description": f"Task {i}", "dependencies": []}
+            for i in range(1, 6)
+        ]
+    )
     llm.get_completion_with_tools = Mock(side_effect=Exception("boom"))
     harness = AgentHarness(llm, max_iterations=50, max_consecutive_failures=2)
     events = collect_events(harness)
@@ -167,6 +172,57 @@ def test_reject_decision_fails_task():
     assert state.completed and not state.success
     assert state.tasks[0].status == TaskStatus.FAILED
     assert state.tasks[0].error == "nope"
+
+
+def test_rejected_task_is_never_executed():
+    llm = make_llm(
+        plan_tasks=[
+            {"id": "task_1", "description": "Risky", "dependencies": []},
+            {"id": "task_2", "description": "Safe", "dependencies": []},
+        ]
+    )
+    decisions = iter(
+        [
+            SteeringDecision(action=SteeringAction.REJECT, feedback="no"),
+            SteeringDecision(action=SteeringAction.APPROVE),
+        ]
+    )
+
+    harness = AgentHarness(
+        llm,
+        max_iterations=10,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=lambda point: next(decisions),
+    )
+
+    state = harness.run("Do the thing")
+
+    # Only the approved task ran; the rejected one stayed terminal
+    assert llm.get_completion_with_tools.call_count == 1
+    rejected = state.get_task_by_id("task_1")
+    assert rejected.status == TaskStatus.FAILED
+
+
+def test_stopped_checkpoint_is_resumable(tmp_path):
+    def stop(point):
+        return SteeringDecision(action=SteeringAction.STOP)
+
+    harness = AgentHarness(
+        make_llm(),
+        max_iterations=5,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=stop,
+        checkpoint_dir=str(tmp_path),
+    )
+    state = harness.run("Do the thing")
+    assert state.completed and not state.success
+
+    checkpoint = load_checkpoint(state.metadata["checkpoint_path"])
+    resumed = AgentHarness(make_llm(), max_iterations=5).run(
+        "ignored", initial_state=checkpoint
+    )
+
+    assert resumed.completed and resumed.success
 
 
 def test_stop_decision_ends_run():

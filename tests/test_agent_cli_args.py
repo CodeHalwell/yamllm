@@ -89,6 +89,38 @@ def test_event_log_passes_other_events_through():
     assert _event_for_log(event, log_thoughts=False) is event
 
 
+def test_plain_simple_run_uses_harness_features():
+    """--simple runs go through the harness, so flags like --checkpoint-dir work."""
+    import tempfile
+    from pathlib import Path
+
+    llm = Mock()
+    llm.query = Mock(return_value=json.dumps({}))
+    llm.get_completion_with_tools = Mock(
+        return_value={"content": "Done", "tool_calls": [], "tool_results": []}
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        args = parse(
+            [
+                "agent",
+                "run",
+                "do it",
+                "--config",
+                "c.yaml",
+                "--simple",
+                "--checkpoint-dir",
+                tmp,
+            ]
+        )
+        with patch("yamllm.cli.agent.LLM", return_value=llm):
+            rc = run_agent(args)
+
+        assert rc == 0
+        assert llm.get_completion_with_tools.call_count == 1
+        assert list(Path(tmp).glob("*.json")), "checkpoint flag honored in simple mode"
+
+
 def test_simple_interactive_run_keeps_approval_gating():
     """--simple --interactive must still gate actions (routed via harness)."""
     llm = Mock()

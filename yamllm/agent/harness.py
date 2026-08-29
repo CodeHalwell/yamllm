@@ -183,6 +183,11 @@ class AgentHarness:
             if context:
                 # Freshly supplied context overrides stale checkpoint metadata
                 state.metadata.update(context)
+            if state.completed and not state.success and state.get_pending_tasks():
+                # A stopped or budget-exhausted checkpoint resumes as a live
+                # run rather than immediately returning its terminal state.
+                state.completed = False
+                state.error = None
         else:
             state = AgentState(
                 goal=goal,
