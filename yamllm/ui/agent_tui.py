@@ -270,8 +270,10 @@ class AgentTUI(App[Optional[AgentState]]):
     # ------------------------------------------------------------------
     def _open_approval(self, point: SteeringPoint) -> None:
         def deliver(decision: Optional[SteeringDecision]) -> None:
+            # Fail closed: a dismissal without an explicit decision must not
+            # approve the action.
             self._decision_queue.put(
-                decision or SteeringDecision(action=SteeringAction.APPROVE)
+                decision or SteeringDecision(action=SteeringAction.STOP)
             )
 
         self.push_screen(ApprovalScreen(point), deliver)

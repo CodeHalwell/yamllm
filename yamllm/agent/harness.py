@@ -180,6 +180,9 @@ class AgentHarness:
         if initial_state is not None:
             state = initial_state
             state.max_iterations = max(state.max_iterations, self.max_iterations)
+            if context:
+                # Freshly supplied context overrides stale checkpoint metadata
+                state.metadata.update(context)
         else:
             state = AgentState(
                 goal=goal,

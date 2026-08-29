@@ -261,6 +261,17 @@ def test_checkpoint_and_resume(tmp_path):
     assert resumed.completed
 
 
+def test_resume_merges_fresh_context():
+    state = AgentState(goal="g", tasks=[], metadata={"stale": 1, "keep": "old"})
+    state.completed = True
+
+    harness = AgentHarness(make_llm(), max_iterations=2)
+    resumed = harness.run("ignored", context={"keep": "new"}, initial_state=state)
+
+    assert resumed.metadata["keep"] == "new"
+    assert resumed.metadata["stale"] == 1
+
+
 def test_state_roundtrip():
     state = AgentState(goal="g", tasks=[Task.create("do it")], iteration=2)
     state.tasks[0].status = TaskStatus.COMPLETED
