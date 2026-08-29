@@ -172,7 +172,10 @@ class AgentHarness:
         Returns:
             Final :class:`AgentState`.
         """
-        self._stop_event.clear()
+        # Deliberately do NOT clear the stop event here: a request_stop()
+        # issued between scheduling a run (e.g. on a worker thread) and
+        # run() entering must still cancel this run. The event is cleared
+        # when the run finishes, so the harness can be reused.
         self._auto_approve = False
         self.run_id = uuid.uuid4().hex[:8]
         started_at = time.monotonic()
@@ -218,6 +221,16 @@ class AgentHarness:
         )
 
         try:
+            # A stop requested before the run entered cancels it before any
+            # LLM work (planning included).
+            if self._stop_event.is_set():
+                state.completed = True
+                state.success = False
+                state.error = "Stopped by user"
+                self._save_checkpoint(state)
+                self._finish(state)
+                return state
+
             if self.enable_planning and not state.tasks:
                 state = self.planner.decompose_goal(state.goal, context, state)
                 self._emit(
@@ -251,6 +264,7 @@ class AgentHarness:
                     state.completed = True
                     state.success = False
                     state.error = budget_error
+                    self._save_checkpoint(state)
                     break
 
                 state.iteration += 1
@@ -564,6 +578,9 @@ class AgentHarness:
 
     def _finish(self, state: AgentState, failed: bool = False) -> None:
         """Emit the final event and persist the session recording."""
+        # Consume any stop request so the harness can be reused for a
+        # subsequent run.
+        self._stop_event.clear()
         self._emit(
             EventKind.RUN_FINISHED,
             {

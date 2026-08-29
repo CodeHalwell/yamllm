@@ -403,6 +403,38 @@ def test_skip_decision_still_checkpoints(tmp_path):
     assert checkpoints, "skipped iterations should still write a checkpoint"
 
 
+def test_budget_stop_saves_checkpoint(tmp_path):
+    harness = AgentHarness(
+        make_llm(), max_iterations=50, max_wall_time=0.0, checkpoint_dir=str(tmp_path)
+    )
+
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert list(tmp_path.glob("*.json")), "budget stop should leave a checkpoint"
+
+
+def test_stop_requested_before_run_cancels_it():
+    llm = make_llm()
+    harness = AgentHarness(llm, max_iterations=5)
+
+    harness.request_stop()
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert state.error == "Stopped by user"
+    assert not llm.get_completion_with_tools.called
+
+    # The consumed stop does not poison a subsequent run
+    rerun = AgentHarness(llm, max_iterations=5)
+    rerun_state = rerun.run("Do the thing")
+    assert rerun_state.success
+
+    # And the same harness instance is reusable after a stopped run
+    second = harness.run("Do the thing")
+    assert second.success
+
+
 def test_pending_stop_skips_decision_provider():
     calls = []
 
