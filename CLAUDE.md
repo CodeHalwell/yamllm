@@ -6,8 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Linting and Formatting
 - `ruff check .` - Lint code with ruff
-- `black --check .` - Check code formatting with black
-- `black .` - Format code with black
+- `ruff format --check .` - Check code formatting
+- `ruff format .` - Format code
 - `mypy yamllm` - Type check the yamllm package
 
 ### Testing
