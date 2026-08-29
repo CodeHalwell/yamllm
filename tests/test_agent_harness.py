@@ -351,6 +351,21 @@ def test_failed_dependency_fails_dependents_and_completes_run():
     assert transitive.status == TaskStatus.FAILED
 
 
+def test_resume_caps_budget_to_configured():
+    state = AgentState(
+        goal="g",
+        tasks=[Task.create("t")],
+        iteration=2,
+        max_iterations=100,
+    )
+
+    harness = AgentHarness(make_llm(), max_iterations=3)
+    resumed = harness.run("ignored", initial_state=state)
+
+    # 2 consumed + 3 fresh: the old 100 ceiling must not survive resume
+    assert resumed.max_iterations == 5
+
+
 def test_resume_grants_fresh_iteration_budget():
     state = AgentState(
         goal="g",

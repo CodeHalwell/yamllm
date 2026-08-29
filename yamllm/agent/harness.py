@@ -183,11 +183,11 @@ class AgentHarness:
 
         if initial_state is not None:
             state = initial_state
-            # The configured limit is fresh capacity for the resumed run, so
-            # an iteration-exhausted checkpoint can actually continue.
-            state.max_iterations = max(
-                state.max_iterations, state.iteration + self.max_iterations
-            )
+            # The configured limit is the fresh capacity for the resumed
+            # run — both floor (an exhausted checkpoint can continue) and
+            # cap (a checkpoint with a huge original ceiling can't overrun
+            # the caller's budget).
+            state.max_iterations = state.iteration + self.max_iterations
             if context:
                 # Freshly supplied context overrides stale checkpoint metadata
                 state.metadata.update(context)
