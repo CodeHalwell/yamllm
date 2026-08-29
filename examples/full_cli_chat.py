@@ -22,7 +22,9 @@ from yamllm.core.llm import LLM
 from yamllm.ui.chat import TerminalUI
 
 
-DEFAULT_CONFIG = Path(__file__).resolve().parent.parent / ".config_examples/full_stack_cli.yaml"
+DEFAULT_CONFIG = (
+    Path(__file__).resolve().parent.parent / ".config_examples/full_stack_cli.yaml"
+)
 DEFAULT_THEME = "default"
 DEFAULT_STYLE = "bubble"
 
@@ -49,7 +51,9 @@ def _resolve_api_key(preferred_env: Optional[str]) -> Optional[str]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run a fully loaded yamllm chat session")
+    parser = argparse.ArgumentParser(
+        description="Run a fully loaded yamllm chat session"
+    )
     parser.add_argument(
         "--config",
         default=str(DEFAULT_CONFIG),
@@ -96,12 +100,15 @@ def main() -> int:
         "BING_SEARCH_API_KEY": "Bing web_search provider",
         "NOTES_MCP_TOKEN": "notes-http MCP connector",
     }
-    missing_optional = [name for name, desc in optional_keys.items() if desc and not os.environ.get(name)]
+    missing_optional = [
+        name
+        for name, desc in optional_keys.items()
+        if desc and not os.environ.get(name)
+    ]
     if missing_optional:
         ui_hint = ", ".join(missing_optional)
         print(
-            "Tip: set optional environment variables for richer tooling ("
-            f"{ui_hint}).",
+            f"Tip: set optional environment variables for richer tooling ({ui_hint}).",
             file=sys.stderr,
         )
 
@@ -121,7 +128,9 @@ def main() -> int:
         "will render inline as they occur. Type '/help' for helper commands or 'exit' to quit.",
         style="dim",
     )
-    if not any(conn.enabled for conn in getattr(llm.config.tools, "mcp_connectors", [])):
+    if not any(
+        conn.enabled for conn in getattr(llm.config.tools, "mcp_connectors", [])
+    ):
         ui.console.print(
             "[dim]MCP connectors are disabled by default. Enable them in the config after installing"
             " optional dependencies such as httpx[h2] and starting an MCP server.[/dim]",
@@ -163,7 +172,9 @@ def main() -> int:
             else:
                 target = parts[1] if len(parts) > 1 else "yamllm_chat_transcript.txt"
                 try:
-                    Path(target).write_text("\n".join(message_history), encoding="utf-8")
+                    Path(target).write_text(
+                        "\n".join(message_history), encoding="utf-8"
+                    )
                     ui.console.print(f"[green]Saved transcript to {target}[/green]")
                 except OSError as exc:
                     ui.console.print(f"[red]Failed to save transcript: {exc}[/red]")
@@ -175,7 +186,9 @@ def main() -> int:
 
     while True:
         try:
-            user_input = ui.console.input(f"[bold {ui.theme.colors.primary}]You[/bold {ui.theme.colors.primary}] ")
+            user_input = ui.console.input(
+                f"[bold {ui.theme.colors.primary}]You[/bold {ui.theme.colors.primary}] "
+            )
             stripped = user_input.strip()
             if not stripped:
                 continue

@@ -86,5 +86,6 @@ PROVIDER_CAPABILITIES: Dict[str, ProviderCapabilities] = {
 
 def get_provider_capabilities(provider_name: str) -> ProviderCapabilities:
     """Return capabilities for the given provider name (case-insensitive)."""
-    return PROVIDER_CAPABILITIES.get((provider_name or "").lower(), ProviderCapabilities())
-
+    return PROVIDER_CAPABILITIES.get(
+        (provider_name or "").lower(), ProviderCapabilities()
+    )

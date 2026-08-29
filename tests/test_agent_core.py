@@ -12,11 +12,9 @@ def mock_llm():
     """Create a mock LLM."""
     llm = Mock()
     llm.query = Mock(return_value="Mock response")
-    llm.get_completion_with_tools = Mock(return_value={
-        "content": "Mock response",
-        "tool_calls": [],
-        "tool_results": []
-    })
+    llm.get_completion_with_tools = Mock(
+        return_value={"content": "Mock response", "tool_calls": [], "tool_results": []}
+    )
     return llm
 
 
@@ -46,9 +44,11 @@ def test_simple_agent_initialization(mock_llm):
 def test_agent_execute_creates_state(mock_llm):
     """Test that agent.execute creates proper state."""
     # Mock planner to return tasks
-    with patch('yamllm.agent.planner.TaskPlanner.decompose_goal') as mock_decompose:
+    with patch("yamllm.agent.planner.TaskPlanner.decompose_goal") as mock_decompose:
+
         def add_tasks(goal, context, state):
             from yamllm.agent.models import Task
+
             state.tasks = [Task.create("Test task")]
             return state
 
@@ -76,9 +76,11 @@ def test_simple_agent_execute(mock_llm):
 def test_agent_max_iterations_respected(mock_llm):
     """Test that agent respects max iterations."""
     # Mock to keep returning pending tasks
-    with patch('yamllm.agent.planner.TaskPlanner.decompose_goal') as mock_decompose:
+    with patch("yamllm.agent.planner.TaskPlanner.decompose_goal") as mock_decompose:
+
         def add_many_tasks(goal, context, state):
             from yamllm.agent.models import Task
+
             # Create more tasks than iterations
             state.tasks = [Task.create(f"Task {i}") for i in range(10)]
             return state
@@ -124,9 +126,11 @@ def test_agent_handles_execution_error(mock_llm):
 
 def test_agent_completion_status_calculation(mock_llm):
     """Test completion status calculation."""
-    with patch('yamllm.agent.planner.TaskPlanner.decompose_goal') as mock_decompose:
+    with patch("yamllm.agent.planner.TaskPlanner.decompose_goal") as mock_decompose:
+
         def add_completed_tasks(goal, context, state):
             from yamllm.agent.models import Task
+
             task1 = Task.create("Task 1")
             task1.status = TaskStatus.COMPLETED
             task2 = Task.create("Task 2")

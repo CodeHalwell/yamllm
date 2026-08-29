@@ -58,8 +58,10 @@ YAMLLM provides 8 specialized agent roles:
 ```python
 from yamllm import LLM
 from yamllm.agent.multi_agent import (
-    AgentCoordinator, CollaborativeAgent,
-    AgentCapability, AgentRole
+    AgentCoordinator,
+    CollaborativeAgent,
+    AgentCapability,
+    AgentRole,
 )
 
 # Create LLM
@@ -75,18 +77,16 @@ researcher = CollaborativeAgent(
     capability=AgentCapability(
         role=AgentRole.RESEARCHER,
         skills=["research", "analysis"],
-        max_concurrent_tasks=2
-    )
+        max_concurrent_tasks=2,
+    ),
 )
 
 coder = CollaborativeAgent(
     agent_id="coder_1",
     llm=llm,
     capability=AgentCapability(
-        role=AgentRole.CODER,
-        skills=["python", "javascript"],
-        max_concurrent_tasks=1
-    )
+        role=AgentRole.CODER, skills=["python", "javascript"], max_concurrent_tasks=1
+    ),
 )
 
 reviewer = CollaborativeAgent(
@@ -95,8 +95,8 @@ reviewer = CollaborativeAgent(
     capability=AgentCapability(
         role=AgentRole.REVIEWER,
         skills=["code_review", "best_practices"],
-        max_concurrent_tasks=2
-    )
+        max_concurrent_tasks=2,
+    ),
 )
 
 # Register agents
@@ -106,8 +106,7 @@ coordinator.register_agent(reviewer)
 
 # Execute collaborative task
 result = coordinator.execute_collaborative_task(
-    goal="Build a REST API with proper testing",
-    max_iterations=10
+    goal="Build a REST API with proper testing", max_iterations=10
 )
 
 print(f"Completed {result['tasks_completed']} tasks")
@@ -150,14 +149,12 @@ class AgentCoordinator:
         task_id: str,
         description: str,
         required_roles: List[AgentRole],
-        dependencies: Optional[List[str]] = None
+        dependencies: Optional[List[str]] = None,
     ) -> CollaborativeTask:
         """Create a collaborative task."""
 
     def execute_collaborative_task(
-        self,
-        goal: str,
-        max_iterations: int = 10
+        self, goal: str, max_iterations: int = 10
     ) -> Dict[str, Any]:
         """Execute a goal using collaborative agents."""
 
@@ -176,7 +173,7 @@ class CollaborativeAgent:
         agent_id: str,
         llm,
         capability: AgentCapability,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """Initialize collaborative agent."""
 
@@ -188,7 +185,7 @@ class CollaborativeAgent:
         to_agent: str,
         message_type: str,
         content: Dict[str, Any],
-        priority: int = 1
+        priority: int = 1,
     ):
         """Send message to another agent."""
 
@@ -243,12 +240,12 @@ experience = learning.record_experience(
     actions=[
         {"action_type": "research", "details": "Studied OAuth2"},
         {"action_type": "code", "details": "Implemented auth endpoints"},
-        {"action_type": "test", "details": "Tested with Postman"}
+        {"action_type": "test", "details": "Tested with Postman"},
     ],
     outcome=OutcomeType.SUCCESS,
     outcome_details={"tests_passed": True, "coverage": 0.95},
     duration=3600.0,  # seconds
-    context={"language": "python", "framework": "fastapi"}
+    context={"language": "python", "framework": "fastapi"},
 )
 
 # Record multiple experiences...
@@ -265,8 +262,7 @@ for insight in insights:
 
 # Get recommendations for a new task
 recommendations = learning.get_recommendations(
-    task_description="Build payment integration",
-    context={"language": "python"}
+    task_description="Build payment integration", context={"language": "python"}
 )
 
 for rec in recommendations:
@@ -322,7 +318,7 @@ class LearningSystem:
         self,
         llm,
         storage_path: str = "agent_learning.db",
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """Initialize learning system."""
 
@@ -334,20 +330,15 @@ class LearningSystem:
         outcome_details: Dict[str, Any],
         duration: float,
         context: Optional[Dict[str, Any]] = None,
-        agent_state: Optional[Dict[str, Any]] = None
+        agent_state: Optional[Dict[str, Any]] = None,
     ) -> Experience:
         """Record a new experience."""
 
-    def analyze_and_learn(
-        self,
-        min_experiences: int = 10
-    ) -> List[LearningInsight]:
+    def analyze_and_learn(self, min_experiences: int = 10) -> List[LearningInsight]:
         """Analyze recent experiences and generate insights."""
 
     def get_recommendations(
-        self,
-        task_description: str,
-        context: Optional[Dict[str, Any]] = None
+        self, task_description: str, context: Optional[Dict[str, Any]] = None
     ) -> List[str]:
         """Get recommendations for a task based on learned insights."""
 
@@ -369,11 +360,12 @@ class LearningSystem:
 ```python
 class OutcomeType(Enum):
     """Types of task outcomes."""
-    SUCCESS = "success"       # Task completed successfully
-    FAILURE = "failure"       # Task failed
-    PARTIAL = "partial"       # Task partially completed
-    TIMEOUT = "timeout"       # Task timed out
-    ERROR = "error"          # Task encountered an error
+
+    SUCCESS = "success"  # Task completed successfully
+    FAILURE = "failure"  # Task failed
+    PARTIAL = "partial"  # Task partially completed
+    TIMEOUT = "timeout"  # Task timed out
+    ERROR = "error"  # Task encountered an error
 ```
 
 #### ImprovementType
@@ -381,6 +373,7 @@ class OutcomeType(Enum):
 ```python
 class ImprovementType(Enum):
     """Types of improvements that can be learned."""
+
     TASK_DECOMPOSITION = "task_decomposition"
     TOOL_SELECTION = "tool_selection"
     REASONING_PATTERN = "reasoning_pattern"
@@ -449,8 +442,10 @@ Options:
 ```python
 from yamllm import LLM
 from yamllm.agent.multi_agent import (
-    AgentCoordinator, CollaborativeAgent,
-    AgentCapability, AgentRole
+    AgentCoordinator,
+    CollaborativeAgent,
+    AgentCapability,
+    AgentRole,
 )
 
 # Setup
@@ -463,21 +458,21 @@ team = {
     "backend_dev": AgentRole.CODER,
     "frontend_dev": AgentRole.CODER,
     "qa_engineer": AgentRole.TESTER,
-    "tech_writer": AgentRole.DOCUMENTER
+    "tech_writer": AgentRole.DOCUMENTER,
 }
 
 for agent_id, role in team.items():
     agent = CollaborativeAgent(
         agent_id=agent_id,
         llm=llm,
-        capability=AgentCapability(role=role, skills=[role.value])
+        capability=AgentCapability(role=role, skills=[role.value]),
     )
     coordinator.register_agent(agent)
 
 # Execute project
 result = coordinator.execute_collaborative_task(
     goal="Build a todo list web application with REST API, React frontend, and comprehensive tests",
-    max_iterations=20
+    max_iterations=20,
 )
 
 print(f"Project completed in {result['iterations']} iterations")
@@ -500,20 +495,20 @@ debug_sessions = [
         "actions": [
             {"action_type": "analyze_logs"},
             {"action_type": "add_null_check"},
-            {"action_type": "test"}
+            {"action_type": "test"},
         ],
         "outcome": OutcomeType.SUCCESS,
-        "duration": 300
+        "duration": 300,
     },
     {
         "task": "Fix performance issue",
         "actions": [
             {"action_type": "profile_code"},
             {"action_type": "optimize_query"},
-            {"action_type": "test"}
+            {"action_type": "test"},
         ],
         "outcome": OutcomeType.SUCCESS,
-        "duration": 1800
+        "duration": 1800,
     },
     # ... more sessions
 ]
@@ -525,7 +520,7 @@ for session in debug_sessions:
         actions=session["actions"],
         outcome=session["outcome"],
         outcome_details={},
-        duration=session["duration"]
+        duration=session["duration"],
     )
 
 # Analyze after collecting enough data
@@ -547,7 +542,12 @@ for rec in recommendations:
 
 ```python
 from yamllm import LLM
-from yamllm.agent.multi_agent import AgentCoordinator, CollaborativeAgent, AgentCapability, AgentRole
+from yamllm.agent.multi_agent import (
+    AgentCoordinator,
+    CollaborativeAgent,
+    AgentCapability,
+    AgentRole,
+)
 from yamllm.agent.learning_system import LearningSystem, OutcomeType
 import time
 
@@ -564,7 +564,7 @@ for role in [AgentRole.RESEARCHER, AgentRole.CODER, AgentRole.REVIEWER]:
     agent = CollaborativeAgent(
         agent_id=f"{role.value}_agent",
         llm=llm,
-        capability=AgentCapability(role=role, skills=[role.value])
+        capability=AgentCapability(role=role, skills=[role.value]),
     )
     coordinator.register_agent(agent)
 
@@ -579,20 +579,25 @@ duration = time.time() - start_time
 # Record the collaborative experience
 learning.record_experience(
     task_description=goal,
-    actions=[{"agent_count": len(coordinator.agents), "iterations": result["iterations"]}],
-    outcome=OutcomeType.SUCCESS if result["tasks_completed"] > 0 else OutcomeType.FAILURE,
+    actions=[
+        {"agent_count": len(coordinator.agents), "iterations": result["iterations"]}
+    ],
+    outcome=OutcomeType.SUCCESS
+    if result["tasks_completed"] > 0
+    else OutcomeType.FAILURE,
     outcome_details={
         "tasks_completed": result["tasks_completed"],
-        "iterations_used": result["iterations"]
+        "iterations_used": result["iterations"],
     },
     duration=duration,
-    context={"agent_roles": [a.capability.role.value for a in coordinator.agents.values()]}
+    context={
+        "agent_roles": [a.capability.role.value for a in coordinator.agents.values()]
+    },
 )
 
 # Get recommendations for similar future tasks
 recommendations = learning.get_recommendations(
-    "Implement rate limiting for API",
-    context={"task_similarity": "high"}
+    "Implement rate limiting for API", context={"task_similarity": "high"}
 )
 
 print("Based on past collaborative tasks, recommendations:")

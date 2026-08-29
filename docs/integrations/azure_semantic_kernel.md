@@ -45,43 +45,46 @@ import semantic_kernel as sk
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from yamllm.core.providers.base import BaseProvider
 
+
 class SemanticKernelProvider(BaseProvider):
-    def __init__(self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs):
+    def __init__(
+        self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs
+    ):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url
-        
+
         # Extract Semantic Kernel-specific parameters
-        self.api_version = kwargs.get('api_version', '2023-05-15')
-        self.kernel_plugins = kwargs.get('kernel_plugins', [])
-        self.planner_type = kwargs.get('planner', 'sequential')
-        
+        self.api_version = kwargs.get("api_version", "2023-05-15")
+        self.kernel_plugins = kwargs.get("kernel_plugins", [])
+        self.planner_type = kwargs.get("planner", "sequential")
+
         # Initialize Semantic Kernel
         self.kernel = sk.Kernel()
-        
+
         # Add AI service
         self.kernel.add_chat_service(
-            "azure_chat_completion", 
+            "azure_chat_completion",
             AzureChatCompletion(
                 deployment_name=self.model,
                 endpoint=self.base_url,
                 api_key=self.api_key,
-                api_version=self.api_version
-            )
+                api_version=self.api_version,
+            ),
         )
-        
+
         # Load plugins
         self._load_plugins()
-        
+
         # Initialize planner
         self._setup_planner()
-        
+
     def _load_plugins(self):
         # Load plugins based on configuration
         for plugin_name in self.kernel_plugins:
             # Implementation depends on plugin type
             pass
-            
+
     def _setup_planner(self):
         # Setup planner based on configuration
         if self.planner_type == "sequential":
@@ -90,7 +93,7 @@ class SemanticKernelProvider(BaseProvider):
             self.planner = sk.planning.ActionPlanner(self.kernel)
         else:
             raise ValueError(f"Unknown planner type: {self.planner_type}")
-            
+
     # Implement other BaseProvider methods...
 ```
 
@@ -116,11 +119,13 @@ kernel = sk.Kernel()
 # Initialize yamllm-core instance
 llm = LLM(config_path="config.yaml", api_key="your-api-key")
 
+
 # Register yamllm-core as a plugin
 @sk.kernel_function
 def ask_yamllm(question: str) -> str:
     """Ask a question to yamllm-core"""
     return llm.query(question)
+
 
 # Add the function to the kernel
 yamllm_plugin = kernel.create_function_from_method(ask_yamllm)
@@ -132,9 +137,9 @@ plan = kernel.create_semantic_function("""
     1. Ask yamllm about {{$input}}
     2. Analyze the response
     3. Provide a clear answer
-    
+
     First, let's ask yamllm: {{yamllm.ask $input}}
-    
+
     Based on this information, my answer is:
 """)
 

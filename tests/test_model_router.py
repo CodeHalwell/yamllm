@@ -4,7 +4,7 @@ from yamllm.core.model_router import (
     ModelRouter,
     TaskType,
     TaskComplexity,
-    MODEL_PROFILES
+    MODEL_PROFILES,
 )
 
 
@@ -20,7 +20,9 @@ def test_analyze_task_code_generation():
     """Test task analysis for code generation."""
     router = ModelRouter()
 
-    task_type, complexity = router.analyze_task("Write a Python function to sort a list")
+    task_type, complexity = router.analyze_task(
+        "Write a Python function to sort a list"
+    )
 
     assert task_type == TaskType.CODE_GENERATION
     assert complexity in [TaskComplexity.SIMPLE, TaskComplexity.MODERATE]
@@ -30,10 +32,16 @@ def test_analyze_task_debugging():
     """Test task analysis for debugging."""
     router = ModelRouter()
 
-    task_type, complexity = router.analyze_task("Debug this error: ValueError at line 42")
+    task_type, complexity = router.analyze_task(
+        "Debug this error: ValueError at line 42"
+    )
 
     assert task_type == TaskType.DEBUGGING
-    assert complexity in [TaskComplexity.SIMPLE, TaskComplexity.MODERATE, TaskComplexity.COMPLEX]
+    assert complexity in [
+        TaskComplexity.SIMPLE,
+        TaskComplexity.MODERATE,
+        TaskComplexity.COMPLEX,
+    ]
 
 
 def test_analyze_task_reasoning():
@@ -61,9 +69,7 @@ def test_analyze_task_data_analysis():
     """Test task analysis for data analysis."""
     router = ModelRouter()
 
-    task_type, complexity = router.analyze_task(
-        "Analyze this dataset and find trends"
-    )
+    task_type, complexity = router.analyze_task("Analyze this dataset and find trends")
 
     assert task_type == TaskType.DATA_ANALYSIS
 
@@ -123,9 +129,7 @@ def test_select_model_with_speed_priority():
     """Test model selection prioritizing speed."""
     router = ModelRouter(optimize_for="speed")
 
-    provider, model, reasoning = router.select_model(
-        "Translate 'hello' to Spanish"
-    )
+    provider, model, reasoning = router.select_model("Translate 'hello' to Spanish")
 
     # Should prefer faster models (lower speed_tier is faster)
     profile = MODEL_PROFILES.get(f"{provider}/{model}")
@@ -137,11 +141,7 @@ def test_complexity_detection_trivial():
     """Test detection of trivial tasks."""
     router = ModelRouter()
 
-    prompts = [
-        "Hello",
-        "What is your name?",
-        "Say hello"
-    ]
+    prompts = ["Hello", "What is your name?", "Say hello"]
 
     for prompt in prompts:
         _, complexity = router.analyze_task(prompt)
@@ -155,7 +155,7 @@ def test_complexity_detection_expert():
     prompts = [
         "Prove the Riemann Hypothesis",
         "Design a quantum algorithm for factoring large numbers",
-        "Develop a comprehensive AI safety framework"
+        "Develop a comprehensive AI safety framework",
     ]
 
     for prompt in prompts:
@@ -260,7 +260,7 @@ def test_select_model_returns_valid_combination():
         "Write Python code",
         "Debug this error",
         "Explain quantum mechanics",
-        "Review this code"
+        "Review this code",
     ]
 
     for prompt in prompts:

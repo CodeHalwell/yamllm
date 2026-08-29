@@ -7,7 +7,7 @@ from yamllm.agent.multi_agent import (
     AgentCapability,
     CollaborativeTask,
     CollaborativeAgent,
-    AgentCoordinator
+    AgentCoordinator,
 )
 
 
@@ -45,7 +45,7 @@ def test_agent_message():
         to_agent="agent2",
         message_type="request",
         content={"data": "test"},
-        priority=5
+        priority=5,
     )
 
     assert message.from_agent == "agent1"
@@ -62,7 +62,7 @@ def test_agent_capability():
         role=AgentRole.CODER,
         skills=["python", "javascript"],
         max_concurrent_tasks=3,
-        confidence=0.9
+        confidence=0.9,
     )
 
     assert capability.role == AgentRole.CODER
@@ -76,7 +76,7 @@ def test_collaborative_task():
     task = CollaborativeTask(
         task_id="task_1",
         description="Implement feature X",
-        required_roles=[AgentRole.CODER, AgentRole.REVIEWER]
+        required_roles=[AgentRole.CODER, AgentRole.REVIEWER],
     )
 
     assert task.task_id == "task_1"
@@ -89,16 +89,9 @@ def test_collaborative_task():
 def test_collaborative_agent_initialization():
     """Test collaborative agent initialization."""
     llm = MockLLM()
-    capability = AgentCapability(
-        role=AgentRole.CODER,
-        skills=["coding"]
-    )
+    capability = AgentCapability(role=AgentRole.CODER, skills=["coding"])
 
-    agent = CollaborativeAgent(
-        agent_id="coder_1",
-        llm=llm,
-        capability=capability
-    )
+    agent = CollaborativeAgent(agent_id="coder_1", llm=llm, capability=capability)
 
     assert agent.agent_id == "coder_1"
     assert agent.capability.role == AgentRole.CODER
@@ -114,17 +107,13 @@ def test_collaborative_agent_can_handle():
     agent = CollaborativeAgent("coder_1", llm, capability)
 
     task = CollaborativeTask(
-        task_id="task_1",
-        description="Write code",
-        required_roles=[AgentRole.CODER]
+        task_id="task_1", description="Write code", required_roles=[AgentRole.CODER]
     )
 
     assert agent.can_handle(task)
 
     task2 = CollaborativeTask(
-        task_id="task_2",
-        description="Test code",
-        required_roles=[AgentRole.TESTER]
+        task_id="task_2", description="Test code", required_roles=[AgentRole.TESTER]
     )
 
     assert not agent.can_handle(task2)
@@ -139,7 +128,7 @@ def test_collaborative_agent_send_message():
     message = agent.send_message(
         to_agent="reviewer_1",
         message_type="request",
-        content={"task": "review my code"}
+        content={"task": "review my code"},
     )
 
     assert message.from_agent == "coder_1"
@@ -158,7 +147,7 @@ def test_collaborative_agent_receive_message():
         from_agent="coordinator",
         to_agent="coder_1",
         message_type="request",
-        content={"task": "write code"}
+        content={"task": "write code"},
     )
 
     agent.receive_message(message)
@@ -180,8 +169,8 @@ def test_collaborative_agent_process_messages():
         message_type="request",
         content={
             "request_type": "execute_task",
-            "task_description": "Write a function"
-        }
+            "task_description": "Write a function",
+        },
     )
 
     agent.receive_message(message)
@@ -224,7 +213,7 @@ def test_agent_coordinator_create_task():
     task = coordinator.create_task(
         task_id="task_1",
         description="Implement feature",
-        required_roles=[AgentRole.CODER]
+        required_roles=[AgentRole.CODER],
     )
 
     assert task.task_id == "task_1"
@@ -239,14 +228,12 @@ def test_agent_coordinator_assign_agents():
 
     # Register agents
     coder = CollaborativeAgent(
-        "coder_1",
-        llm,
-        AgentCapability(role=AgentRole.CODER, skills=["coding"])
+        "coder_1", llm, AgentCapability(role=AgentRole.CODER, skills=["coding"])
     )
     reviewer = CollaborativeAgent(
         "reviewer_1",
         llm,
-        AgentCapability(role=AgentRole.REVIEWER, skills=["reviewing"])
+        AgentCapability(role=AgentRole.REVIEWER, skills=["reviewing"]),
     )
 
     coordinator.register_agent(coder)
@@ -256,7 +243,7 @@ def test_agent_coordinator_assign_agents():
     task = coordinator.create_task(
         task_id="task_1",
         description="Write and review code",
-        required_roles=[AgentRole.CODER, AgentRole.REVIEWER]
+        required_roles=[AgentRole.CODER, AgentRole.REVIEWER],
     )
 
     # Assign agents
@@ -289,14 +276,14 @@ def test_agent_coordinator_check_dependencies():
     task1 = coordinator.create_task(
         task_id="task_1",
         description="First task",
-        required_roles=[AgentRole.RESEARCHER]
+        required_roles=[AgentRole.RESEARCHER],
     )
 
     task2 = coordinator.create_task(
         task_id="task_2",
         description="Second task",
         required_roles=[AgentRole.CODER],
-        dependencies=["task_1"]
+        dependencies=["task_1"],
     )
 
     # task2 depends on task1, which is not completed
@@ -314,17 +301,13 @@ def test_agent_coordinator_execute_task():
 
     # Register agent
     coder = CollaborativeAgent(
-        "coder_1",
-        llm,
-        AgentCapability(role=AgentRole.CODER, skills=["coding"])
+        "coder_1", llm, AgentCapability(role=AgentRole.CODER, skills=["coding"])
     )
     coordinator.register_agent(coder)
 
     # Create and assign task
     task = coordinator.create_task(
-        task_id="task_1",
-        description="Write code",
-        required_roles=[AgentRole.CODER]
+        task_id="task_1", description="Write code", required_roles=[AgentRole.CODER]
     )
     coordinator.assign_agents("task_1")
 
@@ -344,14 +327,10 @@ def test_agent_coordinator_route_messages():
 
     # Register agents
     agent1 = CollaborativeAgent(
-        "agent_1",
-        llm,
-        AgentCapability(role=AgentRole.CODER, skills=["coding"])
+        "agent_1", llm, AgentCapability(role=AgentRole.CODER, skills=["coding"])
     )
     agent2 = CollaborativeAgent(
-        "agent_2",
-        llm,
-        AgentCapability(role=AgentRole.REVIEWER, skills=["reviewing"])
+        "agent_2", llm, AgentCapability(role=AgentRole.REVIEWER, skills=["reviewing"])
     )
 
     coordinator.register_agent(agent1)
@@ -359,9 +338,7 @@ def test_agent_coordinator_route_messages():
 
     # Agent1 sends message to agent2
     agent1.send_message(
-        to_agent="agent_2",
-        message_type="request",
-        content={"data": "test"}
+        to_agent="agent_2", message_type="request", content={"data": "test"}
     )
 
     # Route messages
@@ -379,17 +356,13 @@ def test_agent_coordinator_get_status():
 
     # Register agents
     coder = CollaborativeAgent(
-        "coder_1",
-        llm,
-        AgentCapability(role=AgentRole.CODER, skills=["coding"])
+        "coder_1", llm, AgentCapability(role=AgentRole.CODER, skills=["coding"])
     )
     coordinator.register_agent(coder)
 
     # Create task
     coordinator.create_task(
-        task_id="task_1",
-        description="Write code",
-        required_roles=[AgentRole.CODER]
+        task_id="task_1", description="Write code", required_roles=[AgentRole.CODER]
     )
 
     status = coordinator.get_status()
@@ -409,12 +382,10 @@ def test_collaborative_execution_integration():
     researcher = CollaborativeAgent(
         "researcher_1",
         llm,
-        AgentCapability(role=AgentRole.RESEARCHER, skills=["research"])
+        AgentCapability(role=AgentRole.RESEARCHER, skills=["research"]),
     )
     coder = CollaborativeAgent(
-        "coder_1",
-        llm,
-        AgentCapability(role=AgentRole.CODER, skills=["coding"])
+        "coder_1", llm, AgentCapability(role=AgentRole.CODER, skills=["coding"])
     )
 
     coordinator.register_agent(researcher)
@@ -422,8 +393,7 @@ def test_collaborative_execution_integration():
 
     # Execute collaborative task
     result = coordinator.execute_collaborative_task(
-        goal="Build a simple calculator",
-        max_iterations=5
+        goal="Build a simple calculator", max_iterations=5
     )
 
     assert "goal" in result

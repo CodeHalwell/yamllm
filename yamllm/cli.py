@@ -6,7 +6,7 @@ modular CLI structure in yamllm.cli package.
 
 The monolithic CLI (1140+ lines) has been refactored into focused modules:
 - yamllm.cli.main: Main entry point and command assembly
-- yamllm.cli.tools: Tool management commands  
+- yamllm.cli.tools: Tool management commands
 - yamllm.cli.config: Configuration commands
 - yamllm.cli.chat: Chat interface commands
 - yamllm.cli.memory: Memory management commands

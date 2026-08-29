@@ -6,7 +6,7 @@ from yamllm.agent.interactive_steering import (
     InteractiveAgent,
     SteeringAction,
     SteeringDecision,
-    SteeringPoint
+    SteeringPoint,
 )
 
 
@@ -31,7 +31,7 @@ def test_steering_auto_approve():
         thought="Test thought",
         planned_action={"task": "test"},
         current_state=None,
-        context={}
+        context={},
     )
 
     decision = steering.request_decision(point)
@@ -68,7 +68,7 @@ def test_watchpoint_trigger():
         thought="Read file",
         planned_action={},
         current_state=None,
-        context={}
+        context={},
     )
 
     assert not steering.check_watchpoints(point1)
@@ -79,7 +79,7 @@ def test_watchpoint_trigger():
         thought="Delete all files",
         planned_action={},
         current_state=None,
-        context={}
+        context={},
     )
 
     assert steering.check_watchpoints(point2)
@@ -92,11 +92,11 @@ def test_decision_history():
     # Make several decisions
     for i in range(3):
         point = SteeringPoint(
-            iteration=i+1,
+            iteration=i + 1,
             thought=f"Thought {i}",
             planned_action={},
             current_state=None,
-            context={}
+            context={},
         )
         steering.request_decision(point)
 
@@ -132,7 +132,7 @@ def test_steering_point_dataclass():
         thought="Test reasoning",
         planned_action={"task_id": "123", "action": "test"},
         current_state=None,
-        context={"key": "value"}
+        context={"key": "value"},
     )
 
     assert point.iteration == 1
@@ -146,7 +146,7 @@ def test_steering_decision_dataclass():
     decision = SteeringDecision(
         action=SteeringAction.MODIFY,
         feedback="Please be more careful",
-        modified_task="New task description"
+        modified_task="New task description",
     )
 
     assert decision.action == SteeringAction.MODIFY
@@ -172,9 +172,7 @@ def test_interactive_agent_initialization():
     mock_agent.max_iterations = 10
 
     interactive = InteractiveAgent(
-        agent=mock_agent,
-        pause_before_action=True,
-        auto_approve=False
+        agent=mock_agent, pause_before_action=True, auto_approve=False
     )
 
     assert interactive.agent == mock_agent
@@ -205,11 +203,7 @@ def test_watchpoint_error_handling():
     steering.add_watchpoint(bad_watchpoint)
 
     point = SteeringPoint(
-        iteration=1,
-        thought="Test",
-        planned_action={},
-        current_state=None,
-        context={}
+        iteration=1, thought="Test", planned_action={}, current_state=None, context={}
     )
 
     # Should not raise, should return False
@@ -234,7 +228,7 @@ def test_multiple_watchpoints():
         thought="Delete file",
         planned_action={},
         current_state=None,
-        context={}
+        context={},
     )
     assert steering.check_watchpoints(point1)
 
@@ -244,7 +238,7 @@ def test_multiple_watchpoints():
         thought="Remove directory",
         planned_action={},
         current_state=None,
-        context={}
+        context={},
     )
     assert steering.check_watchpoints(point2)
 
@@ -254,7 +248,7 @@ def test_multiple_watchpoints():
         thought="Normal operation",
         planned_action={},
         current_state=None,
-        context={}
+        context={},
     )
     assert steering.check_watchpoints(point3)
 
@@ -264,7 +258,7 @@ def test_multiple_watchpoints():
         thought="Normal operation",
         planned_action={},
         current_state=None,
-        context={}
+        context={},
     )
     assert not steering.check_watchpoints(point4)
 
@@ -289,8 +283,7 @@ def test_steering_state_transitions():
 def test_decision_with_feedback():
     """Test decisions with feedback."""
     decision1 = SteeringDecision(
-        action=SteeringAction.REJECT,
-        feedback="This is too risky"
+        action=SteeringAction.REJECT, feedback="This is too risky"
     )
 
     assert decision1.feedback == "This is too risky"
@@ -298,7 +291,7 @@ def test_decision_with_feedback():
     decision2 = SteeringDecision(
         action=SteeringAction.MODIFY,
         feedback="Use a safer approach",
-        modified_task="Updated task description"
+        modified_task="Updated task description",
     )
 
     assert decision2.feedback == "Use a safer approach"
@@ -315,18 +308,17 @@ def test_steering_with_context():
         planned_action={
             "task_id": "task_123",
             "tool": "code_analyzer",
-            "parameters": {"depth": "full"}
+            "parameters": {"depth": "full"},
         },
         current_state=Mock(
-            get_progress=lambda: 0.5,
-            get_completed_tasks=lambda: [1, 2, 3]
+            get_progress=lambda: 0.5, get_completed_tasks=lambda: [1, 2, 3]
         ),
         context={
             "completed_tasks": 3,
             "total_tasks": 6,
             "current_file": "security.py",
-            "severity": "high"
-        }
+            "severity": "high",
+        },
     )
 
     decision = steering.request_decision(point)

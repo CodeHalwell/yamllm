@@ -71,7 +71,9 @@ class AzureOpenAIProvider(BaseProvider):
             return self.client.chat.completions.create(**params)
         except Exception as e:
             logger.error(f"Azure OpenAI error: {e}")
-            raise ProviderError("Azure OpenAI", f"API error: {e}", original_error=e) from e
+            raise ProviderError(
+                "Azure OpenAI", f"API error: {e}", original_error=e
+            ) from e
 
     def get_streaming_completion(
         self,
@@ -96,13 +98,17 @@ class AzureOpenAIProvider(BaseProvider):
             **kwargs,
         )
 
-    def create_embedding(self, text: str, model: str = "text-embedding-ada-002") -> List[float]:
+    def create_embedding(
+        self, text: str, model: str = "text-embedding-ada-002"
+    ) -> List[float]:
         try:
             resp = self.embedding_client.embeddings.create(model=model, input=text)
             return list(resp.data[0].embedding)
         except Exception as e:
             logger.error(f"Azure OpenAI embedding error: {e}")
-            raise ProviderError("Azure OpenAI", f"Embedding error: {e}", original_error=e) from e
+            raise ProviderError(
+                "Azure OpenAI", f"Embedding error: {e}", original_error=e
+            ) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         if not tool_calls:
@@ -124,17 +130,22 @@ class AzureOpenAIProvider(BaseProvider):
                 fn = getattr(tc, "function", None) or tc.get("function", {})
                 formatted.append(
                     {
-                        "id": getattr(tc, "id", None) or tc.get("id") or f"call_{len(formatted)}",
+                        "id": getattr(tc, "id", None)
+                        or tc.get("id")
+                        or f"call_{len(formatted)}",
                         "type": "function",
                         "function": {
                             "name": getattr(fn, "name", None) or fn.get("name"),
-                            "arguments": getattr(fn, "arguments", None) or fn.get("arguments"),
+                            "arguments": getattr(fn, "arguments", None)
+                            or fn.get("arguments"),
                         },
                     }
                 )
         return formatted
 
-    def format_tool_results(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def format_tool_results(
+        self, tool_results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
         for r in tool_results:
             out.append(
@@ -174,7 +185,11 @@ class AzureOpenAIProvider(BaseProvider):
         while iterations < max_iterations:
             iterations += 1
             # Yield processing status
-            yield {"status": "processing", "iteration": iterations, "max_iterations": max_iterations}
+            yield {
+                "status": "processing",
+                "iteration": iterations,
+                "max_iterations": max_iterations,
+            }
 
             try:
                 response = self.get_completion(
@@ -195,7 +210,11 @@ class AzureOpenAIProvider(BaseProvider):
                     {
                         "role": "assistant",
                         "content": assistant_message.content,
-                        **({"tool_calls": assistant_message.tool_calls} if assistant_message.tool_calls else {}),
+                        **(
+                            {"tool_calls": assistant_message.tool_calls}
+                            if assistant_message.tool_calls
+                            else {}
+                        ),
                     }
                 )
 
@@ -213,7 +232,9 @@ class AzureOpenAIProvider(BaseProvider):
             except Exception as e:
                 logger.error(f"Azure OpenAI tool processing error: {e}")
                 yield {"status": "error", "error": str(e)}
-                raise ProviderError("Azure OpenAI", f"Tool processing error: {e}", original_error=e) from e
+                raise ProviderError(
+                    "Azure OpenAI", f"Tool processing error: {e}", original_error=e
+                ) from e
 
         # Stream the final response
         try:
@@ -233,4 +254,6 @@ class AzureOpenAIProvider(BaseProvider):
         except Exception as e:
             logger.error(f"Azure OpenAI streaming error: {e}")
             yield {"status": "error", "error": str(e)}
-            raise ProviderError("Azure OpenAI", f"Streaming error: {e}", original_error=e) from e
+            raise ProviderError(
+                "Azure OpenAI", f"Streaming error: {e}", original_error=e
+            ) from e

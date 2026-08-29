@@ -32,12 +32,20 @@ class AzureFoundryProvider(BaseProvider):
 
         if (self.api_key or "").lower() == "default":
             credential = DefaultAzureCredential()
-            self.chat_completions_client = ChatCompletionsClient(endpoint=self.base_url, credential=credential)
-            self.embeddings_client = EmbeddingsClient(endpoint=self.base_url, credential=credential)
+            self.chat_completions_client = ChatCompletionsClient(
+                endpoint=self.base_url, credential=credential
+            )
+            self.embeddings_client = EmbeddingsClient(
+                endpoint=self.base_url, credential=credential
+            )
         else:
             credential = AzureKeyCredential(self.api_key)
-            self.chat_completions_client = ChatCompletionsClient(endpoint=self.base_url, credential=credential)
-            self.embeddings_client = EmbeddingsClient(endpoint=self.base_url, credential=credential)
+            self.chat_completions_client = ChatCompletionsClient(
+                endpoint=self.base_url, credential=credential
+            )
+            self.embeddings_client = EmbeddingsClient(
+                endpoint=self.base_url, credential=credential
+            )
 
     def get_completion(
         self,
@@ -62,11 +70,15 @@ class AzureFoundryProvider(BaseProvider):
 
         try:
             if stream:
-                return self.chat_completions_client.create_stream(deployment_name=model, **params)
+                return self.chat_completions_client.create_stream(
+                    deployment_name=model, **params
+                )
             return self.chat_completions_client.create(deployment_name=model, **params)
         except Exception as e:
             logger.error(f"Azure Foundry error: {e}")
-            raise ProviderError("AzureFoundry", f"API error: {e}", original_error=e) from e
+            raise ProviderError(
+                "AzureFoundry", f"API error: {e}", original_error=e
+            ) from e
 
     def get_streaming_completion(
         self,
@@ -91,13 +103,17 @@ class AzureFoundryProvider(BaseProvider):
             **kwargs,
         )
 
-    def create_embedding(self, text: str, model: str = "text-embedding-ada-002") -> List[float]:
+    def create_embedding(
+        self, text: str, model: str = "text-embedding-ada-002"
+    ) -> List[float]:
         try:
             resp = self.embeddings_client.create(deployment_name=model, input=text)
             return list(resp.data[0].embedding)
         except Exception as e:
             logger.error(f"Azure Foundry embedding error: {e}")
-            raise ProviderError("AzureFoundry", f"Embedding error: {e}", original_error=e) from e
+            raise ProviderError(
+                "AzureFoundry", f"Embedding error: {e}", original_error=e
+            ) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         if not tool_calls:
@@ -128,7 +144,9 @@ class AzureFoundryProvider(BaseProvider):
                 )
         return formatted
 
-    def format_tool_results(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def format_tool_results(
+        self, tool_results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         return [
             {
                 "role": "tool",

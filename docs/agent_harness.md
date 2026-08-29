@@ -38,7 +38,7 @@ llm = LLM("config.yaml")
 harness = AgentHarness(
     llm,
     max_iterations=15,
-    max_wall_time=600,            # seconds
+    max_wall_time=600,  # seconds
     checkpoint_dir=".agent-checkpoints",
     approval_policy=ApprovalPolicy.NEVER,
 )
@@ -70,7 +70,7 @@ from yamllm.agent import ApprovalPolicy
 harness = AgentHarness(
     llm,
     approval_policy=ApprovalPolicy.ON_WATCHPOINT,
-    decision_provider=my_blocking_prompt,   # SteeringPoint -> SteeringDecision
+    decision_provider=my_blocking_prompt,  # SteeringPoint -> SteeringDecision
 )
 harness.add_watchpoint(lambda sp: "delete" in sp.thought.lower())
 ```

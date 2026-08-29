@@ -202,14 +202,24 @@ The repository is **production-ready for core functionality** but requires signi
 - **Recommendation:**
   ```python
   # Standardized exception hierarchy
-  class YAMLLMError(Exception): pass
-  class ProviderError(YAMLLMError): pass
-  class ToolError(YAMLLMError): pass
-  class ConfigurationError(YAMLLMError): pass
-  
+  class YAMLLMError(Exception):
+      pass
+
+
+  class ProviderError(YAMLLMError):
+      pass
+
+
+  class ToolError(YAMLLMError):
+      pass
+
+
+  class ConfigurationError(YAMLLMError):
+      pass
+
+
   # Structured logging
-  logger.error("Tool execution failed", 
-               extra={"tool": tool_name, "error": str(e)})
+  logger.error("Tool execution failed", extra={"tool": tool_name, "error": str(e)})
   ```
 - **Timeline:** 1 sprint
 

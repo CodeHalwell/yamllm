@@ -15,7 +15,7 @@ class ToolExecutor:
     - Registers tool instances
     - Exposes provider-friendly tool definitions (function tools schema)
     - Executes tools with timeouts and normalized errors
-    
+
     Note: Previously named ToolManager. Renamed to ToolExecutor to clarify
     separation from ToolOrchestrator (which orchestrates tool usage at a higher level).
     """
@@ -48,23 +48,23 @@ class ToolExecutor:
     def execute(self, name: str, args: Dict[str, Any]) -> Any:
         tool = self._require(name)
         start_time = time.time()
-        
+
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
                 fut = ex.submit(tool.execute, **args)
                 return fut.result(timeout=self._timeout)
-                
+
         except concurrent.futures.TimeoutError:
             execution_time = time.time() - start_time
             error = ToolExecutionError(
                 tool_name=name,
                 message=f"timed out after {self._timeout}s",
                 tool_args=args,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
             error.log_error()
             raise error
-            
+
         except KeyError as e:
             execution_time = time.time() - start_time
             error = ToolExecutionError(
@@ -72,11 +72,11 @@ class ToolExecutor:
                 message=f"Missing required argument: {e}",
                 original_error=e,
                 tool_args=args,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
             error.log_error()
             raise error
-            
+
         except (ValueError, TypeError) as e:
             execution_time = time.time() - start_time
             error = ToolExecutionError(
@@ -84,15 +84,15 @@ class ToolExecutor:
                 message=f"Invalid argument type or value: {e}",
                 original_error=e,
                 tool_args=args,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
             error.log_error()
             raise error
-            
+
         except ToolExecutionError:
             # Re-raise tool execution errors
             raise
-            
+
         except Exception as e:
             execution_time = time.time() - start_time
             error = ToolExecutionError(
@@ -100,7 +100,7 @@ class ToolExecutor:
                 message=f"Unexpected error: {e}",
                 original_error=e,
                 tool_args=args,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
             error.log_error()
             raise error

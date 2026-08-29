@@ -27,7 +27,7 @@ class AgentUI:
             f"[bold]{state.goal}[/bold]",
             title="[bold cyan]Agent Goal[/bold cyan]",
             border_style=self.theme.colors.primary,
-            box=box.ROUNDED
+            box=box.ROUNDED,
         )
         self.console.print(header)
 
@@ -40,7 +40,9 @@ class AgentUI:
         # Create progress text
         text = Text()
         text.append("Iteration: ", style="dim")
-        text.append(f"{state.iteration}/{state.max_iterations}", style=self.theme.colors.info)
+        text.append(
+            f"{state.iteration}/{state.max_iterations}", style=self.theme.colors.info
+        )
         text.append(" | ", style="dim")
         text.append("Progress: ", style="dim")
         text.append(f"{progress_pct:.0f}%", style=self.theme.colors.success)
@@ -50,10 +52,7 @@ class AgentUI:
 
     def render_task_tree(self, state: AgentState) -> None:
         """Render task dependency tree with progress."""
-        tree = Tree(
-            "📋 [bold]Tasks[/bold]",
-            guide_style=self.theme.colors.dim
-        )
+        tree = Tree("📋 [bold]Tasks[/bold]", guide_style=self.theme.colors.dim)
 
         for task in state.tasks:
             # Choose icon and style based on status
@@ -75,14 +74,18 @@ class AgentUI:
                 response = result.get("response", "")
                 if response:
                     # Truncate long responses
-                    truncated = response[:100] + "..." if len(response) > 100 else response
+                    truncated = (
+                        response[:100] + "..." if len(response) > 100 else response
+                    )
                     node.add(f"[dim]{truncated}[/dim]")
 
             # Add error if failed
             if task.status == TaskStatus.FAILED and task.error:
                 node.add(f"[red]Error: {task.error}[/red]")
 
-        self.console.print(Panel(tree, border_style=self.theme.colors.info, box=box.ROUNDED))
+        self.console.print(
+            Panel(tree, border_style=self.theme.colors.info, box=box.ROUNDED)
+        )
 
     def render_task_list(self, state: AgentState) -> None:
         """Render simple task list."""
@@ -90,7 +93,7 @@ class AgentUI:
             title="Tasks",
             box=box.SIMPLE,
             show_header=True,
-            header_style=f"bold {self.theme.colors.primary}"
+            header_style=f"bold {self.theme.colors.primary}",
         )
 
         table.add_column("ID", style="cyan", width=10)
@@ -103,8 +106,10 @@ class AgentUI:
 
             table.add_row(
                 task.id,
-                task.description[:60] + "..." if len(task.description) > 60 else task.description,
-                status_text
+                task.description[:60] + "..."
+                if len(task.description) > 60
+                else task.description,
+                status_text,
             )
 
         self.console.print(table)
@@ -120,7 +125,7 @@ class AgentUI:
             f"[italic]{latest_thought}[/italic]",
             title="💭 [bold]Current Thought[/bold]",
             border_style=self.theme.colors.secondary,
-            box=box.ROUNDED
+            box=box.ROUNDED,
         )
 
         self.console.print(panel)
@@ -175,10 +180,7 @@ Tasks Failed: {failed}
             summary_text += f"\nError: {state.error}"
 
         panel = Panel(
-            summary_text.strip(),
-            title=title,
-            border_style=style,
-            box=box.DOUBLE
+            summary_text.strip(), title=title, border_style=style, box=box.DOUBLE
         )
 
         self.console.print(panel)
@@ -195,7 +197,7 @@ Tasks Failed: {failed}
             self._generate_display(state),
             console=self.console,
             refresh_per_second=4,
-            vertical_overflow="visible"
+            vertical_overflow="visible",
         )
 
     def _generate_display(self, state: AgentState) -> Panel:
@@ -209,8 +211,12 @@ Tasks Failed: {failed}
         total = len(state.tasks)
 
         progress_text = Text()
-        progress_text.append(f"Iteration: {state.iteration}/{state.max_iterations} | ", style="dim")
-        progress_text.append(f"Progress: {progress_pct:.0f}% ", style=self.theme.colors.success)
+        progress_text.append(
+            f"Iteration: {state.iteration}/{state.max_iterations} | ", style="dim"
+        )
+        progress_text.append(
+            f"Progress: {progress_pct:.0f}% ", style=self.theme.colors.success
+        )
         progress_text.append(f"({completed}/{total})", style="dim")
         content_parts.append(progress_text)
 
@@ -228,7 +234,10 @@ Tasks Failed: {failed}
             thought = state.thought_history[-1]
             thought_text = Text()
             thought_text.append("\n💭 ", style=self.theme.colors.secondary)
-            thought_text.append(thought[:150] + "..." if len(thought) > 150 else thought, style="italic dim")
+            thought_text.append(
+                thought[:150] + "..." if len(thought) > 150 else thought,
+                style="italic dim",
+            )
             content_parts.append(thought_text)
 
         # Combine parts
@@ -240,7 +249,7 @@ Tasks Failed: {failed}
             content,
             title=f"[bold cyan]Agent: {state.goal[:50]}...[/bold cyan]",
             border_style=self.theme.colors.primary,
-            box=box.ROUNDED
+            box=box.ROUNDED,
         )
 
     def _get_task_display(self, task: Task) -> tuple:

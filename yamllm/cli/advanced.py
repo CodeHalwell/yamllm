@@ -8,7 +8,11 @@ from rich.table import Table
 from rich.panel import Panel
 
 from yamllm import LLM
-from yamllm.core.ensemble import EnsembleManager, EnsembleStrategy, ParallelEnsembleManager
+from yamllm.core.ensemble import (
+    EnsembleManager,
+    EnsembleStrategy,
+    ParallelEnsembleManager,
+)
 from yamllm.core.model_router import ModelRouter
 from yamllm.agent.recording import SessionPlayer, RecordingManager
 
@@ -20,86 +24,93 @@ def setup_advanced_commands(subparsers):
 
     # yamllm ensemble
     ensemble_parser = subparsers.add_parser(
-        "ensemble",
-        help="Multi-model ensemble execution"
+        "ensemble", help="Multi-model ensemble execution"
     )
-    ensemble_subparsers = ensemble_parser.add_subparsers(dest="ensemble_command", help="Ensemble commands")
+    ensemble_subparsers = ensemble_parser.add_subparsers(
+        dest="ensemble_command", help="Ensemble commands"
+    )
 
     # yamllm ensemble run
     run_parser = ensemble_subparsers.add_parser(
-        "run",
-        help="Run prompt across multiple models"
+        "run", help="Run prompt across multiple models"
     )
     run_parser.add_argument("prompt", help="Prompt to execute")
-    run_parser.add_argument("--config", required=True, action="append", help="Config files for each provider (can specify multiple)")
-    run_parser.add_argument("--strategy", choices=["consensus", "best_of_n", "voting", "first_success"],
-                           default="consensus", help="Ensemble strategy")
-    run_parser.add_argument("--timeout", type=float, default=30.0, help="Timeout per model")
-    run_parser.add_argument("--async", dest="use_async", action="store_true", help="Use async execution")
+    run_parser.add_argument(
+        "--config",
+        required=True,
+        action="append",
+        help="Config files for each provider (can specify multiple)",
+    )
+    run_parser.add_argument(
+        "--strategy",
+        choices=["consensus", "best_of_n", "voting", "first_success"],
+        default="consensus",
+        help="Ensemble strategy",
+    )
+    run_parser.add_argument(
+        "--timeout", type=float, default=30.0, help="Timeout per model"
+    )
+    run_parser.add_argument(
+        "--async", dest="use_async", action="store_true", help="Use async execution"
+    )
     run_parser.add_argument("--output", "-o", help="Save result to file")
     run_parser.set_defaults(func=run_ensemble)
 
     # yamllm cost
-    cost_parser = subparsers.add_parser(
-        "cost",
-        help="Cost tracking and optimization"
+    cost_parser = subparsers.add_parser("cost", help="Cost tracking and optimization")
+    cost_subparsers = cost_parser.add_subparsers(
+        dest="cost_command", help="Cost commands"
     )
-    cost_subparsers = cost_parser.add_subparsers(dest="cost_command", help="Cost commands")
 
     # yamllm cost report
     report_parser = cost_subparsers.add_parser(
-        "report",
-        help="Show cost report for current session"
+        "report", help="Show cost report for current session"
     )
     report_parser.add_argument("--config", required=True, help="Config file path")
     report_parser.set_defaults(func=show_cost_report)
 
     # yamllm cost optimize
     optimize_parser = cost_subparsers.add_parser(
-        "optimize",
-        help="Get cost optimization suggestions"
+        "optimize", help="Get cost optimization suggestions"
     )
     optimize_parser.add_argument("--config", required=True, help="Config file path")
     optimize_parser.set_defaults(func=optimize_costs)
 
     # yamllm route
-    route_parser = subparsers.add_parser(
-        "route",
-        help="Intelligent model routing"
-    )
+    route_parser = subparsers.add_parser("route", help="Intelligent model routing")
     route_parser.add_argument("prompt", help="Prompt to analyze")
-    route_parser.add_argument("--explain", action="store_true", help="Explain routing decision")
+    route_parser.add_argument(
+        "--explain", action="store_true", help="Explain routing decision"
+    )
     route_parser.set_defaults(func=route_model)
 
     # yamllm replay
-    replay_parser = subparsers.add_parser(
-        "replay",
-        help="Replay agent sessions"
+    replay_parser = subparsers.add_parser("replay", help="Replay agent sessions")
+    replay_subparsers = replay_parser.add_subparsers(
+        dest="replay_command", help="Replay commands"
     )
-    replay_subparsers = replay_parser.add_subparsers(dest="replay_command", help="Replay commands")
 
     # yamllm replay session
     session_parser = replay_subparsers.add_parser(
-        "session",
-        help="Replay a session recording"
+        "session", help="Replay a session recording"
     )
     session_parser.add_argument("recording", help="Path to recording file")
-    session_parser.add_argument("--speed", type=float, default=1.0, help="Playback speed")
+    session_parser.add_argument(
+        "--speed", type=float, default=1.0, help="Playback speed"
+    )
     session_parser.add_argument("--until", type=int, help="Stop at iteration N")
     session_parser.set_defaults(func=replay_session)
 
     # yamllm replay list
-    list_parser = replay_subparsers.add_parser(
-        "list",
-        help="List available recordings"
+    list_parser = replay_subparsers.add_parser("list", help="List available recordings")
+    list_parser.add_argument(
+        "--dir", default="./recordings", help="Recordings directory"
     )
-    list_parser.add_argument("--dir", default="./recordings", help="Recordings directory")
     list_parser.set_defaults(func=list_recordings)
 
     # yamllm replay compare
     compare_parser = replay_subparsers.add_parser(
-        "compare",
-        help="Compare two session recordings"
+        "compare", help="Compare two session recordings"
     )
     compare_parser.add_argument("recording1", help="First recording file")
     compare_parser.add_argument("recording2", help="Second recording file")
@@ -111,13 +122,19 @@ def setup_advanced_commands(subparsers):
 def run_ensemble(args: argparse.Namespace) -> int:
     """Run ensemble execution across multiple models."""
     try:
-        console.print(f"[cyan]Loading {len(args.config)} model configurations...[/cyan]")
+        console.print(
+            f"[cyan]Loading {len(args.config)} model configurations...[/cyan]"
+        )
 
         # Load LLMs
         llms = {}
         for i, config_path in enumerate(args.config):
             llm = LLM(config_path)
-            provider_name = f"{llm.provider_name}_{i}" if len(args.config) > 1 else llm.provider_name
+            provider_name = (
+                f"{llm.provider_name}_{i}"
+                if len(args.config) > 1
+                else llm.provider_name
+            )
             llms[provider_name] = llm
 
         console.print(f"[green]Loaded {len(llms)} models[/green]")
@@ -126,13 +143,14 @@ def run_ensemble(args: argparse.Namespace) -> int:
         # Create ensemble manager
         if args.use_async:
             import asyncio
+
             manager = ParallelEnsembleManager(llms)
 
             async def run():
                 return await manager.execute_async(
                     prompt=args.prompt,
                     strategy=EnsembleStrategy(args.strategy),
-                    timeout=args.timeout
+                    timeout=args.timeout,
                 )
 
             result = asyncio.run(run())
@@ -141,15 +159,17 @@ def run_ensemble(args: argparse.Namespace) -> int:
             result = manager.execute(
                 prompt=args.prompt,
                 strategy=EnsembleStrategy(args.strategy),
-                timeout=args.timeout
+                timeout=args.timeout,
             )
 
         # Display results
-        console.print(Panel.fit(
-            f"[bold]Final Response[/bold]\n\n{result.final_response}",
-            title="Ensemble Result",
-            border_style="green"
-        ))
+        console.print(
+            Panel.fit(
+                f"[bold]Final Response[/bold]\n\n{result.final_response}",
+                title="Ensemble Result",
+                border_style="green",
+            )
+        )
 
         console.print(f"\n[bold]Agreement Score:[/bold] {result.agreement_score:.2%}")
         if result.selected_model:
@@ -160,9 +180,13 @@ def run_ensemble(args: argparse.Namespace) -> int:
         console.print("[bold cyan]Individual Model Responses:[/bold cyan]\n")
         for resp in result.responses:
             if resp.error:
-                console.print(f"[red]{resp.provider}/{resp.model}: Error - {resp.error}[/red]")
+                console.print(
+                    f"[red]{resp.provider}/{resp.model}: Error - {resp.error}[/red]"
+                )
             else:
-                console.print(f"[green]{resp.provider}/{resp.model}[/green] ({resp.execution_time:.2f}s)")
+                console.print(
+                    f"[green]{resp.provider}/{resp.model}[/green] ({resp.execution_time:.2f}s)"
+                )
                 console.print(f"  {resp.response[:200]}...\n")
 
         # Save output if requested
@@ -179,12 +203,12 @@ def run_ensemble(args: argparse.Namespace) -> int:
                         "model": r.model,
                         "response": r.response,
                         "execution_time": r.execution_time,
-                        "error": r.error
+                        "error": r.error,
                     }
                     for r in result.responses
-                ]
+                ],
             }
-            with open(args.output, 'w') as f:
+            with open(args.output, "w") as f:
                 json.dump(output_data, f, indent=2)
             console.print(f"[green]Result saved to {args.output}[/green]")
 
@@ -241,14 +265,18 @@ def optimize_costs(args: argparse.Namespace) -> int:
 
         if suggestions.get("current_model"):
             console.print(f"[bold]Current Model:[/bold] {suggestions['current_model']}")
-            console.print(f"[bold]Current Cost:[/bold] ${suggestions.get('total_cost', 0):.4f}\n")
+            console.print(
+                f"[bold]Current Cost:[/bold] ${suggestions.get('total_cost', 0):.4f}\n"
+            )
 
         if suggestions.get("recommendations"):
             console.print("[bold green]Recommendations:[/bold green]\n")
             for rec in suggestions["recommendations"]:
                 console.print(f"  • Switch to {rec['model']}")
                 console.print(f"    - Cost: ${rec['estimated_cost']:.4f}")
-                console.print(f"    - Savings: ${rec['savings']:.4f} ({rec['savings_percent']:.1f}%)")
+                console.print(
+                    f"    - Savings: ${rec['savings']:.4f} ({rec['savings_percent']:.1f}%)"
+                )
                 console.print(f"    - Use for: {rec['use_case']}\n")
 
         return 0
@@ -264,14 +292,16 @@ def route_model(args: argparse.Namespace) -> int:
         router = ModelRouter()
         provider, model, reasoning = router.select_model(args.prompt)
 
-        console.print(Panel.fit(
-            f"[bold cyan]Recommended Model:[/bold cyan]\n\n"
-            f"[bold]Provider:[/bold] {provider}\n"
-            f"[bold]Model:[/bold] {model}\n\n"
-            f"[bold]Reasoning:[/bold]\n{reasoning}",
-            title="Model Routing",
-            border_style="green"
-        ))
+        console.print(
+            Panel.fit(
+                f"[bold cyan]Recommended Model:[/bold cyan]\n\n"
+                f"[bold]Provider:[/bold] {provider}\n"
+                f"[bold]Model:[/bold] {model}\n\n"
+                f"[bold]Reasoning:[/bold]\n{reasoning}",
+                title="Model Routing",
+                border_style="green",
+            )
+        )
 
         if args.explain:
             task_type, complexity = router.analyze_task(args.prompt)
@@ -313,7 +343,11 @@ def list_recordings(args: argparse.Namespace) -> int:
             console.print(f"[yellow]No recordings found in {args.dir}[/yellow]")
             return 0
 
-        table = Table(title=f"Session Recordings ({args.dir})", show_header=True, header_style="bold cyan")
+        table = Table(
+            title=f"Session Recordings ({args.dir})",
+            show_header=True,
+            header_style="bold cyan",
+        )
         table.add_column("Session ID", style="cyan")
         table.add_column("Goal", style="white")
         table.add_column("Iterations", style="yellow")
@@ -324,7 +358,7 @@ def list_recordings(args: argparse.Namespace) -> int:
                 rec["session_id"],
                 rec["goal"][:50] + "..." if len(rec["goal"]) > 50 else rec["goal"],
                 str(rec["iterations"]),
-                rec["timestamp"]
+                rec["timestamp"],
             )
 
         console.print(table)
@@ -350,10 +384,26 @@ def compare_recordings(args: argparse.Namespace) -> int:
         table.add_column("Session 1", style="white")
         table.add_column("Session 2", style="white")
 
-        table.add_row("Session ID", comparison["session1"]["session_id"], comparison["session2"]["session_id"])
-        table.add_row("Goal", comparison["session1"]["goal"][:30], comparison["session2"]["goal"][:30])
-        table.add_row("Iterations", str(comparison["session1"]["iterations"]), str(comparison["session2"]["iterations"]))
-        table.add_row("Timestamp", comparison["session1"]["timestamp"], comparison["session2"]["timestamp"])
+        table.add_row(
+            "Session ID",
+            comparison["session1"]["session_id"],
+            comparison["session2"]["session_id"],
+        )
+        table.add_row(
+            "Goal",
+            comparison["session1"]["goal"][:30],
+            comparison["session2"]["goal"][:30],
+        )
+        table.add_row(
+            "Iterations",
+            str(comparison["session1"]["iterations"]),
+            str(comparison["session2"]["iterations"]),
+        )
+        table.add_row(
+            "Timestamp",
+            comparison["session1"]["timestamp"],
+            comparison["session2"]["timestamp"],
+        )
 
         console.print(table)
 

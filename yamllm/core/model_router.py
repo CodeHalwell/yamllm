@@ -135,7 +135,12 @@ MODEL_PROFILES: Dict[str, ModelCapability] = {
     "anthropic/claude-3-haiku": ModelCapability(
         provider="anthropic",
         model="claude-3-haiku",
-        strengths=[TaskType.GENERAL, TaskType.SIMPLE, TaskType.SUMMARIZATION, TaskType.Q_AND_A],
+        strengths=[
+            TaskType.GENERAL,
+            TaskType.SIMPLE,
+            TaskType.SUMMARIZATION,
+            TaskType.Q_AND_A,
+        ],
         weaknesses=[TaskType.EXPERT],
         cost_tier=1,
         speed_tier=1,
@@ -153,7 +158,12 @@ MODEL_PROFILES: Dict[str, ModelCapability] = {
     "google/gemini-1.5-flash": ModelCapability(
         provider="google",
         model="gemini-1.5-flash",
-        strengths=[TaskType.GENERAL, TaskType.SIMPLE, TaskType.SUMMARIZATION, TaskType.Q_AND_A],
+        strengths=[
+            TaskType.GENERAL,
+            TaskType.SIMPLE,
+            TaskType.SUMMARIZATION,
+            TaskType.Q_AND_A,
+        ],
         weaknesses=[TaskType.EXPERT],
         cost_tier=1,
         speed_tier=1,
@@ -175,14 +185,38 @@ MODEL_PROFILES: Dict[str, ModelCapability] = {
 # specific patterns ahead of the general ones.
 _TASK_TYPE_PATTERNS: List[Tuple[TaskType, Tuple[str, ...]]] = [
     (TaskType.CODE_REVIEW, ("review", "audit", "lint")),
-    (TaskType.DEBUGGING, ("debug", "fix bug", "fix error", "stack trace", "traceback", "error:")),
-    (TaskType.DATA_ANALYSIS, ("analyze data", "dataset", "trends", "statistics", "data analysis")),
-    (TaskType.DOCUMENTATION, ("docs", "documentation", "readme", "doc string", "docstring")),
+    (
+        TaskType.DEBUGGING,
+        ("debug", "fix bug", "fix error", "stack trace", "traceback", "error:"),
+    ),
+    (
+        TaskType.DATA_ANALYSIS,
+        ("analyze data", "dataset", "trends", "statistics", "data analysis"),
+    ),
+    (
+        TaskType.DOCUMENTATION,
+        ("docs", "documentation", "readme", "doc string", "docstring"),
+    ),
     (TaskType.Q_AND_A, ("answer question", "question:", "answer:")),
-    (TaskType.CODE_GENERATION, ("write code", "code", "function", "class ", "implement", "refactor", "script", "program")),
+    (
+        TaskType.CODE_GENERATION,
+        (
+            "write code",
+            "code",
+            "function",
+            "class ",
+            "implement",
+            "refactor",
+            "script",
+            "program",
+        ),
+    ),
     (TaskType.TRANSLATION, ("translate", "translation")),
     (TaskType.SUMMARIZATION, ("summarize", "summary", "tldr", "tl;dr")),
-    (TaskType.REASONING, ("explain", "why", "reason", "philosophical", "implication", "prove")),
+    (
+        TaskType.REASONING,
+        ("explain", "why", "reason", "philosophical", "implication", "prove"),
+    ),
     (TaskType.CREATIVE, ("story", "poem", "creative", "imagine")),
 ]
 
@@ -266,7 +300,9 @@ class ModelRouter:
 
     def _detect_complexity(self, prompt_lower: str, prompt_raw: str) -> TaskComplexity:
         # Trivial: short, formulaic
-        if len(prompt_lower) <= 30 and any(p in prompt_lower for p in _TRIVIAL_PATTERNS):
+        if len(prompt_lower) <= 30 and any(
+            p in prompt_lower for p in _TRIVIAL_PATTERNS
+        ):
             return TaskComplexity.TRIVIAL
 
         # Highest-priority keyword wins
@@ -298,7 +334,10 @@ class ModelRouter:
             provider, model, reasoning = "openai", "gpt-4o-mini", "Default model"
         else:
             scored = sorted(
-                ((self._score_model(profile, task_type, complexity), key, profile) for key, profile in candidates),
+                (
+                    (self._score_model(profile, task_type, complexity), key, profile)
+                    for key, profile in candidates
+                ),
                 reverse=True,
                 key=lambda triple: triple[0],
             )

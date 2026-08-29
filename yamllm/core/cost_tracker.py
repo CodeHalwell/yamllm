@@ -167,7 +167,9 @@ class CostSummary:
         # Use the disambiguated view so OpenAI gpt-4o and Azure gpt-4o aren't
         # collapsed; optimisation suggestions need to know which provider is
         # responsible for the spend.
-        return sorted(self.by_provider_model.items(), key=lambda x: x[1], reverse=True)[:n]
+        return sorted(self.by_provider_model.items(), key=lambda x: x[1], reverse=True)[
+            :n
+        ]
 
     def to_dict(self) -> Dict:
         return {
@@ -187,7 +189,9 @@ class CostSummary:
 class BudgetExceededError(Exception):
     """Raised when budget limit is exceeded."""
 
-    def __init__(self, message: str, current_cost: float = 0.0, budget_limit: float = 0.0):
+    def __init__(
+        self, message: str, current_cost: float = 0.0, budget_limit: float = 0.0
+    ):
         super().__init__(message)
         self.current_cost = current_cost
         self.budget_limit = budget_limit

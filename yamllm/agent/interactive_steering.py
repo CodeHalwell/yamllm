@@ -20,6 +20,7 @@ from .models import AgentState, TaskStatus
 
 class SteeringAction(Enum):
     """Actions available during agent steering."""
+
     APPROVE = "approve"
     REJECT = "reject"
     MODIFY = "modify"
@@ -32,6 +33,7 @@ class SteeringAction(Enum):
 @dataclass
 class SteeringDecision:
     """Represents a human decision during agent execution."""
+
     action: SteeringAction
     feedback: Optional[str] = None
     modified_task: Optional[str] = None
@@ -41,6 +43,7 @@ class SteeringDecision:
 @dataclass
 class SteeringPoint:
     """A point where agent pauses for human input."""
+
     iteration: int
     thought: str
     planned_action: Dict[str, Any]
@@ -60,7 +63,7 @@ class InteractiveSteering:
         console: Optional[Console] = None,
         auto_approve: bool = False,
         pause_before_action: bool = True,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """
         Initialize interactive steering.
@@ -150,23 +153,29 @@ class InteractiveSteering:
     def _display_steering_point(self, point: SteeringPoint):
         """Display current steering point to user."""
         self.console.print(f"\n[bold cyan]╔{'═' * 78}╗[/bold cyan]")
-        self.console.print(f"[bold cyan]║ Iteration {point.iteration:2d} - Agent Steering Point{' ' * 44}║[/bold cyan]")
+        self.console.print(
+            f"[bold cyan]║ Iteration {point.iteration:2d} - Agent Steering Point{' ' * 44}║[/bold cyan]"
+        )
         self.console.print(f"[bold cyan]╚{'═' * 78}╝[/bold cyan]\n")
 
         # Show thought/reasoning
-        self.console.print(Panel(
-            point.thought,
-            title="[bold yellow]Agent Reasoning[/bold yellow]",
-            border_style="yellow"
-        ))
+        self.console.print(
+            Panel(
+                point.thought,
+                title="[bold yellow]Agent Reasoning[/bold yellow]",
+                border_style="yellow",
+            )
+        )
 
         # Show planned action
         action_text = self._format_action(point.planned_action)
-        self.console.print(Panel(
-            action_text,
-            title="[bold green]Planned Action[/bold green]",
-            border_style="green"
-        ))
+        self.console.print(
+            Panel(
+                action_text,
+                title="[bold green]Planned Action[/bold green]",
+                border_style="green",
+            )
+        )
 
         # Show context if available
         if point.context:
@@ -175,11 +184,13 @@ class InteractiveSteering:
                 context_items.append(f"[cyan]{key}:[/cyan] {value}")
 
             if context_items:
-                self.console.print(Panel(
-                    "\n".join(context_items[:5]),  # Show top 5
-                    title="[bold blue]Context[/bold blue]",
-                    border_style="blue"
-                ))
+                self.console.print(
+                    Panel(
+                        "\n".join(context_items[:5]),  # Show top 5
+                        title="[bold blue]Context[/bold blue]",
+                        border_style="blue",
+                    )
+                )
 
     def _format_action(self, action: Dict[str, Any]) -> str:
         """Format action for display."""
@@ -209,7 +220,7 @@ class InteractiveSteering:
             choice = Prompt.ask(
                 "\n[bold]Decision[/bold]",
                 choices=["a", "m", "r", "p", "s", "x", "auto"],
-                default="a"
+                default="a",
             )
 
             if choice == "a":
@@ -217,16 +228,15 @@ class InteractiveSteering:
 
             elif choice == "m":
                 feedback = Prompt.ask("[yellow]Modification guidance[/yellow]")
-                return SteeringDecision(
-                    action=SteeringAction.MODIFY,
-                    feedback=feedback
-                )
+                return SteeringDecision(action=SteeringAction.MODIFY, feedback=feedback)
 
             elif choice == "r":
-                feedback = Prompt.ask("[red]Rejection reason (optional)[/red]", default="")
+                feedback = Prompt.ask(
+                    "[red]Rejection reason (optional)[/red]", default=""
+                )
                 return SteeringDecision(
                     action=SteeringAction.REJECT,
-                    feedback=feedback if feedback else None
+                    feedback=feedback if feedback else None,
                 )
 
             elif choice == "p":
@@ -251,7 +261,7 @@ class InteractiveSteering:
         self.console.print("\n[bold cyan]═══ Full Agent State ═══[/bold cyan]\n")
 
         # Show current state
-        if hasattr(point.current_state, '__dict__'):
+        if hasattr(point.current_state, "__dict__"):
             state_dict = point.current_state.__dict__
 
             table = Table(title="Agent State")
@@ -259,7 +269,7 @@ class InteractiveSteering:
             table.add_column("Value", style="white")
 
             for key, value in state_dict.items():
-                if not key.startswith('_'):
+                if not key.startswith("_"):
                     table.add_row(key, str(value)[:100])
 
             self.console.print(table)
@@ -281,7 +291,7 @@ class InteractiveSteering:
             "total_decisions": len(self.decision_history),
             "action_counts": action_counts,
             "auto_approved": self.auto_approve,
-            "stopped": self.should_stop
+            "stopped": self.should_stop,
         }
 
 
@@ -297,7 +307,7 @@ class InteractiveAgent:
         agent,
         steering: Optional[InteractiveSteering] = None,
         pause_before_action: bool = True,
-        auto_approve: bool = False
+        auto_approve: bool = False,
     ):
         """
         Initialize interactive agent.
@@ -310,15 +320,10 @@ class InteractiveAgent:
         """
         self.agent = agent
         self.steering = steering or InteractiveSteering(
-            pause_before_action=pause_before_action,
-            auto_approve=auto_approve
+            pause_before_action=pause_before_action, auto_approve=auto_approve
         )
 
-    def execute(
-        self,
-        goal: str,
-        context: Optional[Dict[str, Any]] = None
-    ):
+    def execute(self, goal: str, context: Optional[Dict[str, Any]] = None):
         """
         Execute agent with interactive steering.
 
@@ -334,7 +339,7 @@ class InteractiveAgent:
             goal=goal,
             tasks=[],
             max_iterations=self.agent.max_iterations,
-            metadata=context or {}
+            metadata=context or {},
         )
 
         # Planning phase
@@ -363,14 +368,14 @@ class InteractiveAgent:
                 planned_action={
                     "task_id": next_task.id,
                     "description": next_task.description,
-                    "dependencies": next_task.dependencies
+                    "dependencies": next_task.dependencies,
                 },
                 current_state=state,
                 context={
                     "completed_tasks": len(state.get_completed_tasks()),
                     "progress": f"{state.get_progress():.1%}",
-                    "current_task": next_task.description
-                }
+                    "current_task": next_task.description,
+                },
             )
 
             # Request decision
@@ -388,14 +393,18 @@ class InteractiveAgent:
                 if decision.feedback:
                     # Add feedback as context for next iteration
                     state.metadata["user_feedback"] = decision.feedback
-                    self.steering.console.print(f"[yellow]Feedback recorded: {decision.feedback}[/yellow]")
+                    self.steering.console.print(
+                        f"[yellow]Feedback recorded: {decision.feedback}[/yellow]"
+                    )
                 # Continue to next iteration with feedback
 
             elif decision.action == SteeringAction.REJECT:
                 # Mark task as failed
                 next_task.status = TaskStatus.FAILED
                 next_task.error = decision.feedback or "Rejected by user"
-                self.steering.console.print(f"[red]Task rejected: {next_task.description}[/red]")
+                self.steering.console.print(
+                    f"[red]Task rejected: {next_task.description}[/red]"
+                )
 
             elif decision.action == SteeringAction.SKIP:
                 # Skip this iteration

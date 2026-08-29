@@ -4,34 +4,71 @@ from .core.llm import LLM
 from .llm import OpenAIGPT, MistralAI, DeepSeek, GoogleGemini, AnthropicAI
 from .core.config import Config
 from .memory.conversation_store import ConversationStore, VectorStore
-from .tools import Tool, WebSearch, Calculator, TimezoneTool, UnitConverter, WeatherTool, WebScraper
+from .tools import (
+    Tool,
+    WebSearch,
+    Calculator,
+    TimezoneTool,
+    UnitConverter,
+    WeatherTool,
+    WebScraper,
+)
 from .agent import Agent, SimpleAgent, WorkflowManager, AgentState, Task
 
 # Advanced features (P0)
-from .core.cost_tracker import CostTracker, CostSummary, CostOptimizer, BudgetExceededError
+from .core.cost_tracker import (
+    CostTracker,
+    CostSummary,
+    CostOptimizer,
+    BudgetExceededError,
+)
 from .core.model_router import ModelRouter, TaskType, TaskComplexity
-from .core.ensemble import EnsembleManager, ParallelEnsembleManager, EnsembleStrategy, EnsembleResult
+from .core.ensemble import (
+    EnsembleManager,
+    ParallelEnsembleManager,
+    EnsembleStrategy,
+    EnsembleResult,
+)
 from .agent.recording import SessionRecorder, SessionPlayer, RecordingManager
 
 # P1 features
 from .tools.dynamic_tool_creator import ToolCreator, DynamicTool, ToolValidator
 from .code.context_intelligence import CodeContextIntelligence, CodeSymbol, SymbolType
-from .tools.advanced_git import AdvancedGitWorkflow, BranchStrategy, ConflictResolutionStrategy
+from .tools.advanced_git import (
+    AdvancedGitWorkflow,
+    BranchStrategy,
+    ConflictResolutionStrategy,
+)
 
 # P1+: Interactive Steering
-from .agent.interactive_steering import InteractiveAgent, InteractiveSteering, SteeringAction, SteeringDecision
+from .agent.interactive_steering import (
+    InteractiveAgent,
+    InteractiveSteering,
+    SteeringAction,
+    SteeringDecision,
+)
 from .ui.steering_ui import SteeringUI
 
 # P2: Multi-Agent Collaboration
 from .agent.multi_agent import (
-    AgentRole, AgentMessage, AgentCapability, CollaborativeTask,
-    CollaborativeAgent, AgentCoordinator
+    AgentRole,
+    AgentMessage,
+    AgentCapability,
+    CollaborativeTask,
+    CollaborativeAgent,
+    AgentCoordinator,
 )
 
 # P2: Learning & Improvement
 from .agent.learning_system import (
-    LearningSystem, Experience, LearningInsight, PerformanceMetrics,
-    OutcomeType, ImprovementType, ExperienceStore, PatternAnalyzer
+    LearningSystem,
+    Experience,
+    LearningInsight,
+    PerformanceMetrics,
+    OutcomeType,
+    ImprovementType,
+    ExperienceStore,
+    PatternAnalyzer,
 )
 
 __version__ = "0.1.13"

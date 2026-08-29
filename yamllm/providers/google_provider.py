@@ -8,4 +8,3 @@ legacy UI behavior.
 from yamllm.providers.google import GoogleGeminiProvider  # re-export
 
 __all__ = ["GoogleGeminiProvider"]
-

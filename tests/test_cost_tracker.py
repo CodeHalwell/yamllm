@@ -5,7 +5,7 @@ from yamllm.core.cost_tracker import (
     CostTracker,
     CostOptimizer,
     BudgetExceededError,
-    PROVIDER_PRICING
+    PROVIDER_PRICING,
 )
 
 
@@ -42,7 +42,7 @@ def test_record_usage():
         provider="openai",
         model="gpt-4o-mini",
         prompt_tokens=1000,
-        completion_tokens=500
+        completion_tokens=500,
     )
 
     summary = tracker.get_summary()
@@ -68,7 +68,6 @@ def test_budget_warning():
     """Test budget warning threshold."""
     tracker = CostTracker()
     tracker.set_budget(1.0, warning_threshold=0.5)
-
 
     # Record usage approaching threshold
     tracker.record_usage("openai", "gpt-4", 100000, 50000)

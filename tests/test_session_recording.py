@@ -6,11 +6,7 @@ import os
 from pathlib import Path
 import yaml
 import json
-from yamllm.agent.recording import (
-    SessionRecorder,
-    SessionPlayer,
-    RecordingManager
-)
+from yamllm.agent.recording import SessionRecorder, SessionPlayer, RecordingManager
 from yamllm.agent.models import AgentState
 
 
@@ -33,7 +29,7 @@ def test_record_iteration():
         iteration=1,
         thought="I should do X",
         action={"task": "do_something"},
-        observation={"result": "success"}
+        observation={"result": "success"},
     )
 
     assert len(recorder.recording["iterations"]) == 1
@@ -56,7 +52,7 @@ def test_record_multiple_iterations():
             iteration=i,
             thought=f"Thought {i}",
             action={"task": f"action_{i}"},
-            observation={"progress": i/3}
+            observation={"progress": i / 3},
         )
 
     assert len(recorder.recording["iterations"]) == 3
@@ -130,7 +126,7 @@ def test_player_get_iteration():
     recorder.record_iteration(2, "thought2", {"a": 2}, {"b": 2})
 
     # Save to temp file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(recorder.recording, f)
         temp_file = f.name
 
@@ -153,7 +149,7 @@ def test_player_get_summary():
     recorder.record_iteration(1, "thought1", {"a": 1}, {"b": 1})
     recorder.record_iteration(2, "thought2", {"a": 2}, {"b": 2})
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         yaml.dump(recorder.recording, f)
         temp_file = f.name
 
@@ -251,10 +247,7 @@ def test_recording_manager_delete():
 
 def test_recording_with_context():
     """Test recording with context."""
-    context = {
-        "repo": "/path/to/repo",
-        "files": ["file1.py", "file2.py"]
-    }
+    context = {"repo": "/path/to/repo", "files": ["file1.py", "file2.py"]}
 
     state = AgentState(goal="Test", metadata=context)
     recorder = SessionRecorder(state)
@@ -276,7 +269,7 @@ def test_recording_timestamps():
 
 def test_invalid_recording_file():
     """Test handling invalid recording file."""
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
         f.write("invalid: yaml: content:")
         temp_file = f.name
 

@@ -11,5 +11,5 @@ from yamllm.providers.openai import OpenAIProvider as _CoreOpenAIProvider
 class DeepSeekProvider(_CoreOpenAIProvider):
     pass
 
-__all__ = ["DeepSeekProvider"]
 
+__all__ = ["DeepSeekProvider"]

@@ -28,4 +28,3 @@ def test_loading_existing_index_with_wrong_dimension_raises(tmp_path: Path):
 
     assert "Vector index dimension mismatch" in str(ei.value)
     assert "migrate-index" in str(ei.value)
-

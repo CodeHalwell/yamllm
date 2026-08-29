@@ -1,5 +1,3 @@
-
-
 from yamllm.tools.utility_tools import WebSearch, DuckDuckGoProvider
 
 
@@ -32,6 +30,7 @@ class StubSerpAPIProvider:
 def test_web_search_fallback_to_next_provider(monkeypatch):
     # Monkeypatch DDGS used inside DuckDuckGoProvider to simulate rate limit
     import yamllm.tools.utility_tools as ut
+
     monkeypatch.setattr(ut, "DDGS", FailingDDG)
 
     # Inject a stub SerpAPI provider to avoid network
@@ -45,13 +44,15 @@ def test_web_search_fallback_to_next_provider(monkeypatch):
 
 def test_web_search_all_providers_fail(monkeypatch):
     import yamllm.tools.utility_tools as ut
+
     monkeypatch.setattr(ut, "DDGS", FailingDDG)
 
     class FailingProvider:
         def search(self, *args, **kwargs):
             raise RuntimeError("fail")
 
-    ws = WebSearch(providers=[DuckDuckGoProvider(), FailingProvider()], timeout=1, max_retries=1)
+    ws = WebSearch(
+        providers=[DuckDuckGoProvider(), FailingProvider()], timeout=1, max_retries=1
+    )
     out = ws.execute("test", max_results=1)
     assert "error" in out
-

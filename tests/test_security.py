@@ -33,14 +33,14 @@ def test_path_traversal_prevention():
     with tempfile.TemporaryDirectory() as tmpdir:
         allowed_dir = os.path.join(tmpdir, "allowed")
         os.makedirs(allowed_dir)
-        
+
         # Create a file outside allowed directory
         secret_file = os.path.join(tmpdir, "secret.txt")
         with open(secret_file, "w") as f:
             f.write("secret content")
-        
+
         sm = SecurityManager(allowed_paths=[allowed_dir])
-        
+
         # Test various path traversal attempts
         traversal_attempts = [
             os.path.join(allowed_dir, "..", "secret.txt"),
@@ -48,7 +48,7 @@ def test_path_traversal_prevention():
             allowed_dir + "/../secret.txt",
             os.path.join(allowed_dir, "subdir", "..", "..", "secret.txt"),
         ]
-        
+
         for path in traversal_attempts:
             with pytest.raises(ToolExecutionError) as exc_info:
                 sm.validate_file_access(path)
@@ -60,12 +60,12 @@ def test_symlink_prevention():
     with tempfile.TemporaryDirectory() as tmpdir:
         allowed_dir = os.path.join(tmpdir, "allowed")
         os.makedirs(allowed_dir)
-        
+
         # Create a file outside allowed directory
         secret_file = os.path.join(tmpdir, "secret.txt")
         with open(secret_file, "w") as f:
             f.write("secret content")
-        
+
         # Create symlink inside allowed directory pointing outside
         symlink_path = os.path.join(allowed_dir, "link_to_secret")
         try:
@@ -73,9 +73,9 @@ def test_symlink_prevention():
         except OSError:
             # Skip test on systems that don't support symlinks
             pytest.skip("Symlinks not supported on this system")
-        
+
         sm = SecurityManager(allowed_paths=[allowed_dir])
-        
+
         # Symlink should be rejected as it points outside allowed directory
         with pytest.raises(ToolExecutionError) as exc_info:
             sm.validate_file_access(symlink_path)
@@ -85,7 +85,7 @@ def test_symlink_prevention():
 def test_null_byte_prevention():
     """Test that null byte injection is prevented."""
     sm = SecurityManager(allowed_paths=[os.getcwd()])
-    
+
     # Test null byte in path
     with pytest.raises(ToolExecutionError) as exc_info:
         sm.validate_file_access("/tmp/file\x00.txt")
@@ -140,7 +140,9 @@ def test_network_internal_ip_and_domains_blocked():
         sm.check_network_permission("http://printer.local")
 
     # Blocked domains (exact and subdomain)
-    sm2 = SecurityManager(blocked_domains=["example.com"])  # only exact or subdomain should block
+    sm2 = SecurityManager(
+        blocked_domains=["example.com"]
+    )  # only exact or subdomain should block
     with pytest.raises(ToolExecutionError):
         sm2.check_network_permission("https://example.com/path")
     with pytest.raises(ToolExecutionError):

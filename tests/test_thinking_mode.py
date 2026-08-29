@@ -79,4 +79,3 @@ def test_get_response_with_thinking_includes_thinking(tmp_path):
     assert isinstance(out, dict)
     assert out.get("thinking") and "<thinking>" in out["thinking"]
     assert isinstance(out.get("response"), (str, type(None)))
-

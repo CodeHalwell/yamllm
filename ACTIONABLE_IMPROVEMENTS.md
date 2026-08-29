@@ -92,9 +92,16 @@
   - **Files:** `yamllm/core/exceptions.py`
   - **Example:**
     ```python
-    class YAMLLMError(Exception): pass
-    class ProviderError(YAMLLMError): pass
-    class ToolError(YAMLLMError): pass
+    class YAMLLMError(Exception):
+        pass
+
+
+    class ProviderError(YAMLLMError):
+        pass
+
+
+    class ToolError(YAMLLMError):
+        pass
     ```
 
 ---
@@ -290,7 +297,8 @@
   - **Change:**
     ```python
     from functools import lru_cache
-    
+
+
     @lru_cache(maxsize=32)
     def _get_cached_tool_definitions(self, config_hash: str):
         return self.generate_tool_definitions()
@@ -305,9 +313,7 @@
   - **Example:**
     ```python
     # Create persistent client
-    self.client = httpx.AsyncClient(
-        limits=httpx.Limits(max_connections=100)
-    )
+    self.client = httpx.AsyncClient(limits=httpx.Limits(max_connections=100))
     ```
 
 ### Smart Search
@@ -330,20 +336,21 @@
     ```python
     from collections import deque
     import time
-    
+
+
     class RateLimiter:
         def __init__(self, max_requests_per_minute=60):
             self.requests = deque()
             self.max_requests = max_requests_per_minute
-        
+
         def check_rate_limit(self):
             now = time.time()
             while self.requests and now - self.requests[0] > 60:
                 self.requests.popleft()
-            
+
             if len(self.requests) >= self.max_requests:
                 raise RateLimitExceeded()
-            
+
             self.requests.append(now)
     ```
 

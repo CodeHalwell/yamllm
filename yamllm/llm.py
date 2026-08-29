@@ -1,5 +1,6 @@
 from .core.llm import LLM
 
+
 class OpenAIGPT(LLM):
     """
     A class to interact with OpenAI's GPT models.
@@ -17,10 +18,12 @@ class OpenAIGPT(LLM):
         config_path (str): The path to the configuration file.
         api_key (str): The API key for accessing OpenAI's services.
     """
+
     def __init__(self, config_path: str, api_key: str) -> None:
 
         self.provider = "openai"
         super().__init__(config_path, api_key)
+
 
 class DeepSeek(LLM):
     """
@@ -38,11 +41,13 @@ class DeepSeek(LLM):
         Args:
             config_path (str): The path to the configuration file.
             api_key (str): The API key for authentication.
-        """
+    """
+
     def __init__(self, config_path: str, api_key: str) -> None:
 
-        self.provider = 'deepseek'
+        self.provider = "deepseek"
         super().__init__(config_path, api_key)
+
 
 class MistralAI(LLM):
     """
@@ -57,45 +62,47 @@ class MistralAI(LLM):
     """
 
     def __init__(self, config_path: str, api_key: str) -> None:
-        self.provider = 'mistral'
+        self.provider = "mistral"
         super().__init__(config_path, api_key)
-    
+
+
 class GoogleGemini(LLM):
     """
     GoogleGemini is a specialized class for interacting with Google's Gemini models
     through their OpenAI-compatible interface.
-    
+
     This class uses a provider-based approach to interact with Google's Gemini models.
     """
+
     def __init__(self, config_path: str, api_key: str) -> None:
         """Initialize with Google-specific settings"""
         # Set provider before super() to ensure correct initialization
-        self.provider = 'google'
+        self.provider = "google"
         super().__init__(config_path, api_key)
 
 
 class AnthropicAI(LLM):
     """
     AnthropicAI class for interacting with Anthropic's Claude models.
-    
+
     This is a wrapper that uses the OpenAI-compatible API endpoint for Claude
     while abstracting away the provider-specific details.
-    
+
     Attributes:
         provider (str): The name of the AI provider, set to 'anthropic'.
-    
+
     Methods:
         __init__(config_path: str, api_key: str) -> None:
             Initializes the AnthropicAI instance with the given configuration path and API key.
     """
-    
+
     def __init__(self, config_path: str, api_key: str) -> None:
         """
         Initialize the AnthropicAI instance.
-        
+
         Args:
             config_path (str): Path to YAML configuration file
             api_key (str): Anthropic API key
         """
-        self.provider = 'anthropic'
+        self.provider = "anthropic"
         super().__init__(config_path, api_key)

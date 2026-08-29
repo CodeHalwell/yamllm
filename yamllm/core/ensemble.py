@@ -9,6 +9,7 @@ import logging
 
 class EnsembleStrategy(Enum):
     """Ensemble aggregation strategies."""
+
     CONSENSUS = "consensus"  # Require agreement from majority
     BEST_OF_N = "best_of_n"  # Return highest quality response
     VOTING = "voting"  # Vote on best approach
@@ -64,7 +65,7 @@ class EnsembleManager:
         prompt: str,
         strategy: EnsembleStrategy = EnsembleStrategy.CONSENSUS,
         providers: Optional[List[str]] = None,
-        timeout: float = 30.0
+        timeout: float = 30.0,
     ) -> EnsembleResult:
         """
         Execute prompt across multiple models.
@@ -95,15 +96,14 @@ class EnsembleManager:
         # Aggregate based on strategy
         result = self._aggregate(responses, strategy)
 
-        self.logger.info(f"Ensemble complete. Agreement score: {result.agreement_score:.2f}")
+        self.logger.info(
+            f"Ensemble complete. Agreement score: {result.agreement_score:.2f}"
+        )
 
         return result
 
     def _execute_all(
-        self,
-        prompt: str,
-        llms: Dict[str, Any],
-        timeout: float
+        self, prompt: str, llms: Dict[str, Any], timeout: float
     ) -> List[ModelResponse]:
         """Execute prompt on all models."""
         responses = []
@@ -111,6 +111,7 @@ class EnsembleManager:
         for provider, llm in llms.items():
             try:
                 import time
+
                 start_time = time.time()
 
                 # Execute query
@@ -119,32 +120,33 @@ class EnsembleManager:
                 execution_time = time.time() - start_time
 
                 # Get model name
-                model_name = getattr(llm, 'model', 'unknown')
+                model_name = getattr(llm, "model", "unknown")
 
-                responses.append(ModelResponse(
-                    provider=provider,
-                    model=model_name,
-                    response=response_text,
-                    execution_time=execution_time
-                ))
+                responses.append(
+                    ModelResponse(
+                        provider=provider,
+                        model=model_name,
+                        response=response_text,
+                        execution_time=execution_time,
+                    )
+                )
 
-                self.logger.info(f"Got response from {provider} in {execution_time:.2f}s")
+                self.logger.info(
+                    f"Got response from {provider} in {execution_time:.2f}s"
+                )
 
             except Exception as e:
                 self.logger.error(f"Error from {provider}: {e}")
-                responses.append(ModelResponse(
-                    provider=provider,
-                    model="unknown",
-                    response="",
-                    error=str(e)
-                ))
+                responses.append(
+                    ModelResponse(
+                        provider=provider, model="unknown", response="", error=str(e)
+                    )
+                )
 
         return responses
 
     def _aggregate(
-        self,
-        responses: List[ModelResponse],
-        strategy: EnsembleStrategy
+        self, responses: List[ModelResponse], strategy: EnsembleStrategy
     ) -> EnsembleResult:
         """
         Aggregate responses based on strategy.
@@ -165,7 +167,7 @@ class EnsembleManager:
                 final_response="All models failed",
                 responses=responses,
                 agreement_score=0.0,
-                reasoning="No valid responses"
+                reasoning="No valid responses",
             )
 
         if strategy == EnsembleStrategy.CONSENSUS:
@@ -183,13 +185,11 @@ class EnsembleManager:
                 final_response=valid_responses[0].response,
                 responses=responses,
                 agreement_score=0.5,
-                reasoning="Default strategy"
+                reasoning="Default strategy",
             )
 
     def _consensus(
-        self,
-        valid_responses: List[ModelResponse],
-        all_responses: List[ModelResponse]
+        self, valid_responses: List[ModelResponse], all_responses: List[ModelResponse]
     ) -> EnsembleResult:
         """
         Consensus strategy - find common ground.
@@ -203,7 +203,7 @@ class EnsembleManager:
                 responses=all_responses,
                 agreement_score=1.0,
                 selected_model=f"{valid_responses[0].provider}/{valid_responses[0].model}",
-                reasoning="Only one valid response"
+                reasoning="Only one valid response",
             )
 
         # Calculate similarity between responses
@@ -225,13 +225,11 @@ class EnsembleManager:
             responses=all_responses,
             agreement_score=best_sim,
             selected_model=f"{best_response.provider}/{best_response.model}",
-            reasoning=f"Highest agreement ({best_sim:.1%}) with other models"
+            reasoning=f"Highest agreement ({best_sim:.1%}) with other models",
         )
 
     def _best_of_n(
-        self,
-        valid_responses: List[ModelResponse],
-        all_responses: List[ModelResponse]
+        self, valid_responses: List[ModelResponse], all_responses: List[ModelResponse]
     ) -> EnsembleResult:
         """
         Best-of-N strategy - select highest quality response.
@@ -254,13 +252,11 @@ class EnsembleManager:
             responses=all_responses,
             agreement_score=best_score,
             selected_model=f"{best_response.provider}/{best_response.model}",
-            reasoning=f"Highest quality score: {best_score:.2f}"
+            reasoning=f"Highest quality score: {best_score:.2f}",
         )
 
     def _voting(
-        self,
-        valid_responses: List[ModelResponse],
-        all_responses: List[ModelResponse]
+        self, valid_responses: List[ModelResponse], all_responses: List[ModelResponse]
     ) -> EnsembleResult:
         """
         Voting strategy - models vote on approaches.
@@ -274,9 +270,7 @@ class EnsembleManager:
         return result
 
     def _first_success(
-        self,
-        valid_responses: List[ModelResponse],
-        all_responses: List[ModelResponse]
+        self, valid_responses: List[ModelResponse], all_responses: List[ModelResponse]
     ) -> EnsembleResult:
         """First success strategy - return first valid response."""
         first = valid_responses[0]
@@ -287,12 +281,11 @@ class EnsembleManager:
             responses=all_responses,
             agreement_score=1.0,
             selected_model=f"{first.provider}/{first.model}",
-            reasoning="First successful response"
+            reasoning="First successful response",
         )
 
     def _calculate_similarities(
-        self,
-        responses: List[ModelResponse]
+        self, responses: List[ModelResponse]
     ) -> List[List[float]]:
         """
         Calculate similarity matrix between responses.
@@ -308,8 +301,7 @@ class EnsembleManager:
                     matrix[i][j] = 1.0
                 else:
                     matrix[i][j] = self._text_similarity(
-                        responses[i].response,
-                        responses[j].response
+                        responses[i].response, responses[j].response
                     )
 
         return matrix
@@ -357,21 +349,21 @@ class EnsembleManager:
             score += 10.0
 
         # Structure score
-        sentences = text.count('.') + text.count('!') + text.count('?')
+        sentences = text.count(".") + text.count("!") + text.count("?")
         if sentences > 0:
             score += min(sentences * 5, 25.0)
 
         # Paragraph score
-        paragraphs = text.count('\n\n') + 1
+        paragraphs = text.count("\n\n") + 1
         if paragraphs > 1:
             score += min(paragraphs * 5, 15.0)
 
         # Code block score (if contains code)
-        if '```' in text or 'def ' in text or 'class ' in text:
+        if "```" in text or "def " in text or "class " in text:
             score += 10.0
 
         # List score
-        list_items = text.count('\n- ') + text.count('\n* ')
+        list_items = text.count("\n- ") + text.count("\n* ")
         if list_items > 0:
             score += min(list_items * 2, 10.0)
 
@@ -386,7 +378,7 @@ class ParallelEnsembleManager(EnsembleManager):
         prompt: str,
         strategy: EnsembleStrategy = EnsembleStrategy.CONSENSUS,
         providers: Optional[List[str]] = None,
-        timeout: float = 30.0
+        timeout: float = 30.0,
     ) -> EnsembleResult:
         """
         Execute prompt across multiple models in parallel.
@@ -433,44 +425,34 @@ class ParallelEnsembleManager(EnsembleManager):
         return result
 
     async def _execute_one_async(
-        self,
-        provider: str,
-        llm: Any,
-        prompt: str,
-        timeout: float
+        self, provider: str, llm: Any, prompt: str, timeout: float
     ) -> ModelResponse:
         """Execute one model asynchronously."""
         import time
+
         start_time = time.time()
 
         try:
             # Check if LLM has async method
-            if hasattr(llm, 'query_async'):
+            if hasattr(llm, "query_async"):
                 response_text = await llm.query_async(prompt)
             else:
                 # Fallback to sync in thread
                 loop = asyncio.get_event_loop()
-                response_text = await loop.run_in_executor(
-                    None,
-                    llm.query,
-                    prompt
-                )
+                response_text = await loop.run_in_executor(None, llm.query, prompt)
 
             execution_time = time.time() - start_time
 
-            model_name = getattr(llm, 'model', 'unknown')
+            model_name = getattr(llm, "model", "unknown")
 
             return ModelResponse(
                 provider=provider,
                 model=model_name,
                 response=response_text,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
 
         except Exception as e:
             return ModelResponse(
-                provider=provider,
-                model="unknown",
-                response="",
-                error=str(e)
+                provider=provider, model="unknown", response="", error=str(e)
             )

@@ -16,9 +16,7 @@ from collections import OrderedDict
 
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
 from yamllm.core.config_validator import ConfigValidator
-from yamllm.core.exceptions import (
-    ConfigurationError, ProviderError
-)
+from yamllm.core.exceptions import ConfigurationError, ProviderError
 from yamllm.core.error_handler import ErrorHandler
 from yamllm.core.memory_manager import MemoryManager
 from yamllm.core.tool_orchestrator import ToolOrchestrator
@@ -44,18 +42,18 @@ def setup_logging(config):
     # Set logging level for external libraries
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
-    
+
     # Disable propagation to root logger
-    logging.getLogger('yamllm').propagate = False
-    
+    logging.getLogger("yamllm").propagate = False
+
     # Get or create yamllm logger
-    logger = logging.getLogger('yamllm')
+    logger = logging.getLogger("yamllm")
     logger.setLevel(getattr(logging, config.logging.level))
-    
+
     # Remove existing handlers
     for handler in logger.handlers[:]:
         logger.removeHandler(handler)
-    
+
     # Ensure log directory exists
     log_path = config.logging.file
     try:
@@ -64,7 +62,7 @@ def setup_logging(config):
             os.makedirs(log_dir, exist_ok=True)
     except Exception:
         pass
-    
+
     # Create handler
     def _coerce_int(value, default):
         try:
@@ -74,54 +72,64 @@ def setup_logging(config):
 
     if getattr(config.logging, "rotate", False):
         from logging.handlers import RotatingFileHandler
-        max_bytes = _coerce_int(getattr(config.logging, "rotate_max_bytes", 1048576), 1048576)
+
+        max_bytes = _coerce_int(
+            getattr(config.logging, "rotate_max_bytes", 1048576), 1048576
+        )
         backup_count = _coerce_int(getattr(config.logging, "rotate_backup_count", 3), 3)
         file_handler = RotatingFileHandler(
             log_path, maxBytes=max_bytes, backupCount=backup_count
         )
     else:
         file_handler = logging.FileHandler(log_path)
-    
+
     # Set formatter
     # Support both new `json_format` and legacy `json` toggle names
-    use_json = bool(getattr(config.logging, "json_format", False) or getattr(config.logging, "json", False))
+    use_json = bool(
+        getattr(config.logging, "json_format", False)
+        or getattr(config.logging, "json", False)
+    )
     if use_json:
         import json as _json
-        
+
         class JSONFormatter(logging.Formatter):
             def format(self, record):
-                return _json.dumps({
-                    "ts": self.formatTime(record),
-                    "level": record.levelname,
-                    "logger": record.name,
-                    "msg": record.getMessage(),
-                    "exc_info": self.formatException(record.exc_info) if record.exc_info else None
-                })
-        
+                return _json.dumps(
+                    {
+                        "ts": self.formatTime(record),
+                        "level": record.levelname,
+                        "logger": record.name,
+                        "msg": record.getMessage(),
+                        "exc_info": self.formatException(record.exc_info)
+                        if record.exc_info
+                        else None,
+                    }
+                )
+
         formatter = JSONFormatter()
     else:
         formatter = logging.Formatter(config.logging.format)
-    
+
     file_handler.setFormatter(formatter)
     logger.addHandler(file_handler)
-    
+
     # Optional console handler
     if getattr(config.logging, "console", False):
         console_handler = logging.StreamHandler()
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
-    
+
     return logger
 
 
 class LLM:
     """
     Main LLM interface with modular architecture.
-    
+
     This class provides a clean interface for LLM interactions while
     delegating specific responsibilities to specialized components.
     """
-    
+
     def __init__(self, config_path: str, api_key: str = ""):
         """
         Initialize LLM with configuration.
@@ -136,28 +144,28 @@ class LLM:
         # Compatibility: allow tests to patch load_config()
         self.config = self.load_config()
         self.logger = setup_logging(self.config)
-        
+
         # Error handler
         self.error_handler = ErrorHandler(self.logger)
         # LRU embedding cache with configurable size (default: 1000)
         self._embedding_cache: OrderedDict[str, List[float]] = OrderedDict()
         self._embedding_cache_size = self.config.get("embedding_cache_size", 1000)
-        
+
         # Performance metrics tracker
         self.metrics = MetricsTracker()
-        
+
         # Extract configuration values
         self._extract_config_values()
-        
+
         # Ensure MCP attribute exists before tool initialization
         self.mcp_client = None
-        
+
         # Initialize components
         self.provider_client = self._initialize_provider()
         self.memory_manager = self._initialize_memory()
         self.tool_orchestrator = self._initialize_tools()
         self.thinking_manager = self._initialize_thinking()
-        
+
         # Initialize modular components
         self.response_orchestrator = ResponseOrchestrator(
             provider_client=self.provider_client,
@@ -167,31 +175,31 @@ class LLM:
             max_tokens=self.max_tokens,
             top_p=self.top_p,
             stop_sequences=self.stop_sequences,
-            logger=self.logger
+            logger=self.logger,
         )
-        
+
         self.tool_selector = ToolSelector(logger=self.logger)
-        
+
         # Async components (lazy initialization)
         self._async_provider = None
         self._async_tool_manager = None
-        
+
         # Embedding client (lazy initialization)
         self.embedding_client = None
         self._embeddings_provider_name = None
         self._embedding_model = "text-embedding-3-small"
         self._setup_embeddings_config()
-        
+
         # Callbacks
         self.stream_callback: Optional[Callable[[str], None]] = None
         self.event_callback: Optional[Callable[[Dict[str, Any]], None]] = None
-        
+
         # Usage tracking
         self._last_usage: Optional[Dict[str, int]] = None
         self._total_usage: Dict[str, int] = {
             "prompt_tokens": 0,
             "completion_tokens": 0,
-            "total_tokens": 0
+            "total_tokens": 0,
         }
         self._tool_call_count = 0
 
@@ -201,37 +209,36 @@ class LLM:
         # Cost tracking
         self.cost_tracker = CostTracker(logger=self.logger)
 
-
         # MCP client initialization
         self.mcp_client = self._initialize_mcp()
-    
+
     def _load_and_validate_config(self) -> YamlLMConfig:
         """Load and validate configuration."""
         if not os.path.exists(self.config_path):
             raise FileNotFoundError(f"Config file not found: {self.config_path}")
-        
+
         config = parse_yaml_config(self.config_path)
-        
+
         # Validate configuration
         try:
             config_dict = config.model_dump()
         except Exception:
             config_dict = config.dict()  # Fallback for older pydantic
-        
+
         errors = ConfigValidator.validate_config(config_dict)
         if errors:
             raise ConfigurationError(
                 f"Invalid configuration: {'; '.join(errors)}",
                 config_path=self.config_path,
-                validation_errors=errors
+                validation_errors=errors,
             )
-        
+
         return config
 
     # Backward-compatibility for tests that patch LLM.load_config
     def load_config(self) -> YamlLMConfig:  # pragma: no cover - thin wrapper
         return self._load_and_validate_config()
-    
+
     def _extract_config_values(self):
         """Extract configuration values for easier access."""
         # Provider settings
@@ -241,53 +248,55 @@ class LLM:
             self.provider = self.provider_name  # Compatibility
         self.model = self.config.provider.model
         self.base_url = self.config.provider.base_url
-        self.extra_settings = getattr(self.config.provider, 'extra_settings', {})
-        
+        self.extra_settings = getattr(self.config.provider, "extra_settings", {})
+
         # Model settings
         self.temperature = self.config.model_settings.temperature
         self.max_tokens = self.config.model_settings.max_tokens
         self.top_p = self.config.model_settings.top_p
         self.stop_sequences = self.config.model_settings.stop_sequences
-        
+
         # Request settings
         self.request_timeout = self.config.request.timeout
         self.retry_max_attempts = self.config.request.retry.max_attempts
         self.retry_initial_delay = self.config.request.retry.initial_delay
         self.retry_backoff_factor = self.config.request.retry.backoff_factor
-        
+
         # Context settings
         self.system_prompt = self.config.context.system_prompt
         self.max_context_length = self.config.context.max_context_length
-        
+
         # Memory settings
         self.memory_enabled = self.config.context.memory.enabled
         self.memory_max_messages = self.config.context.memory.max_messages
-        self.session_id = getattr(self.config.context.memory, 'session_id', None)
-        
+        self.session_id = getattr(self.config.context.memory, "session_id", None)
+
         # Output settings
         self.output_format = self.config.output.format
         self.output_stream = self.config.output.stream
-        
+
         # Tools settings
         self.tools_enabled = self.config.tools.enabled
         self.tools = self.config.tools.tools
         self.tools_timeout = self.config.tools.tool_timeout
-        
+
         # Safety settings
         self.content_filtering = self.config.safety.content_filtering
         self.max_requests_per_minute = self.config.safety.max_requests_per_minute
         self.sensitive_keywords = self.config.safety.sensitive_keywords
-    
+
     def _setup_embeddings_config(self):
         """Setup embeddings configuration."""
         try:
             if hasattr(self.config, "embeddings") and self.config.embeddings:
-                self._embeddings_provider_name = getattr(self.config.embeddings, "provider", None)
+                self._embeddings_provider_name = getattr(
+                    self.config.embeddings, "provider", None
+                )
                 if getattr(self.config.embeddings, "model", None):
                     self._embedding_model = self.config.embeddings.model
         except Exception:
             pass
-    
+
     def _initialize_provider(self):
         """Initialize the provider client (construction only; network occurs later)."""
         provider_name = (self.provider_name or "").lower()
@@ -309,65 +318,68 @@ class LLM:
                 base_url=self.base_url,
                 **self.extra_settings,
             )
-    
+
     def _initialize_memory(self) -> MemoryManager:
         """Initialize memory management."""
         memory_config = self.config.context.memory
-        
+
         return MemoryManager(
             enabled=memory_config.enabled,
             max_messages=memory_config.max_messages,
-            session_id=getattr(memory_config, 'session_id', None),
-            conversation_db_path=getattr(memory_config, 'conversation_db', None),
-            vector_index_path=getattr(memory_config.vector_store, 'index_path', None),
-            vector_store_top_k=getattr(memory_config.vector_store, 'top_k', 5),
+            session_id=getattr(memory_config, "session_id", None),
+            conversation_db_path=getattr(memory_config, "conversation_db", None),
+            vector_index_path=getattr(memory_config.vector_store, "index_path", None),
+            vector_store_top_k=getattr(memory_config.vector_store, "top_k", 5),
             vector_dim=self._infer_embedding_dimension(),
-            logger=self.logger
+            logger=self.logger,
         )
-    
+
     def _initialize_tools(self) -> ToolOrchestrator:
         """Initialize tool orchestration."""
         tools_config = self.config.tools
-        
+
         # Use thread-safe tool manager
         tool_manager = ThreadSafeToolManager(
-            timeout=tools_config.tool_timeout,
-            max_concurrent=5,
-            logger=self.logger
+            timeout=tools_config.tool_timeout, max_concurrent=5, logger=self.logger
         )
-        
+
         # Security configuration
         security_config = {
-            'allowed_paths': getattr(tools_config, 'allowed_paths', []),
-            'safe_mode': getattr(tools_config, 'safe_mode', False),
-            'allow_network': getattr(tools_config, 'allow_network', True),
-            'allow_filesystem': getattr(tools_config, 'allow_filesystem', True),
-            'blocked_domains': getattr(tools_config, 'blocked_domains', [])
+            "allowed_paths": getattr(tools_config, "allowed_paths", []),
+            "safe_mode": getattr(tools_config, "safe_mode", False),
+            "allow_network": getattr(tools_config, "allow_network", True),
+            "allow_filesystem": getattr(tools_config, "allow_filesystem", True),
+            "blocked_domains": getattr(tools_config, "blocked_domains", []),
         }
-        
+
         orchestrator = ToolOrchestrator(
             enabled=tools_config.enabled,
             tool_list=tools_config.tools,
-            tool_packs=getattr(tools_config, 'packs', []),
+            tool_packs=getattr(tools_config, "packs", []),
             tool_timeout=tools_config.tool_timeout,
             security_config=security_config,
             logger=self.logger,
             mcp_client=self.mcp_client,
-            include_help_tool=getattr(tools_config, 'include_help_tool', True)
+            include_help_tool=getattr(tools_config, "include_help_tool", True),
         )
-        
+
         # Replace the tool manager with our thread-safe version
         orchestrator.tool_manager = tool_manager
         orchestrator._register_tools()
-        
+
         return orchestrator
 
-    def _prepare_tools(self, messages: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+    def _prepare_tools(
+        self, messages: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Dict[str, Any]]:
         """Prepare tool definitions based on provider capabilities and prompt content."""
-        if not getattr(self, 'tool_orchestrator', None) or not self.tool_orchestrator.enabled:
+        if (
+            not getattr(self, "tool_orchestrator", None)
+            or not self.tool_orchestrator.enabled
+        ):
             return []
         try:
-            provider_for_caps = getattr(self, 'provider', None) or self.provider_name
+            provider_for_caps = getattr(self, "provider", None) or self.provider_name
             caps = get_provider_capabilities(provider_for_caps)
             if not caps.supports_tools:
                 return []
@@ -383,66 +395,68 @@ class LLM:
                 return self.tool_orchestrator.get_tool_definitions()
             except Exception:
                 return []
-    
+
     def _initialize_mcp(self):
         """Initialize MCP client if configured."""
         if not self.config.tools.mcp_connectors:
             return None
-        
+
         try:
             from yamllm.mcp.client import MCPClient
             from yamllm.mcp.connector import MCPConnector
-            
+
             mcp_client = MCPClient()
-            
+
             for connector_config in self.config.tools.mcp_connectors:
                 if not connector_config.enabled:
                     continue
-                
+
                 connector = MCPConnector(
                     name=connector_config.name,
                     url=connector_config.url,
                     authentication=connector_config.authentication,
                     description=connector_config.description,
-                    tool_prefix=connector_config.tool_prefix
+                    tool_prefix=connector_config.tool_prefix,
                 )
-                
+
                 mcp_client.register_connector(connector)
                 self.logger.info(f"Registered MCP connector: {connector_config.name}")
-            
+
             return mcp_client
-            
+
         except Exception as e:
             self.logger.error(f"Error initializing MCP client: {e}")
             return None
-    
+
     def _initialize_thinking(self) -> ThinkingManager:
         """Initialize thinking mode manager."""
-        thinking_config = getattr(self.config, 'thinking', None)
+        thinking_config = getattr(self.config, "thinking", None)
         if not thinking_config:
             return ThinkingManager(enabled=False)
-        
+
         tm = ThinkingManager(
-            enabled=getattr(thinking_config, 'enabled', False),
-            show_tool_reasoning=getattr(thinking_config, 'show_tool_reasoning', True),
-            thinking_model=getattr(thinking_config, 'model', None),
-            max_thinking_tokens=getattr(thinking_config, 'max_tokens', 2000),
-            stream_thinking=getattr(thinking_config, 'stream_thinking', True),
-            save_thinking=getattr(thinking_config, 'save_thinking', False),
-            temperature=getattr(thinking_config, 'thinking_temperature', 0.7)
+            enabled=getattr(thinking_config, "enabled", False),
+            show_tool_reasoning=getattr(thinking_config, "show_tool_reasoning", True),
+            thinking_model=getattr(thinking_config, "model", None),
+            max_thinking_tokens=getattr(thinking_config, "max_tokens", 2000),
+            stream_thinking=getattr(thinking_config, "stream_thinking", True),
+            save_thinking=getattr(thinking_config, "save_thinking", False),
+            temperature=getattr(thinking_config, "thinking_temperature", 0.7),
         )
         # Apply new hygiene and mode controls
         try:
-            tm.mode = str(getattr(thinking_config, 'mode', 'auto') or 'auto').lower()
-            tm.redact_logs = bool(getattr(thinking_config, 'redact_logs', True))
+            tm.mode = str(getattr(thinking_config, "mode", "auto") or "auto").lower()
+            tm.redact_logs = bool(getattr(thinking_config, "redact_logs", True))
         except Exception:
             pass
         return tm
-    
+
     def _infer_embedding_dimension(self) -> int:
         """Infer embedding dimension from model name."""
-        model_lower = getattr(self, "_embedding_model", "text-embedding-3-small").lower()
-        
+        model_lower = getattr(
+            self, "_embedding_model", "text-embedding-3-small"
+        ).lower()
+
         # OpenAI models
         if "text-embedding-3-large" in model_lower:
             return 3072
@@ -450,10 +464,10 @@ class LLM:
             return 1536
         elif "ada-002" in model_lower:
             return 1536
-        
+
         # Default
         return 1536
-    
+
     def _get_streaming_manager(self) -> StreamingManager:
         """Get or initialize streaming manager."""
         if self._streaming_manager is None:
@@ -467,19 +481,19 @@ class LLM:
                 stop_sequences=self.stop_sequences,
                 stream_callback=self.stream_callback,
                 event_callback=self.event_callback,
-                logger=self.logger
+                logger=self.logger,
             )
         return self._streaming_manager
-    
+
     # Main query methods
     def query(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Send a query to the language model.
-        
+
         Args:
             prompt: The user prompt
             system_prompt: Optional system prompt
-            
+
         Returns:
             The model's response
         """
@@ -492,6 +506,7 @@ class LLM:
             is_openai_error = False
             try:
                 import openai as _openai_mod  # type: ignore
+
                 _err_type = getattr(_openai_mod, "OpenAIError", None)
                 if _err_type is not None:
                     try:
@@ -507,7 +522,9 @@ class LLM:
                 raise Exception(f"OpenAI API error: {e}")
             raise Exception(f"Unexpected error during query: {e}")
 
-    def _make_api_call(self, api_func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
+    def _make_api_call(
+        self, api_func: Callable[..., Any], *args: Any, **kwargs: Any
+    ) -> Any:
         """Make an API call with retry and exponential backoff for transient failures."""
         attempts = 0
         delay = self.retry_initial_delay or 0.1
@@ -523,7 +540,7 @@ class LLM:
                 delay *= max(1.0, float(self.retry_backoff_factor or 1.0))
             except Exception as e:
                 # Retry on OpenAIError where applicable (use name-based detection)
-                is_openai_error = (e.__class__.__name__ == "OpenAIError")
+                is_openai_error = e.__class__.__name__ == "OpenAIError"
                 if is_openai_error:
                     attempts += 1
                     if attempts >= max_attempts:
@@ -532,21 +549,23 @@ class LLM:
                     delay *= max(1.0, float(self.retry_backoff_factor or 1.0))
                 else:
                     raise
-    
-    def get_response(self, prompt: str, system_prompt: Optional[str] = None) -> Optional[str]:
+
+    def get_response(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> Optional[str]:
         """Get response from the model with tool support."""
         # Reset tool execution stack for new request
         self.tool_orchestrator.reset_execution_stack()
         # Reset cancellation flag for a fresh request
         setattr(self, "_cancel_requested", False)
-        
+
         # Prepare messages
         messages = self._prepare_messages(prompt, system_prompt)
-        
+
         # Handle thinking mode
         if self.thinking_manager.enabled:
             self._process_thinking(prompt)
-        
+
         # Get tool definitions
         tools_param = None
         if self.tool_orchestrator.enabled:
@@ -562,7 +581,7 @@ class LLM:
             except Exception:
                 tools_param = self.tool_orchestrator.get_tool_definitions()
                 tools_param = self._filter_tools_for_prompt(tools_param, messages)
-        
+
         # Generate response
         response_text = None
         if self.output_stream:
@@ -582,7 +601,9 @@ class LLM:
             return None
         return response_text
 
-    def get_completion_with_tools(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
+    def get_completion_with_tools(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Get completion with detailed tool execution information.
 
@@ -604,52 +625,58 @@ class LLM:
         tool_calls = []
         tool_results = []
 
-        if self.tool_orchestrator.enabled and hasattr(self.tool_orchestrator, 'execution_history'):
+        if self.tool_orchestrator.enabled and hasattr(
+            self.tool_orchestrator, "execution_history"
+        ):
             for execution in self.tool_orchestrator.execution_history:
-                tool_calls.append({
-                    "name": execution.get("tool_name"),
-                    "arguments": execution.get("arguments", {})
-                })
-                tool_results.append({
-                    "tool": execution.get("tool_name"),
-                    "result": execution.get("result"),
-                    "error": execution.get("error")
-                })
+                tool_calls.append(
+                    {
+                        "name": execution.get("tool_name"),
+                        "arguments": execution.get("arguments", {}),
+                    }
+                )
+                tool_results.append(
+                    {
+                        "tool": execution.get("tool_name"),
+                        "result": execution.get("result"),
+                        "error": execution.get("error"),
+                    }
+                )
 
         return {
             "content": response_text or "",
             "tool_calls": tool_calls,
-            "tool_results": tool_results
+            "tool_results": tool_results,
         }
 
     async def aquery(self, prompt: str, system_prompt: Optional[str] = None) -> str:
         """
         Async query to the language model.
-        
+
         Args:
             prompt: The user prompt
             system_prompt: Optional system prompt
-            
+
         Returns:
             The model's response
         """
         if not self._async_provider:
             await self._initialize_async_provider()
-        
+
         messages = self._prepare_messages(prompt, system_prompt)
-        
+
         response = await self._async_provider.get_completion(
             messages=messages,
             model=self.model,
             temperature=self.temperature,
             max_tokens=self.max_tokens,
             top_p=self.top_p,
-            stop_sequences=self.stop_sequences
+            stop_sequences=self.stop_sequences,
         )
-        
+
         # Extract text based on provider
         return self._extract_text_from_response(response)
-    
+
     async def _initialize_async_provider(self):
         """Initialize async provider via ProviderFactory when available."""
         provider_name = (self.provider_name or "").lower()
@@ -665,61 +692,76 @@ class LLM:
                 if hasattr(self._async_provider, "__aenter__"):
                     await self._async_provider.__aenter__()
             else:
-                raise ProviderError(provider_name, "Async support not available for this provider")
+                raise ProviderError(
+                    provider_name, "Async support not available for this provider"
+                )
         except Exception as e:
             masked_error = mask_string(str(e))
-            self.logger.error(f"Error initializing async provider {provider_name}: {masked_error}")
+            self.logger.error(
+                f"Error initializing async provider {provider_name}: {masked_error}"
+            )
             raise
-    
-    def _prepare_messages(self, prompt: str, system_prompt: Optional[str] = None) -> List[Dict[str, str]]:
+
+    def _prepare_messages(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> List[Dict[str, str]]:
         """Prepare messages for the API request."""
         messages = []
-        
+
         # Add system prompt
         if system_prompt or self.system_prompt:
-            messages.append({
-                "role": "system",
-                "content": system_prompt or self.system_prompt
-            })
-        
+            messages.append(
+                {"role": "system", "content": system_prompt or self.system_prompt}
+            )
+
         # Add conversation history
         if self.memory_manager.enabled:
             history = self.memory_manager.get_conversation_history()
             messages.extend(history)
-            
+
             # Add similar past content if available
             try:
                 query_embedding = self.create_embedding(prompt)
                 similar = self.memory_manager.search_similar(query_embedding, k=2)
-                
-                filtered = [m for m in similar if m.get('similarity', 0) >= 0.85]
+
+                filtered = [m for m in similar if m.get("similarity", 0) >= 0.85]
                 if filtered and len(prompt) >= 20:
-                    context = "\n\n".join([f"{m['role']}: {m['content']}" for m in filtered])
-                    messages.append({
-                        "role": "system",
-                        "content": f"Relevant prior context (for reference only):\n{context}"
-                    })
+                    context = "\n\n".join(
+                        [f"{m['role']}: {m['content']}" for m in filtered]
+                    )
+                    messages.append(
+                        {
+                            "role": "system",
+                            "content": f"Relevant prior context (for reference only):\n{context}",
+                        }
+                    )
             except Exception as e:
                 self.logger.debug(f"Error finding similar messages: {e}")
-        
+
         # Add current prompt
         messages.append({"role": "user", "content": prompt})
-        
+
         return messages
-    
-    def _filter_tools_for_prompt(self, tools_param: Optional[List[Dict[str, Any]]], messages: List[Dict[str, Any]]):
+
+    def _filter_tools_for_prompt(
+        self,
+        tools_param: Optional[List[Dict[str, Any]]],
+        messages: List[Dict[str, Any]],
+    ):
         """Filter tools based on prompt content."""
         if not tools_param:
             return tools_param
-        
+
         # Check if gating is enabled
-        gate = getattr(self.config.tools, 'gate_web_search', True)
+        gate = getattr(self.config.tools, "gate_web_search", True)
         if not gate:
             return tools_param
-        
+
         # Use ToolSelector for filtering
-        return self.tool_selector.filter_tools_for_prompt(tools_param, messages, gate=gate)
-    
+        return self.tool_selector.filter_tools_for_prompt(
+            tools_param, messages, gate=gate
+        )
+
     def _process_thinking(self, prompt: str):
         """Process thinking mode if enabled."""
         try:
@@ -731,22 +773,42 @@ class LLM:
             # If the prompt clearly doesn't need tools, optionally emit a compact
             # local thinking note (no model call) and proceed directly.
             try:
-                compact_ok = bool(getattr(getattr(self.config, 'thinking', None), 'compact_for_non_tool', True))
+                compact_ok = bool(
+                    getattr(
+                        getattr(self.config, "thinking", None),
+                        "compact_for_non_tool",
+                        True,
+                    )
+                )
             except Exception:
                 compact_ok = True
-            if not self._intent_requires_tools(prompt) and not self._extract_explicit_tool(prompt):
-                if compact_ok and self.thinking_manager.stream_thinking and self.stream_callback:
-                    compact = "<thinking>\n=== ANALYSIS ===\nNo tools needed; responding directly.\n" \
-                              + ("=" * 50) + "\n</thinking>\n"
+            if not self._intent_requires_tools(
+                prompt
+            ) and not self._extract_explicit_tool(prompt):
+                if (
+                    compact_ok
+                    and self.thinking_manager.stream_thinking
+                    and self.stream_callback
+                ):
+                    compact = (
+                        "<thinking>\n=== ANALYSIS ===\nNo tools needed; responding directly.\n"
+                        + ("=" * 50)
+                        + "\n</thinking>\n"
+                    )
                     self.stream_callback(compact)
                     if self.event_callback:
-                        self.event_callback({
-                            "type": "thinking",
-                            "step": "analysis",
-                            "content": "No tools needed; responding directly.",
-                            "tools": []
-                        })
-                    if self.thinking_manager.save_thinking and self.memory_manager.enabled:
+                        self.event_callback(
+                            {
+                                "type": "thinking",
+                                "step": "analysis",
+                                "content": "No tools needed; responding directly.",
+                                "tools": [],
+                            }
+                        )
+                    if (
+                        self.thinking_manager.save_thinking
+                        and self.memory_manager.enabled
+                    ):
                         try:
                             self.memory_manager.add_message("system", compact)
                         except Exception:
@@ -755,12 +817,22 @@ class LLM:
 
             available_tools = self.tool_orchestrator.tool_manager.list()
             # Respect thinking mode off|on|auto
-            if not self.thinking_manager.should_show(prompt, available_tools=available_tools):
+            if not self.thinking_manager.should_show(
+                prompt, available_tools=available_tools
+            ):
                 return
             # If streaming is enabled and provider supports streaming, stream thinking deltas per block
             can_stream = bool(self.output_stream and self.stream_callback)
             provider = (self.provider_name or "").lower()
-            provider_stream_ok = provider in ("openai", "azure_openai", "openrouter", "deepseek", "mistral", "anthropic", "google")
+            provider_stream_ok = provider in (
+                "openai",
+                "azure_openai",
+                "openrouter",
+                "deepseek",
+                "mistral",
+                "anthropic",
+                "google",
+            )
 
             # Compact tool planning for clear, simple intents (avoid verbose plans)
             try:
@@ -769,62 +841,93 @@ class LLM:
                 wants = {}
             if compact_ok and any(wants.values()):
                 msg = None
-                if wants.get('calc'):
+                if wants.get("calc"):
                     msg = "Using calculator to compute the result."
-                elif wants.get('convert'):
+                elif wants.get("convert"):
                     msg = "Using unit conversion to compute the result."
-                elif wants.get('time'):
+                elif wants.get("time"):
                     msg = "Using timezone/time tool to answer."
-                elif wants.get('web'):
+                elif wants.get("web"):
                     msg = "Using web search to fetch current information."
-                elif wants.get('files'):
+                elif wants.get("files"):
                     msg = "Using file tools as requested."
-                if msg and self.thinking_manager.stream_thinking and self.stream_callback:
-                    compact = f"<thinking>\n=== TOOL_PLAN ===\n{msg}\n" + ("=" * 50) + "\n</thinking>\n"
+                if (
+                    msg
+                    and self.thinking_manager.stream_thinking
+                    and self.stream_callback
+                ):
+                    compact = (
+                        f"<thinking>\n=== TOOL_PLAN ===\n{msg}\n"
+                        + ("=" * 50)
+                        + "\n</thinking>\n"
+                    )
                     self.stream_callback(compact)
                     if self.event_callback:
-                        self.event_callback({
-                            "type": "thinking",
-                            "step": "tool_planning",
-                            "content": msg,
-                            "tools": [k for k, v in wants.items() if v]
-                        })
-                    if self.thinking_manager.save_thinking and self.memory_manager.enabled:
+                        self.event_callback(
+                            {
+                                "type": "thinking",
+                                "step": "tool_planning",
+                                "content": msg,
+                                "tools": [k for k, v in wants.items() if v],
+                            }
+                        )
+                    if (
+                        self.thinking_manager.save_thinking
+                        and self.memory_manager.enabled
+                    ):
                         try:
                             self.memory_manager.add_message("system", compact)
                         except Exception:
                             pass
                     return
 
-            if self.thinking_manager.stream_thinking and can_stream and provider_stream_ok:
+            if (
+                self.thinking_manager.stream_thinking
+                and can_stream
+                and provider_stream_ok
+            ):
                 # Build prompts using ThinkingManager helpers
                 try:
-                    analysis_prompt = self.thinking_manager._create_analysis_prompt(prompt, available_tools)
+                    analysis_prompt = self.thinking_manager._create_analysis_prompt(
+                        prompt, available_tools
+                    )
                     self._stream_thinking_prompt(analysis_prompt, step="analysis")
 
                     if available_tools and self.thinking_manager.show_tool_reasoning:
                         # For tool planning, reuse the (so far) streamed content isn't available; request again
-                        tool_prompt = self.thinking_manager._create_tool_planning_prompt(prompt, available_tools, "")
-                        self._stream_thinking_prompt(tool_prompt, step="tool_planning", tools=available_tools)
+                        tool_prompt = (
+                            self.thinking_manager._create_tool_planning_prompt(
+                                prompt, available_tools, ""
+                            )
+                        )
+                        self._stream_thinking_prompt(
+                            tool_prompt, step="tool_planning", tools=available_tools
+                        )
 
-                    exec_prompt = self.thinking_manager._create_execution_prompt(prompt, [])
+                    exec_prompt = self.thinking_manager._create_execution_prompt(
+                        prompt, []
+                    )
                     self._stream_thinking_prompt(exec_prompt, step="execution_plan")
                 except Exception:
                     # Fallback to non-streaming generation if anything fails
                     blocks = self.thinking_manager.generate_thinking(
                         prompt, available_tools, self.provider_client, self.model
                     )
-                    formatted = self.thinking_manager.format_thinking_for_display(blocks)
+                    formatted = self.thinking_manager.format_thinking_for_display(
+                        blocks
+                    )
                     if formatted and self.stream_callback:
                         self.stream_callback(formatted)
                     if self.event_callback:
                         for block in blocks:
-                            self.event_callback({
-                                "type": "thinking",
-                                "step": block.step.value,
-                                "content": block.content,
-                                "tools": block.tools_considered or []
-                            })
+                            self.event_callback(
+                                {
+                                    "type": "thinking",
+                                    "step": block.step.value,
+                                    "content": block.content,
+                                    "tools": block.tools_considered or [],
+                                }
+                            )
             else:
                 # Non-streaming thinking generation
                 blocks = self.thinking_manager.generate_thinking(
@@ -835,12 +938,14 @@ class LLM:
                     self.stream_callback(formatted)
                 if self.event_callback:
                     for block in blocks:
-                        self.event_callback({
-                            "type": "thinking",
-                            "step": block.step.value,
-                            "content": block.content,
-                            "tools": block.tools_considered or []
-                        })
+                        self.event_callback(
+                            {
+                                "type": "thinking",
+                                "step": block.step.value,
+                                "content": block.content,
+                                "tools": block.tools_considered or [],
+                            }
+                        )
 
             # Optionally save thinking
             if self.thinking_manager.save_thinking and self.memory_manager.enabled:
@@ -849,7 +954,9 @@ class LLM:
                     snapshot_blocks = self.thinking_manager.generate_thinking(
                         prompt, available_tools, self.provider_client, self.model
                     )
-                    formatted_all = self.thinking_manager.format_thinking_for_display(snapshot_blocks)
+                    formatted_all = self.thinking_manager.format_thinking_for_display(
+                        snapshot_blocks
+                    )
                     if formatted_all:
                         self.memory_manager.add_message("system", formatted_all)
                 except Exception:
@@ -857,7 +964,9 @@ class LLM:
         except Exception as e:
             self.logger.debug(f"Thinking mode error: {e}")
 
-    def _stream_thinking_prompt(self, prompt_text: str, *, step: str, tools: Optional[List[str]] = None) -> None:
+    def _stream_thinking_prompt(
+        self, prompt_text: str, *, step: str, tools: Optional[List[str]] = None
+    ) -> None:
         """Stream a single thinking prompt using provider streaming and emit events."""
         try:
             # Header for this block
@@ -888,12 +997,14 @@ class LLM:
 
             # Emit event callback once per block with collected content
             if self.event_callback:
-                self.event_callback({
-                    "type": "thinking",
-                    "step": step,
-                    "content": collected,
-                    "tools": tools or [],
-                })
+                self.event_callback(
+                    {
+                        "type": "thinking",
+                        "step": step,
+                        "content": collected,
+                        "tools": tools or [],
+                    }
+                )
         except Exception as e:
             # Non-fatal; just log
             self.logger.debug(f"Thinking streaming error: {e}")
@@ -910,7 +1021,9 @@ class LLM:
                 return str(m.get("content", ""))
         return ""
 
-    def _choose_primary_tool(self, wants: Dict[str, bool], available_names: set[str], explicit: Optional[str]) -> Optional[str]:
+    def _choose_primary_tool(
+        self, wants: Dict[str, bool], available_names: set[str], explicit: Optional[str]
+    ) -> Optional[str]:
         if explicit and explicit in available_names:
             return explicit
         if wants.get("calc") and "calculator" in available_names:
@@ -938,9 +1051,7 @@ class LLM:
         return None
 
     def _determine_tool_choice(
-        self,
-        prompt_text: str,
-        tools_param: Optional[List[Dict[str, Any]]]
+        self, prompt_text: str, tools_param: Optional[List[Dict[str, Any]]]
     ) -> Optional[Any]:
         if not tools_param:
             return None
@@ -967,7 +1078,9 @@ class LLM:
             return {"type": "function", "function": {"name": primary}}
         return "required"
 
-    def _handle_streaming_with_tools(self, messages: List[Dict[str, str]], tools: List[Dict[str, Any]]) -> str:
+    def _handle_streaming_with_tools(
+        self, messages: List[Dict[str, str]], tools: List[Dict[str, Any]]
+    ) -> str:
         """Handle streaming with tool support when possible.
 
         Uses provider-native streaming tool loop if available; otherwise falls back to
@@ -977,8 +1090,14 @@ class LLM:
         response_text = ""
         try:
             # Prefer provider-native streaming tool pipeline if present
-            if hasattr(self.provider_client, "process_streaming_tool_calls") and provider in (
-                "openai", "azure_openai", "openrouter", "deepseek", "mistral"
+            if hasattr(
+                self.provider_client, "process_streaming_tool_calls"
+            ) and provider in (
+                "openai",
+                "azure_openai",
+                "openrouter",
+                "deepseek",
+                "mistral",
             ):
                 # If strong intent for tools, require a tool call
                 tool_choice_kwargs: Dict[str, Any] = {}
@@ -1001,15 +1120,22 @@ class LLM:
                         tool_choice_kwargs = {"tool_choice": choice_spec}
                 except Exception:
                     tool_choice_kwargs = {}
+
                 # Define a tool executor that uses the orchestrator and returns
                 # standardized results for both event streaming and provider formatting
-                def tool_executor(formatted_tool_calls: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+                def tool_executor(
+                    formatted_tool_calls: List[Dict[str, Any]],
+                ) -> List[Dict[str, Any]]:
                     results: List[Dict[str, Any]] = []
                     for tc in formatted_tool_calls or []:
                         fname = (tc.get("function") or {}).get("name")
                         fargs_raw = (tc.get("function") or {}).get("arguments")
                         try:
-                            fargs = json.loads(fargs_raw) if isinstance(fargs_raw, str) else (fargs_raw or {})
+                            fargs = (
+                                json.loads(fargs_raw)
+                                if isinstance(fargs_raw, str)
+                                else (fargs_raw or {})
+                            )
                         except Exception:
                             fargs = {}
                         tool_call_id = tc.get("id")
@@ -1023,13 +1149,15 @@ class LLM:
                             content = json.dumps(result)
                         else:
                             content = str(result)
-                        results.append({
-                            "tool_call_id": tool_call_id,
-                            "content": content,
-                            # Extra fields for event streaming consumers
-                            "tool": fname,
-                            "result": result,
-                        })
+                        results.append(
+                            {
+                                "tool_call_id": tool_call_id,
+                                "content": content,
+                                # Extra fields for event streaming consumers
+                                "tool": fname,
+                                "result": result,
+                            }
+                        )
                     return results
 
                 stream = self.provider_client.process_streaming_tool_calls(
@@ -1042,7 +1170,7 @@ class LLM:
                     tool_executor=tool_executor,
                     stop_sequences=self.stop_sequences,
                     max_iterations=5,
-                    **tool_choice_kwargs
+                    **tool_choice_kwargs,
                 )
                 for item in stream:
                     # Status dicts during tool phases
@@ -1050,17 +1178,29 @@ class LLM:
                         typ = item.get("status")
                         if self.event_callback:
                             if typ == "processing":
-                                self.event_callback({"type": "tool_request", "iteration": item.get("iteration")})
+                                self.event_callback(
+                                    {
+                                        "type": "tool_request",
+                                        "iteration": item.get("iteration"),
+                                    }
+                                )
                             elif typ == "tool_calls":
-                                self.event_callback({"type": "tool_request", "tool_calls": item.get("tool_calls", [])})
+                                self.event_callback(
+                                    {
+                                        "type": "tool_request",
+                                        "tool_calls": item.get("tool_calls", []),
+                                    }
+                                )
                             elif typ == "tool_results":
                                 # Emit results per tool
                                 for tr in item.get("tool_results", []) or []:
-                                    self.event_callback({
-                                        "type": "tool_result",
-                                        "name": tr.get("tool"),
-                                        "result": tr.get("result"),
-                                    })
+                                    self.event_callback(
+                                        {
+                                            "type": "tool_result",
+                                            "name": tr.get("tool"),
+                                            "result": tr.get("result"),
+                                        }
+                                    )
                         continue
                     # Streaming chunks for final answer
                     chunk_text = self._extract_text_from_chunk(item)
@@ -1089,7 +1229,7 @@ class LLM:
                 e, self.provider_name, {"model": self.model}
             )
             raise error
-    
+
     def _handle_streaming_response(self, messages: List[Dict[str, str]]) -> str:
         """Handle streaming response from the model."""
         try:
@@ -1100,9 +1240,11 @@ class LLM:
                 e, self.provider_name, {"model": self.model}
             )
             raise error
-    
+
     def _handle_non_streaming_response(
-        self, messages: List[Dict[str, str]], tools: Optional[List[Dict[str, Any]]] = None
+        self,
+        messages: List[Dict[str, str]],
+        tools: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
         """Handle non-streaming response with optional tool support."""
         try:
@@ -1116,28 +1258,30 @@ class LLM:
                 top_p=self.top_p,
                 stop_sequences=self.stop_sequences,
                 tools=tools,
-                tool_choice=tool_choice_spec if tool_choice_spec else ("auto" if tools else None)
+                tool_choice=tool_choice_spec
+                if tool_choice_spec
+                else ("auto" if tools else None),
             )
-            
+
             # Track usage
             self._record_usage(response)
             if self.event_callback and self._last_usage:
                 self.event_callback({"type": "model_usage", "usage": self._last_usage})
-            
+
             # Check for tool calls
             tool_calls = self._extract_tool_calls(response)
             if tool_calls:
                 return self._process_tool_calls(messages, response, tool_calls)
-            
+
             # Extract text response
             return self._extract_text_from_response(response)
-            
+
         except Exception as e:
             error = self.error_handler.handle_provider_error(
                 e, self.provider_name, {"model": self.model}
             )
             raise error
-    
+
     def _extract_text_from_chunk(self, chunk) -> str:
         """Extract text from a streaming chunk."""
         # Prefer public method extract_chunk_text; fallback to private if not available
@@ -1147,86 +1291,109 @@ class LLM:
         else:
             # TODO: Remove fallback once extract_chunk_text is public in StreamingManager
             return streaming_manager._extract_chunk_text(chunk)
-    
+
     def _extract_text_from_response(self, response) -> str:
         """Extract text from a non-streaming response."""
         return self.response_orchestrator.extract_text_from_response(response)
-    
+
     def _extract_tool_calls(self, response) -> Optional[List[Dict[str, Any]]]:
         """Extract tool calls from response if present."""
-        if self.provider_name.lower() in ("openai", "azure_openai", "mistral", "openrouter", "deepseek"):
-            if hasattr(response, 'choices') and response.choices:
+        if self.provider_name.lower() in (
+            "openai",
+            "azure_openai",
+            "mistral",
+            "openrouter",
+            "deepseek",
+        ):
+            if hasattr(response, "choices") and response.choices:
                 message = response.choices[0].message
-                if hasattr(message, 'tool_calls') and message.tool_calls:
+                if hasattr(message, "tool_calls") and message.tool_calls:
                     return self.provider_client.format_tool_calls(message.tool_calls)
         elif self.provider_name.lower() == "anthropic":
-            if isinstance(response, dict) and "content" in response and isinstance(response["content"], list):
-                tool_use_parts = [part for part in response["content"] if part.get("type") == "tool_use"]
+            if (
+                isinstance(response, dict)
+                and "content" in response
+                and isinstance(response["content"], list)
+            ):
+                tool_use_parts = [
+                    part
+                    for part in response["content"]
+                    if part.get("type") == "tool_use"
+                ]
                 if tool_use_parts:
                     return self.provider_client.format_tool_calls(tool_use_parts)
-        
+
         return None
-    
+
     def _process_tool_calls(
-        self, messages: List[Dict[str, str]], response: Any, tool_calls: List[Dict[str, Any]],
-        max_iterations: int = 5
+        self,
+        messages: List[Dict[str, str]],
+        response: Any,
+        tool_calls: List[Dict[str, Any]],
+        max_iterations: int = 5,
     ) -> str:
         """Process tool calls and get final response."""
         if max_iterations <= 0:
-            return "Maximum tool call iterations reached. Unable to complete the request."
-        
+            return (
+                "Maximum tool call iterations reached. Unable to complete the request."
+            )
+
         # Log tool call
         self.logger.debug("Tool call requested by model")
-        
+
         # Extract content
         message_content = ""
-        if hasattr(response, 'choices'):
+        if hasattr(response, "choices"):
             message_content = response.choices[0].message.content or ""
         elif isinstance(response, dict):
             message_content = response.get("content", "")
-        
+
         # Add assistant message with tool calls
-        messages.append({
-            "role": "assistant",
-            "content": message_content,
-            "tool_calls": tool_calls
-        })
-        
+        messages.append(
+            {"role": "assistant", "content": message_content, "tool_calls": tool_calls}
+        )
+
         # Execute each tool
         for tool_call in tool_calls:
             function_name = tool_call.get("function", {}).get("name")
-            function_args = json.loads(tool_call.get("function", {}).get("arguments", "{}"))
+            function_args = json.loads(
+                tool_call.get("function", {}).get("arguments", "{}")
+            )
             tool_call_id = tool_call.get("id")
-            
+
             # Execute tool
             self._tool_call_count += 1
             result = self._execute_tool(function_name, function_args)
-            
+
             if self.event_callback:
-                self.event_callback({
-                    "type": "tool_call",
-                    "name": function_name,
-                    "args": function_args
-                })
-                self.event_callback({
-                    "type": "tool_result",
-                    "name": function_name,
-                    "result": result,
-                    "tool_call_id": tool_call_id
-                })
-            
+                self.event_callback(
+                    {"type": "tool_call", "name": function_name, "args": function_args}
+                )
+                self.event_callback(
+                    {
+                        "type": "tool_result",
+                        "name": function_name,
+                        "result": result,
+                        "tool_call_id": tool_call_id,
+                    }
+                )
+
             # Add tool result to messages
-            messages.append({
-                "role": "tool",
-                "tool_call_id": tool_call_id,
-                "content": json.dumps(result) if isinstance(result, (dict, list)) else str(result),
-                "name": function_name
-            })
-        
+            messages.append(
+                {
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "content": json.dumps(result)
+                    if isinstance(result, (dict, list))
+                    else str(result),
+                    "name": function_name,
+                }
+            )
+
         # Get next response
         tools_param = self.tool_orchestrator.get_tool_definitions()
         return self._handle_non_streaming_response(messages, tools_param)
-    
+
     def _execute_tool(self, tool_name: str, tool_args: Dict[str, Any]) -> Any:
         """Execute a tool."""
         try:
@@ -1234,19 +1401,19 @@ class LLM:
         except Exception as e:
             self.logger.error(f"Error executing tool '{tool_name}': {e}")
             return {"error": str(e)}
-    
+
     def _store_memory(self, prompt: str, response: str):
         """Store interaction in memory."""
         try:
             prompt_embedding = self.create_embedding(prompt)
             response_embedding = self.create_embedding(response)
-            
+
             self.memory_manager.store_interaction(
                 prompt, response, prompt_embedding, response_embedding
             )
         except Exception as e:
             self.logger.error(f"Error storing memory: {e}")
-    
+
     def create_embedding(self, text: str) -> List[float]:
         """Create embedding for text with LRU caching (1000 entries)."""
         try:
@@ -1255,51 +1422,55 @@ class LLM:
                 self._embedding_cache.move_to_end(text)
                 self.metrics.record_embedding_cache_hit()
                 return self._embedding_cache[text]
-            
+
             # Cache miss
             self.metrics.record_embedding_cache_miss()
-            
+
             # Try provider embeddings first if supported
-            if hasattr(self.provider_client, 'create_embedding') and (
-                not self._embeddings_provider_name or 
-                self._embeddings_provider_name == self.provider_name
+            if hasattr(self.provider_client, "create_embedding") and (
+                not self._embeddings_provider_name
+                or self._embeddings_provider_name == self.provider_name
             ):
                 try:
-                    emb = self.provider_client.create_embedding(text, self._embedding_model)
+                    emb = self.provider_client.create_embedding(
+                        text, self._embedding_model
+                    )
                     self._cache_embedding(text, emb)
                     return emb
                 except Exception as e:
-                    self.logger.debug(f"Provider embeddings failed, falling back to OpenAI: {e}")
-            
+                    self.logger.debug(
+                        f"Provider embeddings failed, falling back to OpenAI: {e}"
+                    )
+
             # Fallback to OpenAI embeddings
             if self.embedding_client is None:
                 self.embedding_client = OpenAI(
                     api_key=os.environ.get("OPENAI_API_KEY") or self.api_key
                 )
-            
+
             response = self.embedding_client.embeddings.create(
-                input=text,
-                model=self._embedding_model
+                input=text, model=self._embedding_model
             )
             emb = response.data[0].embedding
             self._cache_embedding(text, emb)
             return emb
-            
+
         except Exception as e:
             masked_error = mask_string(str(e))
             self.logger.error(f"Error creating embedding: {masked_error}")
             raise
-    
+
     def _cache_embedding(self, text: str, embedding: List[float]):
         """Cache an embedding with LRU eviction."""
         self._embedding_cache[text] = embedding
         # Evict oldest entry if cache is full
         if len(self._embedding_cache) > self._embedding_cache_size:
             self._embedding_cache.popitem(last=False)
-    
+
     def _record_usage(self, response: Any):
         """Record token usage from response."""
         try:
+
             def _coerce(v):
                 try:
                     return int(v or 0)
@@ -1320,7 +1491,7 @@ class LLM:
                 self._last_usage = {
                     "prompt_tokens": prompt_tokens,
                     "completion_tokens": completion_tokens,
-                    "total_tokens": total_tokens
+                    "total_tokens": total_tokens,
                 }
 
                 for k, v in self._last_usage.items():
@@ -1332,48 +1503,51 @@ class LLM:
                         provider=self.provider_name,
                         model=self.model,
                         prompt_tokens=prompt_tokens,
-                        completion_tokens=completion_tokens
+                        completion_tokens=completion_tokens,
                     )
                 except BudgetExceededError as e:
                     self.logger.warning(f"Budget exceeded: {e}")
                     if self.event_callback:
-                        self.event_callback({
-                            "type": "budget_warning",
-                            "message": str(e),
-                            "current_cost": e.current_cost,
-                            "budget": e.budget_limit
-                        })
+                        self.event_callback(
+                            {
+                                "type": "budget_warning",
+                                "message": str(e),
+                                "current_cost": e.current_cost,
+                                "budget": e.budget_limit,
+                            }
+                        )
                 except Exception as e:
                     self.logger.debug(f"Error recording cost: {e}")
         except Exception as e:
             # Log usage tracking errors at debug level to avoid noise
             # but ensure they don't silently disappear
             self.logger.debug(f"Error recording usage statistics: {e}")
-    
+
     # Callback methods
     def set_stream_callback(self, callback: Callable[[str], None]):
         """Set streaming callback."""
         self.stream_callback = callback
         if self._streaming_manager:
             self._streaming_manager.stream_callback = callback
-    
+
     def clear_stream_callback(self):
         """Clear streaming callback."""
         self.stream_callback = None
         if self._streaming_manager:
             self._streaming_manager.stream_callback = None
-    
+
     def set_event_callback(self, callback: Callable[[Dict[str, Any]], None]):
         """Set event callback."""
         self.event_callback = callback
         if self._streaming_manager:
             self._streaming_manager.event_callback = callback
-    
+
     def clear_event_callback(self):
         """Clear event callback."""
         self.event_callback = None
         if self._streaming_manager:
             self._streaming_manager.event_callback = None
+
     def get_metrics_summary(self) -> Dict[str, Any]:
         """
         Get performance metrics summary.
@@ -1418,6 +1592,7 @@ class LLM:
     def get_cost_optimization_suggestions(self) -> Dict[str, Any]:
         """Get cost optimization suggestions."""
         from yamllm.core.cost_tracker import CostOptimizer
+
         optimizer = CostOptimizer(self.cost_tracker)
         return optimizer.analyze()
 
@@ -1449,11 +1624,7 @@ class LLM:
         return tool
 
     # Code context intelligence (P1)
-    def analyze_code_context(
-        self,
-        repo_path: str,
-        query: Optional[str] = None
-    ) -> str:
+    def analyze_code_context(self, repo_path: str, query: Optional[str] = None) -> str:
         """
         Analyze code repository and extract relevant context.
 
@@ -1475,31 +1646,37 @@ class LLM:
         if query:
             return intel.get_relevant_context(query)
         else:
-            return f"Analyzed project: {len(intel.project_context.files)} files, " \
-                   f"{len(intel.project_context.symbol_index)} symbols"
+            return (
+                f"Analyzed project: {len(intel.project_context.files)} files, "
+                f"{len(intel.project_context.symbol_index)} symbols"
+            )
 
     # Utility methods
     def update_settings(self, **kwargs):
         """Update instance settings."""
         # Track which settings affect components
         component_affecting_keys = {
-            'provider_name', 'model', 'temperature', 'max_tokens', 
-            'top_p', 'stop_sequences'
+            "provider_name",
+            "model",
+            "temperature",
+            "max_tokens",
+            "top_p",
+            "stop_sequences",
         }
-        
+
         # Check if any component-affecting settings are being updated
         reset_components = any(key in component_affecting_keys for key in kwargs.keys())
-        
+
         # Update the settings
         for key, value in kwargs.items():
             if hasattr(self, key):
                 setattr(self, key, value)
-        
+
         # Reset cached components if their settings changed
         if reset_components:
             # Invalidate StreamingManager - will be recreated on next use
             self._streaming_manager = None
-            
+
             # Recreate ResponseOrchestrator with new settings
             self.response_orchestrator = ResponseOrchestrator(
                 provider_client=self.provider_client,
@@ -1509,9 +1686,9 @@ class LLM:
                 max_tokens=self.max_tokens,
                 top_p=self.top_p,
                 stop_sequences=self.stop_sequences,
-                logger=self.logger
+                logger=self.logger,
             )
-    
+
     def print_settings(self):
         """Print current settings."""
         # Get cost summary
@@ -1521,30 +1698,32 @@ class LLM:
             "Provider Settings": {
                 "Provider": self.provider_name,
                 "Model": self.model,
-                "Base URL": self.base_url
+                "Base URL": self.base_url,
             },
             "Model Settings": {
                 "Temperature": self.temperature,
                 "Max Tokens": self.max_tokens,
                 "Top P": self.top_p,
-                "Stop Sequences": self.stop_sequences
+                "Stop Sequences": self.stop_sequences,
             },
             "Memory Settings": {
                 "Enabled": self.memory_enabled,
                 "Max Messages": self.memory_max_messages,
-                "Session ID": self.session_id
+                "Session ID": self.session_id,
             },
             "Tool Settings": {
                 "Enabled": self.tools_enabled,
-                "Timeout": self.tools_timeout
+                "Timeout": self.tools_timeout,
             },
             "Usage Stats": self._total_usage,
             "Cost Stats": {
                 "Total Cost": f"${cost_summary.total_cost:.4f}",
                 "API Calls": cost_summary.total_calls,
                 "Total Tokens": cost_summary.total_tokens,
-                "Budget Limit": f"${cost_summary.budget_limit:.2f}" if cost_summary.budget_limit else "None"
-            }
+                "Budget Limit": f"${cost_summary.budget_limit:.2f}"
+                if cost_summary.budget_limit
+                else "None",
+            },
         }
 
         print("\nLLM Configuration Settings:")
@@ -1554,16 +1733,16 @@ class LLM:
             print("-" * len(category))
             for key, value in values.items():
                 print(f"{key:20}: {value}")
-    
+
     # Context manager and cleanup
     def cleanup(self):
         """Clean up all resources."""
         self.__exit__(None, None, None)
-    
+
     def __enter__(self):
         """Context manager entry."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit with comprehensive cleanup."""
         # Clean up async components
@@ -1578,65 +1757,71 @@ class LLM:
                     asyncio.run(self._async_provider.__aexit__(None, None, None))
             except Exception as e:
                 self.logger.debug(f"Error closing async provider: {e}")
-        
+
         # Clean up provider client
         try:
-            if hasattr(self.provider_client, 'close'):
+            if hasattr(self.provider_client, "close"):
                 self.provider_client.close()
         except Exception as e:
             self.logger.debug(f"Error closing provider client: {e}")
-        
+
         # Clean up embedding client
         try:
-            if self.embedding_client and hasattr(self.embedding_client, 'close'):
+            if self.embedding_client and hasattr(self.embedding_client, "close"):
                 self.embedding_client.close()
         except Exception as e:
             self.logger.debug(f"Error closing embedding client: {e}")
-        
+
         # Clean up MCP client
         try:
-            if self.mcp_client and hasattr(self.mcp_client, 'close'):
+            if self.mcp_client and hasattr(self.mcp_client, "close"):
                 self.mcp_client.close()
         except Exception as e:
             self.logger.debug(f"Error closing MCP client: {e}")
-        
+
         # Clean up memory manager
         try:
             if self.memory_manager:
                 self.memory_manager.close()
         except Exception as e:
             self.logger.debug(f"Error closing memory manager: {e}")
-        
+
         # Clean up tool orchestrator
         try:
             if self.tool_orchestrator:
                 self.tool_orchestrator.close()
         except Exception as e:
             self.logger.debug(f"Error closing tool orchestrator: {e}")
-        
+
         self.logger.debug("LLM cleanup completed")
-    
+
     def __repr__(self) -> str:
         """String representation."""
         return f"LLM(provider='{self.provider_name}', model='{self.model}')"
-    
+
     def __str__(self) -> str:
         """Human-readable string."""
         return f"LLM using {self.provider_name} {self.model}"
-    
+
     def __bool__(self) -> bool:
         """Boolean evaluation."""
         return bool(self.api_key)
 
     # Convenience wrapper for tests/UX: return thinking + response
-    def get_response_with_thinking(self, prompt: str, system_prompt: Optional[str] = None) -> Dict[str, Any]:
+    def get_response_with_thinking(
+        self, prompt: str, system_prompt: Optional[str] = None
+    ) -> Dict[str, Any]:
         result: Dict[str, Any] = {"thinking": None, "response": None}
         # Generate thinking blocks (non-streaming) for preview
         if getattr(self, "thinking_manager", None) and self.thinking_manager.enabled:
             try:
                 available_tools: List[str] = []
                 try:
-                    available_tools = self.tool_orchestrator.tool_manager.list() if self.tool_orchestrator else []
+                    available_tools = (
+                        self.tool_orchestrator.tool_manager.list()
+                        if self.tool_orchestrator
+                        else []
+                    )
                 except Exception:
                     pass
                 blocks = self.thinking_manager.generate_thinking(

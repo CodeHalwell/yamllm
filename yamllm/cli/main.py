@@ -33,52 +33,53 @@ console = Console()
 def show_status(args: argparse.Namespace) -> int:
     """Show system status and health checks."""
     console.print("\n[bold cyan]YAMLLM System Status[/bold cyan]\n")
-    
+
     # Check Python version
     import platform
+
     console.print(f"Python: [green]{platform.python_version()}[/green]")
     console.print(f"YAMLLM: [green]{__version__}[/green]")
-    
+
     # Check dependencies
     console.print("\n[bold]Dependencies:[/bold]")
     deps = [
-        ('anthropic', 'Anthropic'),
-        ('openai', 'OpenAI'),
-        ('google.generativeai', 'Google AI'),
-        ('mistralai', 'Mistral AI'),
-        ('faiss', 'FAISS'),
-        ('rich', 'Rich'),
+        ("anthropic", "Anthropic"),
+        ("openai", "OpenAI"),
+        ("google.generativeai", "Google AI"),
+        ("mistralai", "Mistral AI"),
+        ("faiss", "FAISS"),
+        ("rich", "Rich"),
     ]
-    
+
     for module, name in deps:
         try:
             __import__(module)
             console.print(f"  ✓ {name}: [green]installed[/green]")
         except ImportError:
             console.print(f"  ✗ {name}: [red]not installed[/red]")
-    
+
     # Check environment variables
     console.print("\n[bold]API Keys:[/bold]")
     keys = [
-        'OPENAI_API_KEY',
-        'ANTHROPIC_API_KEY',
-        'GOOGLE_API_KEY',
-        'MISTRAL_API_KEY',
+        "OPENAI_API_KEY",
+        "ANTHROPIC_API_KEY",
+        "GOOGLE_API_KEY",
+        "MISTRAL_API_KEY",
     ]
-    
+
     for key in keys:
         if os.getenv(key):
             console.print(f"  ✓ {key}: [green]set[/green]")
         else:
             console.print(f"  ✗ {key}: [yellow]not set[/yellow]")
-    
+
     return 0
 
 
 def list_providers(args: argparse.Namespace) -> int:
     """List supported LLM providers."""
     console.print("\n[bold cyan]Supported LLM Providers[/bold cyan]\n")
-    
+
     providers = [
         ("openai", "OpenAI", "GPT-4, GPT-3.5", "OPENAI_API_KEY"),
         ("anthropic", "Anthropic", "Claude 3", "ANTHROPIC_API_KEY"),
@@ -88,22 +89,22 @@ def list_providers(args: argparse.Namespace) -> int:
         ("openrouter", "OpenRouter", "Multiple models", "OPENROUTER_API_KEY"),
         ("deepseek", "DeepSeek", "DeepSeek models", "DEEPSEEK_API_KEY"),
     ]
-    
+
     table = Table(box=box.ROUNDED)
     table.add_column("Provider", style="cyan")
     table.add_column("Name", style="white")
     table.add_column("Models", style="yellow")
     table.add_column("API Key Env", style="green")
-    
+
     for provider_id, name, models, env_key in providers:
         table.add_row(provider_id, name, models, env_key)
-    
+
     console.print(table)
-    
+
     if args.check:
         console.print("\n[bold]Checking connectivity...[/bold]")
         console.print("[yellow]Connectivity check not yet implemented[/yellow]")
-    
+
     return 0
 
 
@@ -160,15 +161,16 @@ def diagnose(args: argparse.Namespace) -> int:
     """Run diagnostic checks."""
     console.print("\n[bold cyan]YAMLLM Diagnose[/bold cyan]\n")
     problems = 0
-    
+
     try:
         # Basic environment info
         import platform
+
         console.print(f"Python: [green]{platform.python_version()}[/green]")
         console.print(f"YAMLLM: [green]{__version__}[/green]")
 
         # Config, if provided
-        if getattr(args, 'config', None):
+        if getattr(args, "config", None):
             try:
                 parse_yaml_config(args.config)
                 console.print(f"Config: [green]{args.config}[/green]")
@@ -178,7 +180,7 @@ def diagnose(args: argparse.Namespace) -> int:
 
         # Check dependencies
         console.print("\n[bold]Checking dependencies...[/bold]")
-        critical_deps = ['anthropic', 'openai', 'pyyaml', 'rich']
+        critical_deps = ["anthropic", "openai", "pyyaml", "rich"]
         for dep in critical_deps:
             try:
                 __import__(dep)
@@ -203,19 +205,26 @@ def mcp_list(args: argparse.Namespace) -> int:
     """List MCP tools."""
     try:
         from yamllm.core.llm import LLM
+
         cfg = args.config
         llm = LLM(config_path=cfg, api_key=os.getenv("OPENAI_API_KEY") or "")
         if not llm.mcp_client:
-            console.print("[yellow]No MCP connectors configured in this config.[/yellow]")
+            console.print(
+                "[yellow]No MCP connectors configured in this config.[/yellow]"
+            )
             return 0
-        tools_by_conn = asyncio.run(llm.mcp_client.discover_all_tools(force_refresh=True))
+        tools_by_conn = asyncio.run(
+            llm.mcp_client.discover_all_tools(force_refresh=True)
+        )
         if not tools_by_conn:
             console.print("[yellow]No tools discovered from MCP connectors.[/yellow]")
             return 0
         for name, tools in tools_by_conn.items():
             console.print(f"\n[bold cyan]{name}[/bold cyan] ({len(tools)} tools)")
             for t in tools[:20]:
-                console.print(f" • [bold]{t.get('name')}[/bold]: {t.get('description','')}")
+                console.print(
+                    f" • [bold]{t.get('name')}[/bold]: {t.get('description', '')}"
+                )
         return 0
     except Exception as e:
         console.print(f"[red]✗ MCP list failed: {e}[/red]")
@@ -225,26 +234,32 @@ def mcp_list(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
-        prog="yamllm", 
+        prog="yamllm",
         description="YAMLLM - YAML-based Language Model Configuration & Execution",
-        epilog="Use 'yamllm <command> --help' for command-specific help."
+        epilog="Use 'yamllm <command> --help' for command-specific help.",
     )
-    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
-    sub = parser.add_subparsers(dest="command", required=False, help="Available commands")
+    parser.add_argument(
+        "--version", action="version", version=f"%(prog)s {__version__}"
+    )
+    sub = parser.add_subparsers(
+        dest="command", required=False, help="Available commands"
+    )
 
     # Init command - Interactive setup wizard
     init_cmd = sub.add_parser("init", help="Interactive setup wizard for new users")
     init_cmd.set_defaults(func=run_setup_wizard)
-    
+
     # Status command
     status_cmd = sub.add_parser("status", help="Show system status and health checks")
     status_cmd.set_defaults(func=show_status)
-    
+
     # Providers command
     providers_cmd = sub.add_parser("providers", help="List supported LLM providers")
-    providers_cmd.add_argument("--check", action="store_true", help="Check provider connectivity")
+    providers_cmd.add_argument(
+        "--check", action="store_true", help="Check provider connectivity"
+    )
     providers_cmd.set_defaults(func=list_providers)
-    
+
     # Set up modular commands
     setup_tools_commands(sub)
     setup_config_commands(sub)
@@ -253,20 +268,24 @@ def main(argv: list[str] | None = None) -> int:
     setup_agent_commands(sub)
     setup_advanced_commands(sub)
     setup_p1_commands(sub)
-    
+
     # Quick start command
     quickstart_cmd = sub.add_parser("quickstart", help="Show quick start guide")
     quickstart_cmd.set_defaults(func=show_quick_start)
-    
+
     # Getting started guide
     guide_cmd = sub.add_parser("guide", help="Show comprehensive getting started guide")
     guide_cmd.set_defaults(func=show_getting_started)
-    
+
     # MCP commands
     mcp_cmd = sub.add_parser("mcp", help="MCP utilities")
     mcp_sub = mcp_cmd.add_subparsers(dest="mcp_action", help="MCP actions")
-    mcp_list_cmd = mcp_sub.add_parser("list", help="List tools from configured MCP connectors")
-    mcp_list_cmd.add_argument("--config", required=True, help="Path to YAML config file")
+    mcp_list_cmd = mcp_sub.add_parser(
+        "list", help="List tools from configured MCP connectors"
+    )
+    mcp_list_cmd.add_argument(
+        "--config", required=True, help="Path to YAML config file"
+    )
     mcp_list_cmd.set_defaults(func=mcp_list)
 
     # Diagnose command
@@ -285,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         # Execute command
-        if hasattr(args, 'func'):
+        if hasattr(args, "func"):
             return args.func(args)
 
         parser.print_help()

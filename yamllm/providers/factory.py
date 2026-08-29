@@ -37,7 +37,7 @@ class ProviderFactory:
     }
     # Back-compat alias used by some tests
     _MAP = _SYNC_CLASS_PATHS
-    
+
     _ASYNC_CLASS_PATHS: Dict[str, str] = {
         "openai": "yamllm.providers.async_openai.AsyncOpenAIProvider",
         "anthropic": "yamllm.providers.async_anthropic.AsyncAnthropicProvider",
@@ -62,16 +62,16 @@ class ProviderFactory:
             raise ValueError(
                 f"Unknown provider: {provider_name}. Available providers: {', '.join(cls._SYNC_CLASS_PATHS.keys())}"
             )
-        
+
         # Special handling for certain providers
         if name == "deepseek" and not base_url:
             base_url = "https://api.deepseek.com/v1"
         elif name == "openrouter" and not base_url:
             base_url = "https://openrouter.ai/api/v1"
-        
+
         provider_cls = _load_class(cls._SYNC_CLASS_PATHS[name])
         return provider_cls(api_key=api_key, base_url=base_url, **kwargs)
-    
+
     @classmethod
     def create_async_provider(
         cls,
@@ -83,16 +83,16 @@ class ProviderFactory:
     ) -> AsyncBaseProvider:
         """
         Create an async provider instance.
-        
+
         Args:
             provider_name: Name of the provider
             api_key: API key for the provider
             base_url: Optional base URL
             **kwargs: Additional provider-specific parameters
-            
+
         Returns:
             AsyncBaseProvider: Async provider instance
-            
+
         Raises:
             ValueError: If provider doesn't support async
         """
@@ -102,26 +102,26 @@ class ProviderFactory:
                 f"Async support not available for provider '{provider_name}'. "
                 f"Available async providers: {', '.join(cls._ASYNC_CLASS_PATHS.keys())}"
             )
-        
+
         # Special handling for certain providers
         if name == "deepseek" and not base_url:
             base_url = "https://api.deepseek.com/v1"
         elif name == "openrouter" and not base_url:
             base_url = "https://openrouter.ai/api/v1"
-        
+
         provider_cls = _load_class(cls._ASYNC_CLASS_PATHS[name])
         return provider_cls(api_key=api_key, base_url=base_url, **kwargs)
-    
+
     @classmethod
     def register_provider(
         cls,
         name: str,
         provider_class: Type[BaseProvider],
-        async_provider_class: Optional[Type[AsyncBaseProvider]] = None
+        async_provider_class: Optional[Type[AsyncBaseProvider]] = None,
     ):
         """
         Register a custom provider.
-        
+
         Args:
             name: Provider name
             provider_class: Sync provider class
@@ -129,20 +129,24 @@ class ProviderFactory:
         """
         # Register eagerly for already-imported classes; otherwise, store path
         key = name.lower()
-        cls._SYNC_CLASS_PATHS[key] = f"{provider_class.__module__}.{provider_class.__name__}"
+        cls._SYNC_CLASS_PATHS[key] = (
+            f"{provider_class.__module__}.{provider_class.__name__}"
+        )
         if async_provider_class:
-            cls._ASYNC_CLASS_PATHS[key] = f"{async_provider_class.__module__}.{async_provider_class.__name__}"
-    
+            cls._ASYNC_CLASS_PATHS[key] = (
+                f"{async_provider_class.__module__}.{async_provider_class.__name__}"
+            )
+
     @classmethod
     def list_providers(cls) -> list:
         """List available providers."""
         return list(cls._SYNC_CLASS_PATHS.keys())
-    
+
     @classmethod
     def list_async_providers(cls) -> list:
         """List providers with async support."""
         return list(cls._ASYNC_CLASS_PATHS.keys())
-    
+
     @classmethod
     def supports_async(cls, provider_name: str) -> bool:
         """Check if a provider supports async operations."""

@@ -27,10 +27,7 @@ class TaskPlanner:
         self.logger = logger or logging.getLogger(__name__)
 
     def decompose_goal(
-        self,
-        goal: str,
-        context: Optional[Dict[str, Any]],
-        state: AgentState
+        self, goal: str, context: Optional[Dict[str, Any]], state: AgentState
     ) -> AgentState:
         """
         Decompose goal into subtasks.
@@ -68,9 +65,15 @@ class TaskPlanner:
 
         return state
 
-    def _build_planning_prompt(self, goal: str, context: Optional[Dict[str, Any]]) -> str:
+    def _build_planning_prompt(
+        self, goal: str, context: Optional[Dict[str, Any]]
+    ) -> str:
         """Build prompt for task decomposition."""
-        context_str = self._format_context(context) if context else "No additional context provided."
+        context_str = (
+            self._format_context(context)
+            if context
+            else "No additional context provided."
+        )
 
         return f"""You are a task planning assistant. Break down the following goal into concrete, actionable subtasks.
 
@@ -134,14 +137,14 @@ Important: Ensure the JSON is valid and well-formed."""
             tasks = []
             for i, task_data in enumerate(data.get("tasks", [])):
                 task = Task(
-                    id=task_data.get("id", f"task_{i+1}"),
+                    id=task_data.get("id", f"task_{i + 1}"),
                     description=task_data["description"],
                     status=TaskStatus.PENDING,
                     dependencies=task_data.get("dependencies", []),
                     metadata={
                         "tools": task_data.get("required_tools", []),
-                        "complexity": task_data.get("estimated_complexity", "medium")
-                    }
+                        "complexity": task_data.get("estimated_complexity", "medium"),
+                    },
                 )
                 tasks.append(task)
 
@@ -169,7 +172,9 @@ Important: Ensure the JSON is valid and well-formed."""
 
         # Check for circular dependencies
         if self._has_circular_dependency(tasks):
-            self.logger.warning("Circular dependency detected, removing problematic dependencies")
+            self.logger.warning(
+                "Circular dependency detected, removing problematic dependencies"
+            )
             tasks = self._remove_circular_dependencies(tasks)
 
         return tasks

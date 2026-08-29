@@ -85,15 +85,15 @@ config_path = "path/to/config.yaml"
 llm = GoogleGemini(config_path=config_path, api_key=os.environ.get("GOOGLE_API_KEY"))
 
 while True:
-    try:          
+    try:
         prompt = input("\nHuman: ")
         if prompt.lower() == "exit":
             break
-        
+
         response = llm.query(prompt)
         if response is None:
             continue
-        
+
     except FileNotFoundError as e:
         console.print(f"[red]Configuration file not found:[/red] {e}")
     except ValueError as e:
@@ -149,6 +149,7 @@ You can view your conversation history using the ConversationStore class. This w
 
 ```python
 from yamllm import ConversationStore
+
 # Optional: install extras `viz` to use pandas/tabulate output
 try:
     import pandas as pd
@@ -166,7 +167,7 @@ messages = history.get_messages()
 # Pretty print if optional deps available
 if pd and tabulate:
     df = pd.DataFrame(messages)
-    print(tabulate(df, headers='keys', tablefmt='psql'))
+    print(tabulate(df, headers="keys", tablefmt="psql"))
 else:
     # Fallback: simple print
     for m in messages:
@@ -340,6 +341,7 @@ You can also set logging programmatically:
 
 ```python
 import logging
+
 logging.basicConfig(level=logging.DEBUG)
 
 # Now your LLM calls will show detailed logs
@@ -352,6 +354,7 @@ For tool debugging, enable tool output visibility:
 # Set event callback to see tool execution
 def on_event(event):
     print(f"Event: {event}")
+
 
 llm.set_event_callback(on_event)
 ```

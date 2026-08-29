@@ -5,7 +5,7 @@ from .context_intelligence import (
     CodeSymbol,
     FileContext,
     ProjectContext,
-    SymbolType
+    SymbolType,
 )
 
 __all__ = [

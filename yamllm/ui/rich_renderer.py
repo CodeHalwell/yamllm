@@ -13,8 +13,10 @@ def attach_stream_renderer(llm, console: Optional[object] = None) -> None:
     try:
         from rich.console import Console
     except Exception:  # pragma: no cover - Rich not installed
+
         def _printer(delta: str) -> None:
             print(delta, end="", flush=True)
+
         llm.set_stream_callback(_printer)
         return
 
@@ -25,4 +27,3 @@ def attach_stream_renderer(llm, console: Optional[object] = None) -> None:
         cons.print(delta, end="")
 
     llm.set_stream_callback(_on_delta)
-

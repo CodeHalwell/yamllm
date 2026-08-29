@@ -37,7 +37,7 @@ class Agent:
         logger: Optional[logging.Logger] = None,
         enable_recording: bool = False,
         recording_dir: Optional[str] = None,
-        repo_path: Optional[str] = None
+        repo_path: Optional[str] = None,
     ):
         """
         Initialize the agent.
@@ -77,6 +77,7 @@ class Agent:
         if repo_path:
             try:
                 from yamllm.tools.advanced_git import AdvancedGitWorkflow
+
                 self.git_workflow = AdvancedGitWorkflow(repo_path, llm, logger)
             except Exception as e:
                 self.logger.warning(f"Could not initialize git workflow: {e}")
@@ -99,7 +100,9 @@ class Agent:
             logger=self.logger,
         )
 
-    def execute(self, goal: str, context: Optional[Dict[str, Any]] = None) -> AgentState:
+    def execute(
+        self, goal: str, context: Optional[Dict[str, Any]] = None
+    ) -> AgentState:
         """
         Execute the agentic loop to achieve the given goal.
 
@@ -145,10 +148,7 @@ class SimpleAgent(Agent):
     """
 
     def __init__(
-        self,
-        llm,
-        max_iterations: int = 3,
-        logger: Optional[logging.Logger] = None
+        self, llm, max_iterations: int = 3, logger: Optional[logging.Logger] = None
     ):
         """Initialize simple agent."""
         super().__init__(
@@ -156,10 +156,12 @@ class SimpleAgent(Agent):
             max_iterations=max_iterations,
             enable_planning=False,
             enable_reflection=False,
-            logger=logger
+            logger=logger,
         )
 
-    def execute(self, goal: str, context: Optional[Dict[str, Any]] = None) -> AgentState:
+    def execute(
+        self, goal: str, context: Optional[Dict[str, Any]] = None
+    ) -> AgentState:
         """Execute goal as a single task."""
         self.logger.info(f"SimpleAgent executing: {goal}")
 
@@ -168,7 +170,7 @@ class SimpleAgent(Agent):
             goal=goal,
             tasks=[Task.create(goal)],
             max_iterations=self.max_iterations,
-            metadata=context or {}
+            metadata=context or {},
         )
 
         # Execute task directly

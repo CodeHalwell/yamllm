@@ -12,7 +12,12 @@ from .planner import TaskPlanner
 from .reasoner import Reasoner
 from .actor import Actor
 from .observer import Observer
-from .workflow import WorkflowManager, DebugWorkflow, ImplementWorkflow, RefactorWorkflow
+from .workflow import (
+    WorkflowManager,
+    DebugWorkflow,
+    ImplementWorkflow,
+    RefactorWorkflow,
+)
 
 __all__ = [
     # Core classes
@@ -21,23 +26,19 @@ __all__ = [
     "AgentHarness",
     "ApprovalPolicy",
     "load_checkpoint",
-
     # Events
     "AgentEvent",
     "EventKind",
-
     # Components
     "TaskPlanner",
     "Reasoner",
     "Actor",
     "Observer",
-
     # Workflows
     "WorkflowManager",
     "DebugWorkflow",
     "ImplementWorkflow",
     "RefactorWorkflow",
-
     # Models
     "AgentState",
     "Task",
