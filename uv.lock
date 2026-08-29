@@ -2916,7 +2916,7 @@ requires-dist = [
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.13.2" },
     { name = "matplotlib", marker = "extra == 'viz'", specifier = ">=3.10.0" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.14.1" },
-    { name = "mistralai", specifier = ">=1.7.1" },
+    { name = "mistralai", specifier = ">=1.7.1,<2" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "numpy", specifier = ">=2.2.3" },
     { name = "openai", specifier = ">=1.63.0" },
