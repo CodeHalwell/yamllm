@@ -328,6 +328,47 @@ def test_resume_merges_fresh_context():
     assert resumed.metadata["stale"] == 1
 
 
+def test_failed_dependency_fails_dependents_and_completes_run():
+    llm = make_llm(
+        plan_tasks=[
+            {"id": "task_1", "description": "Base", "dependencies": []},
+            {"id": "task_2", "description": "Needs base", "dependencies": ["task_1"]},
+            {"id": "task_3", "description": "Needs 2", "dependencies": ["task_2"]},
+        ]
+    )
+    llm.get_completion_with_tools = Mock(side_effect=Exception("boom"))
+
+    harness = AgentHarness(llm, max_iterations=10)
+    state = harness.run("Do the thing")
+
+    # The run must terminate decisively, not dangle with completed=False
+    assert state.completed and not state.success
+    assert state.error
+    dependent = state.get_task_by_id("task_2")
+    transitive = state.get_task_by_id("task_3")
+    assert dependent.status == TaskStatus.FAILED
+    assert "task_1" in (dependent.error or "")
+    assert transitive.status == TaskStatus.FAILED
+
+
+def test_resume_grants_fresh_iteration_budget():
+    state = AgentState(
+        goal="g",
+        tasks=[Task.create("finish me")],
+        iteration=3,
+        max_iterations=3,
+        completed=True,
+        success=False,
+        error="Maximum iterations reached",
+    )
+
+    harness = AgentHarness(make_llm(), max_iterations=3)
+    resumed = harness.run("ignored", initial_state=state)
+
+    assert resumed.iteration > 3  # actually ran
+    assert resumed.completed and resumed.success
+
+
 def test_state_roundtrip():
     state = AgentState(goal="g", tasks=[Task.create("do it")], iteration=2)
     state.tasks[0].status = TaskStatus.COMPLETED

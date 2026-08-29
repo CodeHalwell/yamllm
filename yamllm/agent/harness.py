@@ -179,7 +179,11 @@ class AgentHarness:
 
         if initial_state is not None:
             state = initial_state
-            state.max_iterations = max(state.max_iterations, self.max_iterations)
+            # The configured limit is fresh capacity for the resumed run, so
+            # an iteration-exhausted checkpoint can actually continue.
+            state.max_iterations = max(
+                state.max_iterations, state.iteration + self.max_iterations
+            )
             if context:
                 # Freshly supplied context overrides stale checkpoint metadata
                 state.metadata.update(context)
@@ -264,7 +268,14 @@ class AgentHarness:
                 self._emit(EventKind.THOUGHT, {"thought": thought})
 
                 if next_task is None:
+                    self._fail_unreachable_tasks(state)
                     state = self._check_goal_completion(state)
+                    if not state.completed:
+                        # Defensive: nothing runnable but completion didn't
+                        # trigger (e.g. residual dependency cycle).
+                        state.completed = True
+                        state.success = False
+                        state.error = "No runnable tasks remain"
                     break
 
                 state.current_task_id = next_task.id
@@ -467,6 +478,26 @@ class AgentHarness:
             return "stop"
 
         return "proceed"
+
+    def _fail_unreachable_tasks(self, state: AgentState) -> None:
+        """Mark tasks terminal when a (transitive) dependency has failed.
+
+        Without this, a failed dependency leaves its dependents pending
+        forever and the run would end neither completed nor errored.
+        """
+        changed = True
+        while changed:
+            changed = False
+            failed_ids = {t.id for t in state.tasks if t.status == TaskStatus.FAILED}
+            for task in state.tasks:
+                if task.status not in (TaskStatus.PENDING, TaskStatus.BLOCKED):
+                    continue
+                blocking = [d for d in task.dependencies if d in failed_ids]
+                if blocking:
+                    task.status = TaskStatus.FAILED
+                    task.error = f"Blocked by failed dependency: {', '.join(blocking)}"
+                    self._emit_task_update(task, state)
+                    changed = True
 
     def _emit_task_update(self, task: Task, state: AgentState) -> None:
         self._emit(
