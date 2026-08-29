@@ -274,27 +274,28 @@ def main(argv: list[str] | None = None) -> int:
     diag_cmd.add_argument("--config", help="Optional config file to check")
     diag_cmd.set_defaults(func=diagnose)
 
-    # Parse arguments
-    args = parser.parse_args(argv)
-    
-    # If no command specified, show help
-    if not args.command:
-        parser.print_help()
-        return 0
-    
-    # Execute command
-    if hasattr(args, 'func'):
-        try:
+    # Parse and execute. KeyboardInterrupt is handled for the whole body so
+    # Ctrl+C during argument parsing exits as gracefully as during a command.
+    try:
+        args = parser.parse_args(argv)
+
+        # If no command specified, show help
+        if not args.command:
+            parser.print_help()
+            return 0
+
+        # Execute command
+        if hasattr(args, 'func'):
             return args.func(args)
-        except KeyboardInterrupt:
-            console.print("\n[yellow]Interrupted[/yellow]")
-            return 130
-        except Exception as e:
-            console.print(f"[red]✗ Error: {e}[/red]")
-            return 1
-    else:
+
         parser.print_help()
         return 0
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Interrupted[/yellow]")
+        return 130
+    except Exception as e:
+        console.print(f"[red]✗ Error: {e}[/red]")
+        return 1
 
 
 if __name__ == "__main__":

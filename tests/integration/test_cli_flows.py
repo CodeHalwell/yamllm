@@ -167,14 +167,15 @@ class TestCLIErrorHandling:
     def test_cli_keyboard_interrupt(self):
         """Test handling of keyboard interrupt."""
         from yamllm.cli.main import main
-        
+
         # Simulate Ctrl+C
         with patch('yamllm.cli.main.argparse.ArgumentParser.parse_args') as mock_parse:
             mock_parse.side_effect = KeyboardInterrupt()
-            
-            # Should exit gracefully
-            with pytest.raises(SystemExit):
-                main()
+
+            # Should exit gracefully with the conventional SIGINT exit code
+            # (and must NOT let KeyboardInterrupt escape, which would abort
+            # the entire pytest session)
+            assert main() == 130
 
 
 class TestCLIConfigValidation:
