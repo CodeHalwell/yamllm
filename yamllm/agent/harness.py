@@ -126,6 +126,7 @@ class AgentHarness:
         self._watchpoints: List[Watchpoint] = []
         self._stop_event = threading.Event()
         self._auto_approve = False
+        self._history_baseline = 0
         self.decision_history: List[SteeringDecision] = []
 
     # ------------------------------------------------------------------
@@ -209,6 +210,9 @@ class AgentHarness:
                 max_iterations=self.max_iterations,
                 metadata=context or {},
             )
+
+        # Budget streaks are scoped to this run's actions
+        self._history_baseline = len(state.action_history)
 
         if self.enable_recording:
             self.recorder = SessionRecorder(state)
@@ -395,6 +399,7 @@ class AgentHarness:
             state.success = False
             state.error = str(e)
             self._emit(EventKind.ERROR, {"error": str(e)})
+            self._save_checkpoint(state)
             self._finish(state, failed=True)
 
         return state
@@ -416,7 +421,10 @@ class AgentHarness:
 
         if self.max_consecutive_failures is not None:
             failures = 0
-            for action in reversed(state.action_history):
+            # Only actions from this run count: a resumed checkpoint's
+            # historical failure streak must not instantly re-trip the budget.
+            current_run = state.action_history[self._history_baseline :]
+            for action in reversed(current_run):
                 if action.get("success"):
                     break
                 failures += 1

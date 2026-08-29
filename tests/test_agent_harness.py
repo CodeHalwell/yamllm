@@ -116,6 +116,50 @@ def test_consecutive_failures_budget():
     assert EventKind.BUDGET_EXCEEDED in kinds(events)
 
 
+def test_exception_path_saves_checkpoint(tmp_path):
+    def explode(point):
+        raise RuntimeError("provider crashed")
+
+    harness = AgentHarness(
+        make_llm(),
+        max_iterations=5,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=explode,
+        checkpoint_dir=str(tmp_path),
+    )
+
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert "provider crashed" in (state.error or "")
+    assert list(tmp_path.glob("*.json")), "exceptional runs should leave a checkpoint"
+
+
+def test_resumed_run_does_not_inherit_failure_streak(tmp_path):
+    llm = make_llm(
+        plan_tasks=[
+            {"id": f"task_{i}", "description": f"Task {i}", "dependencies": []}
+            for i in range(1, 6)
+        ]
+    )
+    llm.get_completion_with_tools = Mock(side_effect=Exception("boom"))
+    harness = AgentHarness(
+        llm, max_iterations=50, max_consecutive_failures=2, checkpoint_dir=str(tmp_path)
+    )
+    state = harness.run("Do the thing")
+    assert "consecutive action failures" in (state.error or "")
+
+    checkpoint = load_checkpoint(state.metadata["checkpoint_path"])
+    healthy_llm = make_llm()
+    resumed = AgentHarness(
+        healthy_llm, max_iterations=50, max_consecutive_failures=2
+    ).run("ignored", initial_state=checkpoint)
+
+    # The resumed run executes actions instead of instantly re-tripping
+    assert healthy_llm.get_completion_with_tools.called
+    assert "consecutive action failures" not in (resumed.error or "")
+
+
 def test_request_stop_cancels_run():
     harness = AgentHarness(make_llm(), max_iterations=5)
 
