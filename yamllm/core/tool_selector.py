@@ -18,6 +18,33 @@ class ToolSelector:
     for better separation of concerns.
     """
 
+    # Tools whose relevance the keyword-intent gate understands. Tools not
+    # listed here (git tools, custom tools, MCP tools) are outside the
+    # gate's vocabulary and are never removed by it.
+    _TOOL_INTENT_MAP: Dict[str, List[str]] = {
+        "web_search": ["web"],
+        "web_scraper": ["web", "url"],
+        "web_headlines": ["web", "news"],
+        "url_metadata": ["web", "url"],
+        "calculator": ["calc"],
+        "unit_converter": ["convert"],
+        "timezone": ["time"],
+        "weather": ["weather"],
+        "file_read": ["files"],
+        "file_search": ["files"],
+        "csv_preview": ["files", "csv"],
+        "json_tool": ["json"],
+        "regex_extract": ["regex"],
+        "hash_tool": ["hash"],
+        "base64_encode": ["base64"],
+        "base64_decode": ["base64"],
+        "uuid_tool": ["uuid"],
+        "random_string": ["random"],
+        "random_number": ["random"],
+        "datetime": ["datetime", "time"],
+        "lorem_ipsum": ["lorem"],
+    }
+
     def __init__(self, logger: Optional[logging.Logger] = None):
         """
         Initialize tool selector.
@@ -73,11 +100,21 @@ class ToolSelector:
         # Extract intents
         intents = self._extract_intent(prompt_text)
 
-        # No tool-related intent at all: send no tools, so trivial prompts
-        # stay fast and cheap
+        # No recognized intent: omit the tools this gate has authority over
+        # (trivial prompts stay fast and cheap), but keep tools outside its
+        # keyword vocabulary — the keywords can't speak for those.
         if not any(intents.values()):
-            self.logger.debug("No tool intent detected, omitting tools")
-            return []
+            unrecognized = [
+                t
+                for t in tools
+                if t.get("function", {}).get("name", "").lower()
+                not in self._TOOL_INTENT_MAP
+            ]
+            self.logger.debug(
+                "No tool intent detected, omitting %d recognized tools",
+                len(tools) - len(unrecognized),
+            )
+            return unrecognized
 
         # Filter tools based on intents
         filtered = []
@@ -228,33 +265,8 @@ class ToolSelector:
         """Check if a tool matches the detected intents."""
         tool_name_lower = tool_name.lower()
 
-        # Map tool names to intents
-        tool_intent_map = {
-            "web_search": ["web"],
-            "web_scraper": ["web", "url"],
-            "web_headlines": ["web", "news"],
-            "url_metadata": ["web", "url"],
-            "calculator": ["calc"],
-            "unit_converter": ["convert"],
-            "timezone": ["time"],
-            "weather": ["weather"],
-            "file_read": ["files"],
-            "file_search": ["files"],
-            "csv_preview": ["files", "csv"],
-            "json_tool": ["json"],
-            "regex_extract": ["regex"],
-            "hash_tool": ["hash"],
-            "base64_encode": ["base64"],
-            "base64_decode": ["base64"],
-            "uuid_tool": ["uuid"],
-            "random_string": ["random"],
-            "random_number": ["random"],
-            "datetime": ["datetime", "time"],
-            "lorem_ipsum": ["lorem"],
-        }
-
         # Get intents for this tool
-        tool_intents = tool_intent_map.get(tool_name_lower, [])
+        tool_intents = self._TOOL_INTENT_MAP.get(tool_name_lower, [])
 
         # Check if any tool intent matches
         for tool_intent in tool_intents:

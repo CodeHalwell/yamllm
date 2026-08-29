@@ -29,7 +29,12 @@ def list_tools(args: argparse.Namespace) -> int:
             config = parse_yaml_config(config_path)
             tools_cfg = getattr(config, "tools", None)
             enabled = bool(getattr(tools_cfg, "enabled", False))
-            configured = list(getattr(tools_cfg, "tool_list", []) or [])
+            # `tools` is the normalized field; `tool_list` is the legacy alias
+            configured = list(
+                getattr(tools_cfg, "tools", None)
+                or getattr(tools_cfg, "tool_list", None)
+                or []
+            )
             console.print(
                 f"[bold]Config:[/bold] {config_path} "
                 f"(tools {'enabled' if enabled else 'disabled'})"
@@ -253,6 +258,9 @@ def setup_tools_commands(subparsers):
     )
     tools_list_cmd.add_argument("--pack", help="Show details for a specific tool pack")
     tools_list_cmd.add_argument("--category", help="Filter by category")
+    tools_list_cmd.add_argument(
+        "--config", help="Show which tools a YAML config enables"
+    )
     tools_list_cmd.set_defaults(func=list_tools)
 
     # Tools info

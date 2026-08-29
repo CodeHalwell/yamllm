@@ -304,6 +304,41 @@ class TestCLISetupWizard:
         assert result == 0
 
 
+class TestCLIToolsConfigListing:
+    """Test the config-aware tools listing."""
+
+    def test_tools_list_registers_config_argument(self):
+        import argparse
+        from yamllm.cli.tools import setup_tools_commands
+
+        parser = argparse.ArgumentParser()
+        sub = parser.add_subparsers()
+        setup_tools_commands(sub)
+
+        args = parser.parse_args(["tools", "list", "--config", "cfg.yaml"])
+        assert args.config == "cfg.yaml"
+
+    @patch("yamllm.cli.tools.parse_yaml_config")
+    def test_tools_list_reads_normalized_tools_field(self, mock_parse):
+        """Configured tools come from the normalized `tools` field, not just
+        the legacy `tool_list` alias."""
+        import argparse
+        from yamllm.cli import tools as tools_mod
+
+        cfg = MagicMock()
+        cfg.tools.enabled = True
+        cfg.tools.tools = ["calculator", "web_search"]
+        cfg.tools.tool_list = None
+        mock_parse.return_value = cfg
+
+        args = argparse.Namespace(config="x.yaml", pack=None, category=None)
+        with patch.object(tools_mod, "console") as mock_console:
+            assert tools_mod.list_tools(args) == 0
+
+        printed = " ".join(str(c) for c in mock_console.print.call_args_list)
+        assert "calculator" in printed
+
+
 class TestCLIOutputFormatting:
     """Test CLI output formatting."""
 

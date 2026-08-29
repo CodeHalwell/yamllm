@@ -122,6 +122,21 @@ class TestToolFilteringWithContext:
         # Should return empty when no intent detected
         assert filtered == []
 
+    def test_no_intent_keeps_unrecognized_tools(self, mock_llm):
+        """Tools outside the gate's keyword vocabulary survive a no-intent prompt."""
+        tools = [
+            {"type": "function", "function": {"name": "web_search"}},
+            {"type": "function", "function": {"name": "git_status"}},
+        ]
+        messages = [{"role": "user", "content": "Show git status"}]
+
+        filtered = mock_llm._filter_tools_for_prompt(tools, messages)
+
+        # The keyword gate only has authority over tools it recognizes:
+        # web_search is dropped, git_status stays available.
+        filtered_names = [t["function"]["name"] for t in filtered]
+        assert filtered_names == ["git_status"]
+
     def test_explicit_tool_overrides_intent(self, mock_llm):
         """Test that explicit tool mention overrides intent detection."""
         tools = [
