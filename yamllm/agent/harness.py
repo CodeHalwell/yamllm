@@ -234,6 +234,7 @@ class AgentHarness:
                     state.completed = True
                     state.success = False
                     state.error = "Stopped by user"
+                    self._save_checkpoint(state)
                     break
 
                 budget_error = self._check_budgets(state, started_at)
@@ -272,6 +273,7 @@ class AgentHarness:
                         state.completed = True
                         state.success = False
                         state.error = state.error or "Stopped by user"
+                        self._save_checkpoint(state)
                         break
                     if outcome == "skip":
                         state = self._check_goal_completion(state)
@@ -281,6 +283,9 @@ class AgentHarness:
                 # ACT
                 self._emit(EventKind.ACTION_STARTED, {"task": next_task.to_dict()})
                 action_result = self.actor.act(next_task, state)
+                # Operator guidance from a MODIFY decision applies to the
+                # action it modified, not every later one.
+                state.metadata.pop("user_feedback", None)
                 state.add_action(action_result.to_dict())
                 self._emit(
                     EventKind.ACTION_FINISHED,

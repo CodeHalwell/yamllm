@@ -332,6 +332,54 @@ def test_pending_stop_skips_decision_provider():
     assert calls == []  # provider never consulted once a stop is pending
 
 
+def test_stop_decision_still_checkpoints(tmp_path):
+    def stop(point):
+        return SteeringDecision(action=SteeringAction.STOP)
+
+    harness = AgentHarness(
+        make_llm(),
+        max_iterations=5,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=stop,
+        checkpoint_dir=str(tmp_path),
+    )
+
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert list(tmp_path.glob("*.json")), "stop should leave a resumable checkpoint"
+
+
+def test_modify_feedback_reaches_action_and_is_consumed():
+    llm = make_llm(
+        plan_tasks=[
+            {"id": "task_1", "description": "First", "dependencies": []},
+            {"id": "task_2", "description": "Second", "dependencies": []},
+        ]
+    )
+    decisions = iter(
+        [
+            SteeringDecision(action=SteeringAction.MODIFY, feedback="be careful"),
+            SteeringDecision(action=SteeringAction.APPROVE),
+        ]
+    )
+
+    harness = AgentHarness(
+        llm,
+        max_iterations=5,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=lambda point: next(decisions),
+    )
+
+    state = harness.run("Do the thing")
+
+    prompts = [c.args[0] for c in llm.get_completion_with_tools.call_args_list]
+    assert "Operator guidance (must be followed): be careful" in prompts[0]
+    # Guidance applies to the modified action only, then is consumed
+    assert "be careful" not in prompts[1]
+    assert "user_feedback" not in state.metadata
+
+
 def test_missing_decision_provider_auto_approves():
     harness = AgentHarness(
         make_llm(),
@@ -365,6 +413,16 @@ def test_empty_plan_fails_cleanly():
 def test_extract_json_block_fenced():
     text = 'Here you go:\n```json\n{"a": 1}\n```\nthanks'
     assert json.loads(extract_json_block(text)) == {"a": 1}
+
+
+def test_extract_json_block_uppercase_and_odd_labels():
+    assert json.loads(extract_json_block('```JSON\n{"a": 1}\n```')) == {"a": 1}
+    assert json.loads(extract_json_block('```python\n{"a": 1}\n```')) == {"a": 1}
+
+
+def test_parse_json_response_falls_back_past_bad_fence():
+    text = '```\nnot json\n```\nBut here: {"a": 1} as promised'
+    assert parse_json_response(text) == {"a": 1}
 
 
 def test_extract_json_block_bare_object_with_prose():

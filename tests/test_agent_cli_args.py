@@ -1,9 +1,11 @@
 """Argument-parsing and log-sink regression tests for the agent CLI."""
 
 import argparse
+import json
+from unittest.mock import Mock, patch
 
 from yamllm.agent.events import AgentEvent, EventKind
-from yamllm.cli.agent import _event_for_log, setup_agent_commands
+from yamllm.cli.agent import _event_for_log, run_agent, setup_agent_commands
 
 
 def parse(argv):
@@ -85,3 +87,33 @@ def test_event_log_keeps_thoughts_when_opted_in():
 def test_event_log_passes_other_events_through():
     event = AgentEvent(kind=EventKind.RUN_FINISHED, payload={"success": True})
     assert _event_for_log(event, log_thoughts=False) is event
+
+
+def test_simple_interactive_run_keeps_approval_gating():
+    """--simple --interactive must still gate actions (routed via harness)."""
+    llm = Mock()
+    llm.query = Mock(return_value=json.dumps({}))
+    llm.get_completion_with_tools = Mock(
+        return_value={"content": "Done", "tool_calls": [], "tool_results": []}
+    )
+
+    args = parse(
+        [
+            "agent",
+            "run",
+            "do it",
+            "--config",
+            "c.yaml",
+            "--simple",
+            "--interactive",
+            "--auto-approve",
+            "--plain",
+        ]
+    )
+
+    with patch("yamllm.cli.agent.LLM", return_value=llm):
+        rc = run_agent(args)
+
+    assert rc == 0
+    # The single seeded task actually executed through the tool-enabled actor
+    assert llm.get_completion_with_tools.called

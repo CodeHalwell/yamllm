@@ -176,7 +176,10 @@ def _event_for_log(event: AgentEvent, log_thoughts: bool) -> AgentEvent:
 
 
 def _build_harness(
-    llm, args: argparse.Namespace, approval_policy: ApprovalPolicy
+    llm,
+    args: argparse.Namespace,
+    approval_policy: ApprovalPolicy,
+    enable_planning: bool = True,
 ) -> AgentHarness:
     """Create an AgentHarness from CLI arguments."""
     return AgentHarness(
@@ -184,6 +187,7 @@ def _build_harness(
         max_iterations=args.max_iterations,
         max_wall_time=getattr(args, "max_wall_time", None),
         approval_policy=approval_policy,
+        enable_planning=enable_planning,
         checkpoint_dir=getattr(args, "checkpoint_dir", None),
         enable_recording=getattr(args, "record", False),
         recording_dir=getattr(args, "recording_dir", None),
@@ -203,8 +207,10 @@ def run_agent(args: argparse.Namespace) -> int:
             with open(args.context, "r") as f:
                 context = json.load(f)
 
-        # Simple agent: single task, no planning, no steering
-        if args.simple:
+        # Simple mode: single task, no planning. When approvals or the TUI
+        # are requested the run goes through the harness below instead, so
+        # gating still applies.
+        if args.simple and not (args.interactive or args.tui):
             console.print("[yellow]Using SimpleAgent (no planning)[/yellow]")
             agent = SimpleAgent(llm)
             state = agent.execute(args.goal, context)
@@ -218,13 +224,26 @@ def run_agent(args: argparse.Namespace) -> int:
                 f"[cyan]Resuming from {args.resume} "
                 f"(iteration {initial_state.iteration})[/cyan]"
             )
+        elif args.simple:
+            # Interactive/TUI simple run: seed a single task, skip planning
+            from yamllm.agent import AgentState, Task
+
+            initial_state = AgentState(
+                goal=args.goal,
+                tasks=[Task.create(args.goal)],
+                max_iterations=args.max_iterations,
+                metadata=context or {},
+            )
+            console.print("[yellow]Simple mode (no planning)[/yellow]")
 
         # --interactive keeps approval gating on; --auto-approve answers the
         # first request with AUTO so the harness never blocks on a human.
         approval_policy = (
             ApprovalPolicy.ALWAYS if args.interactive else ApprovalPolicy.NEVER
         )
-        harness = _build_harness(llm, args, approval_policy)
+        harness = _build_harness(
+            llm, args, approval_policy, enable_planning=not args.simple
+        )
         if args.interactive and args.auto_approve:
             harness.decision_provider = lambda point: SteeringDecision(
                 action=SteeringAction.AUTO
