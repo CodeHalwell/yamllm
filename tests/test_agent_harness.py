@@ -161,6 +161,72 @@ def test_keyboard_interrupt_checkpoints_and_resumes(tmp_path):
     assert resumed.tasks[0].status == TaskStatus.COMPLETED
 
 
+def test_interrupt_preserves_modify_feedback_for_resume(tmp_path):
+    llm = make_llm(
+        plan_tasks=[{"id": "task_1", "description": "Only", "dependencies": []}]
+    )
+    llm.get_completion_with_tools = Mock(side_effect=KeyboardInterrupt)
+    decisions = iter(
+        [SteeringDecision(action=SteeringAction.MODIFY, feedback="be careful")]
+    )
+    harness = AgentHarness(
+        llm,
+        max_iterations=5,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=lambda point: next(decisions),
+        checkpoint_dir=str(tmp_path),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        harness.run("Do the thing")
+
+    checkpoint = load_checkpoint(str(next(tmp_path.glob("*.json"))))
+    # The operator's constraint survives the interrupt for the resumed retry
+    assert checkpoint.metadata.get("user_feedback") == "be careful"
+
+    healthy = make_llm()
+    AgentHarness(healthy, max_iterations=5).run("ignored", initial_state=checkpoint)
+    assert "be careful" in healthy.get_completion_with_tools.call_args_list[0].args[0]
+
+
+def test_observation_interrupt_checkpoint_reopens_on_resume():
+    state = AgentState(
+        goal="g",
+        tasks=[Task.create("done task")],
+        completed=True,
+        success=False,
+        error="Interrupted by user",
+    )
+    state.tasks[0].status = TaskStatus.COMPLETED
+
+    resumed = AgentHarness(make_llm(), max_iterations=3).run(
+        "ignored", initial_state=state
+    )
+
+    # Completion is re-evaluated instead of returning the interrupted state
+    assert resumed.completed and resumed.success
+    assert resumed.error is None
+
+
+def test_no_runnable_terminal_state_is_checkpointed(tmp_path):
+    llm = make_llm(
+        plan_tasks=[
+            {"id": "task_1", "description": "Base", "dependencies": []},
+            {"id": "task_2", "description": "Dependent", "dependencies": ["task_1"]},
+        ]
+    )
+    llm.get_completion_with_tools = Mock(side_effect=Exception("boom"))
+    harness = AgentHarness(llm, max_iterations=10, checkpoint_dir=str(tmp_path))
+
+    state = harness.run("Do the thing")
+    assert state.completed and not state.success
+
+    checkpoint = load_checkpoint(state.metadata["checkpoint_path"])
+    # The on-disk snapshot matches the returned terminal state
+    assert checkpoint.completed == state.completed
+    assert checkpoint.get_task_by_id("task_2").status == TaskStatus.FAILED
+
+
 def test_resumed_run_does_not_inherit_failure_streak(tmp_path):
     llm = make_llm(
         plan_tasks=[

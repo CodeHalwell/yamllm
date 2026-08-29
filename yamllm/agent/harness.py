@@ -196,10 +196,20 @@ class AgentHarness:
                 # A task interrupted mid-action is resumable, not stuck
                 if task.status == TaskStatus.IN_PROGRESS:
                     task.status = TaskStatus.PENDING
+            # A run interrupted after its last action but before completion
+            # was evaluated (all tasks completed, none failed) reopens so
+            # success is recomputed.
+            interrupted_post_action = state.tasks and all(
+                t.status == TaskStatus.COMPLETED for t in state.tasks
+            )
             if (
                 state.completed
                 and not state.success
-                and (state.get_pending_tasks() or not state.tasks)
+                and (
+                    state.get_pending_tasks()
+                    or not state.tasks
+                    or interrupted_post_action
+                )
             ):
                 # A stopped or budget-exhausted checkpoint resumes as a live
                 # run rather than immediately returning its terminal state.
@@ -319,6 +329,9 @@ class AgentHarness:
                         state.completed = True
                         state.success = False
                         state.error = "No runnable tasks remain"
+                    # The cascade/finalization mutated state after the last
+                    # iteration checkpoint; persist the terminal transition.
+                    self._save_checkpoint(state)
                     break
 
                 state.current_task_id = next_task.id

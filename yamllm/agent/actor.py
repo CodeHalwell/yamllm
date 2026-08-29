@@ -41,10 +41,10 @@ class Actor:
         # Update task status
         task.status = TaskStatus.IN_PROGRESS
 
-        # Build action prompt, consuming any operator MODIFY guidance so it
-        # applies to this action only (regardless of which loop drives us)
+        # Build action prompt; operator MODIFY guidance is consumed only once
+        # the action reaches a terminal result (below), so an interrupt
+        # mid-action leaves it in the checkpoint for the resumed retry.
         prompt = self._build_action_prompt(task, state)
-        state.metadata.pop("user_feedback", None)
 
         start_time = time.time()
 
@@ -88,6 +88,10 @@ class Actor:
 
             task.status = TaskStatus.FAILED
             task.error = str(e)
+
+        # Terminal result reached: the MODIFY guidance applied to this action
+        # only (an interrupt above propagates before this and retains it)
+        state.metadata.pop("user_feedback", None)
 
         return result
 
