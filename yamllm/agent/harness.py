@@ -192,6 +192,10 @@ class AgentHarness:
             if context:
                 # Freshly supplied context overrides stale checkpoint metadata
                 state.metadata.update(context)
+            for task in state.tasks:
+                # A task interrupted mid-action is resumable, not stuck
+                if task.status == TaskStatus.IN_PROGRESS:
+                    task.status = TaskStatus.PENDING
             if (
                 state.completed
                 and not state.success
@@ -392,6 +396,16 @@ class AgentHarness:
                 state.error = "Maximum iterations reached"
 
             self._finish(state)
+
+        except KeyboardInterrupt:
+            # Ctrl+C: persist a resumable snapshot, then let the interrupt
+            # propagate so the caller's usual Ctrl+C handling still applies.
+            state.completed = True
+            state.success = False
+            state.error = "Interrupted by user"
+            self._save_checkpoint(state)
+            self._finish(state, failed=True)
+            raise
 
         except Exception as e:
             self.logger.error(f"Agent execution failed: {e}", exc_info=True)

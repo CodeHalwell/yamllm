@@ -135,6 +135,32 @@ def test_exception_path_saves_checkpoint(tmp_path):
     assert list(tmp_path.glob("*.json")), "exceptional runs should leave a checkpoint"
 
 
+def test_keyboard_interrupt_checkpoints_and_resumes(tmp_path):
+    llm = make_llm(
+        plan_tasks=[{"id": "task_1", "description": "Only", "dependencies": []}]
+    )
+    llm.get_completion_with_tools = Mock(side_effect=KeyboardInterrupt)
+    harness = AgentHarness(llm, max_iterations=5, checkpoint_dir=str(tmp_path))
+
+    with pytest.raises(KeyboardInterrupt):
+        harness.run("Do the thing")
+
+    checkpoints = list(tmp_path.glob("*.json"))
+    assert checkpoints, "Ctrl+C should leave a resumable checkpoint"
+
+    checkpoint = load_checkpoint(str(checkpoints[0]))
+    # The interrupted task was checkpointed mid-action
+    assert checkpoint.tasks[0].status == TaskStatus.IN_PROGRESS
+
+    resumed = AgentHarness(make_llm(), max_iterations=5).run(
+        "ignored", initial_state=checkpoint
+    )
+
+    # The stranded task was reset and actually executed on resume
+    assert resumed.completed and resumed.success
+    assert resumed.tasks[0].status == TaskStatus.COMPLETED
+
+
 def test_resumed_run_does_not_inherit_failure_streak(tmp_path):
     llm = make_llm(
         plan_tasks=[
