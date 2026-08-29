@@ -68,3 +68,9 @@
 {"ts": "2026-08-29 19:24:48,195", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool mock_tool: Invalid argument type or value: TestToolExceptionHandling.test_tool_manager_missing_argument.<locals>.strict_execute() missing 1 required positional argument: 'test_param'", "exc_info": null}
 {"ts": "2026-08-29 19:24:48,197", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool mock_tool: Invalid argument type or value: Invalid value", "exc_info": null}
 {"ts": "2026-08-29 19:24:48,199", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool mock_tool: Unexpected error: Something went wrong", "exc_info": null}
+{"ts": "2026-08-29 19:31:44,336", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool sleep_tool: timed out after 0.05s", "exc_info": null}
+{"ts": "2026-08-29 19:31:44,340", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool error_tool: Invalid argument type or value: boom", "exc_info": null}
+{"ts": "2026-08-29 19:31:44,449", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool mock_tool: timed out after 0.05s", "exc_info": null}
+{"ts": "2026-08-29 19:31:44,452", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool mock_tool: Invalid argument type or value: TestToolExceptionHandling.test_tool_manager_missing_argument.<locals>.strict_execute() missing 1 required positional argument: 'test_param'", "exc_info": null}
+{"ts": "2026-08-29 19:31:44,454", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool mock_tool: Invalid argument type or value: Invalid value", "exc_info": null}
+{"ts": "2026-08-29 19:31:44,456", "level": "ERROR", "logger": "yamllm.core.exceptions", "msg": "ToolExecutionError: Tool mock_tool: Unexpected error: Something went wrong", "exc_info": null}
