@@ -133,7 +133,9 @@ class MetricsTracker:
         with self._lock:
             self.metrics.tool_execution_count += 1
             self.metrics.tool_execution_time += execution_time
-            self.metrics.tool_execution_times[tool_name].append(execution_time)
+            self.metrics.tool_execution_times.setdefault(tool_name, []).append(
+                execution_time
+            )
 
     def record_embedding_cache_hit(self):
         """Record an embedding cache hit."""

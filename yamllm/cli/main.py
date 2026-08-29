@@ -14,7 +14,6 @@ from rich.panel import Panel
 from rich import box
 
 from yamllm.core.parser import parse_yaml_config
-from yamllm.core.setup_wizard import SetupWizard
 from yamllm.core.error_messages import help_system
 
 from .tools import setup_tools_commands
@@ -143,10 +142,14 @@ def show_getting_started(args: argparse.Namespace) -> int:
     return help_system.show_getting_started_guide()
 
 
-def run_setup_wizard(args: argparse.Namespace) -> int:
+def run_setup(args: argparse.Namespace) -> int:
     """Run interactive setup wizard."""
+    # Resolve the wizard at call time so tests (and plugins) can patch
+    # yamllm.core.setup_wizard.SetupWizard.
+    from yamllm.core import setup_wizard as setup_wizard_module
+
     try:
-        wizard = SetupWizard()
+        wizard = setup_wizard_module.SetupWizard()
         wizard.run()
         return 0
     except KeyboardInterrupt:
@@ -155,6 +158,11 @@ def run_setup_wizard(args: argparse.Namespace) -> int:
     except Exception as e:
         console.print(f"[red]✗ Setup failed: {e}[/red]")
         return 1
+
+
+def run_setup_wizard(args: argparse.Namespace) -> int:
+    """Run interactive setup wizard (alias kept for existing wiring)."""
+    return run_setup(args)
 
 
 def diagnose(args: argparse.Namespace) -> int:

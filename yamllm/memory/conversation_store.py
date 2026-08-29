@@ -152,6 +152,33 @@ class ConversationStore:
         finally:
             conn.close()
 
+    def list_conversations(self) -> List[Dict[str, Any]]:
+        """
+        Summarise stored conversations.
+
+        Returns:
+            List[Dict[str, Any]]: One entry per session with its id, message
+            count, and first/last message timestamps, newest first.
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT session_id, COUNT(*), MIN(timestamp), MAX(timestamp) "
+                "FROM messages GROUP BY session_id ORDER BY MAX(timestamp) DESC"
+            )
+            return [
+                {
+                    "id": session_id,
+                    "messages": count,
+                    "created_at": first,
+                    "updated_at": last,
+                }
+                for session_id, count, first, last in cursor.fetchall()
+            ]
+        finally:
+            conn.close()
+
     def get_session_ids(self) -> List[str]:
         """
         Retrieve a list of unique session IDs from the database.

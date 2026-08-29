@@ -94,6 +94,10 @@ class ResponseOrchestrator:
             self.logger.error(f"Error getting non-streaming response: {e}")
             raise
 
+    def extract_text_from_response(self, response) -> str:
+        """Public API: extract text from a non-streaming response."""
+        return self._extract_text_from_response(response)
+
     def _extract_text_from_response(self, response) -> str:
         """Extract text from a non-streaming response."""
         if self.provider_name.lower() in (

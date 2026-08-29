@@ -372,9 +372,48 @@ class ToolRegistryManager:
             tools = [t for t in tools if t.enabled]
         return tools
 
-    def get_tool_info(self, name: str) -> Optional[ToolInfo]:
-        """Get detailed information about a tool."""
-        return self.registry.get_tool(name)
+    def get_tool_info(self, name: str) -> Optional[Dict[str, Any]]:
+        """Get detailed information about a tool as a dictionary."""
+        tool = self.registry.get_tool(name)
+        if not tool:
+            return None
+        return {
+            "name": tool.name,
+            "description": tool.description,
+            "category": tool.category,
+            "version": tool.version,
+            "requires_api_key": tool.requires_api_key,
+            "api_key_env": tool.api_key_env,
+            "dependencies": list(tool.dependencies or []),
+            "enabled": tool.enabled,
+        }
+
+    def get_all_tools(self) -> Dict[str, Dict[str, Any]]:
+        """Get all registered tools keyed by name, as dictionaries."""
+        return {
+            tool.name: {
+                "description": tool.description,
+                "category": tool.category,
+                "enabled": tool.enabled,
+            }
+            for tool in self.registry.list_tools()
+        }
+
+    def get_all_packs(self) -> Dict[str, Dict[str, Any]]:
+        """Get all tool packs keyed by name, as dictionaries."""
+        return {
+            pack.name: {
+                "tools": list(pack.tools),
+                "description": pack.description,
+                "category": pack.category,
+            }
+            for pack in self.registry.list_packs()
+        }
+
+    def get_pack_tools(self, name: str) -> List[str]:
+        """Get the tool names contained in a pack (empty if unknown)."""
+        pack = self.registry.get_pack(name)
+        return list(pack.tools) if pack else []
 
     def test_tool(self, name: str) -> Dict[str, Any]:
         """Test a tool and return results."""
@@ -423,20 +462,6 @@ class ToolRegistryManager:
             tool_info.enabled = False
             return True
         return False
-
-    def get_pack_tools(self, pack_name: str) -> List[ToolInfo]:
-        """Get all tools in a pack."""
-        pack = self.registry.get_pack(pack_name)
-        if not pack:
-            return []
-
-        tools = []
-        for tool_name in pack.tools:
-            tool_info = self.registry.get_tool(tool_name)
-            if tool_info:
-                tools.append(tool_info)
-
-        return tools
 
     def validate_configuration(
         self, config_tools: List[str], config_packs: List[str]

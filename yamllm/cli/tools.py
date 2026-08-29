@@ -11,6 +11,8 @@ from rich.table import Table
 from rich.panel import Panel
 from rich import box
 
+from yamllm.core.parser import parse_yaml_config
+
 console = Console()
 
 
@@ -19,6 +21,27 @@ def list_tools(args: argparse.Namespace) -> int:
     from yamllm.core.tool_management import tool_manager
 
     console.print("\n[bold cyan]Available Tools[/bold cyan]\n")
+
+    # When a config is supplied, show what that config enables
+    config_path = getattr(args, "config", None)
+    if config_path:
+        try:
+            config = parse_yaml_config(config_path)
+            tools_cfg = getattr(config, "tools", None)
+            enabled = bool(getattr(tools_cfg, "enabled", False))
+            configured = list(getattr(tools_cfg, "tool_list", []) or [])
+            console.print(
+                f"[bold]Config:[/bold] {config_path} "
+                f"(tools {'enabled' if enabled else 'disabled'})"
+            )
+            if configured:
+                console.print(
+                    f"[bold]Configured tools:[/bold] {', '.join(str(t) for t in configured)}\n"
+                )
+        except Exception as e:
+            console.print(
+                f"[yellow]Could not read config {config_path}: {e}[/yellow]\n"
+            )
 
     # If pack specified, show pack details
     if hasattr(args, "pack") and args.pack:
@@ -88,6 +111,30 @@ def list_tools(args: argparse.Namespace) -> int:
         "\n[dim]Use 'yamllm tools info <tool>' for detailed information[/dim]"
     )
 
+    return 0
+
+
+def list_available_packs(args: argparse.Namespace) -> int:
+    """List the available tool packs."""
+    from yamllm.core.tool_management import tool_manager
+
+    out = Console()
+    out.print("\n[bold cyan]Available Tool Packs[/bold cyan]\n")
+
+    table = Table(box=box.ROUNDED)
+    table.add_column("Pack", style="cyan")
+    table.add_column("Tools", style="white")
+    table.add_column("Description", style="white")
+
+    for pack_name, pack_info in tool_manager.get_all_packs().items():
+        tools_str = ", ".join(pack_info.get("tools", []))[:50]
+        if len(tools_str) >= 50:
+            tools_str += "..."
+        table.add_row(
+            pack_name, tools_str, pack_info.get("description", "No description")
+        )
+
+    out.print(table)
     return 0
 
 

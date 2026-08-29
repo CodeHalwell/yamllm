@@ -15,9 +15,14 @@ console = Console()
 
 def run_chat(args: argparse.Namespace) -> int:
     """Run an interactive chat session."""
+    # A missing config is a hard error: exit rather than start a broken session
+    if not os.path.exists(args.config):
+        console.print(f"[red]✗ Config file not found: {args.config}[/red]")
+        raise SystemExit(1)
+
     try:
         # Extract API key from environment
-        api_key_env = args.api_key_env
+        api_key_env = getattr(args, "api_key_env", None)
         if api_key_env:
             api_key = os.getenv(api_key_env)
             if not api_key:

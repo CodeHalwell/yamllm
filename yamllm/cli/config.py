@@ -25,12 +25,16 @@ def validate_config(args: argparse.Namespace) -> int:
         console.print(f"[red]✗ Config file not found: {config_path}[/red]")
         return 1
 
+    console.print(f"\n[bold cyan]Validating {config_path}...[/bold cyan]\n")
+
+    # Parse config: a file that cannot be parsed at all is a hard error
     try:
-        console.print(f"\n[bold cyan]Validating {config_path}...[/bold cyan]\n")
-
-        # Parse config
         config = parse_yaml_config(config_path)
+    except Exception as e:
+        console.print(f"[red]✗ Failed to parse config: {e}[/red]")
+        raise
 
+    try:
         # Convert to dict
         try:
             config_dict = config.model_dump()

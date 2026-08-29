@@ -9,7 +9,57 @@ import os
 from rich.console import Console
 from rich.prompt import Confirm
 
+from yamllm.memory import ConversationStore
+
 console = Console()
+
+
+def list_conversations(args: argparse.Namespace) -> int:
+    """List conversations stored in the local history database."""
+    out = Console()
+    store = ConversationStore(args.db_path)
+
+    try:
+        conversations = store.list_conversations()
+    except Exception as e:
+        out.print(f"[red]✗ Could not read conversation store: {e}[/red]")
+        return 1
+
+    if not conversations:
+        out.print("[yellow]No conversations found.[/yellow]")
+        return 0
+
+    out.print(f"\n[bold cyan]Conversations ({len(conversations)})[/bold cyan]\n")
+    for conv in conversations:
+        title = conv.get("title") or conv.get("id", "?")
+        out.print(
+            f"  [cyan]{conv.get('id', '?')}[/cyan] {title} "
+            f"[dim]{conv.get('created_at', '')}[/dim]"
+        )
+    return 0
+
+
+def clear_memory(args: argparse.Namespace) -> int:
+    """Delete the conversation history database."""
+    out = Console()
+
+    if not getattr(args, "confirm", False):
+        if not Confirm.ask("Delete ALL stored conversations?", default=False):
+            out.print("[yellow]Cancelled.[/yellow]")
+            return 0
+
+    store = ConversationStore(args.db_path)
+    try:
+        store.delete_database()
+    except FileNotFoundError:
+        out.print("[yellow]No conversation database found.[/yellow]")
+        return 0
+    except Exception as e:
+        out.print(f"[red]✗ Failed to clear memory: {e}[/red]")
+        return 1
+
+    out.print("[green]✓ Conversation history cleared[/green]")
+    return 0
 
 
 def migrate_index(args: argparse.Namespace) -> int:
@@ -76,6 +126,31 @@ def migrate_index(args: argparse.Namespace) -> int:
 
 def setup_memory_commands(subparsers):
     """Set up memory-related CLI commands."""
+    # List conversations
+    ls = subparsers.add_parser(
+        "conversations", help="List stored conversation sessions"
+    )
+    ls.add_argument(
+        "--db-path",
+        default="memory/conversation_history.db",
+        help="Path to the conversation history database",
+    )
+    ls.set_defaults(func=list_conversations)
+
+    # Clear memory
+    clear = subparsers.add_parser(
+        "clear-memory", help="Delete all stored conversation history"
+    )
+    clear.add_argument(
+        "--db-path",
+        default="memory/conversation_history.db",
+        help="Path to the conversation history database",
+    )
+    clear.add_argument(
+        "--confirm", action="store_true", help="Skip the confirmation prompt"
+    )
+    clear.set_defaults(func=clear_memory)
+
     # Migrate index command
     mig = subparsers.add_parser(
         "migrate-index", help="Inspect or purge FAISS index for a vector store"

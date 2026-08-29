@@ -149,7 +149,7 @@ class LLM:
         self.error_handler = ErrorHandler(self.logger)
         # LRU embedding cache with configurable size (default: 1000)
         self._embedding_cache: OrderedDict[str, List[float]] = OrderedDict()
-        self._embedding_cache_size = self.config.get("embedding_cache_size", 1000)
+        self._embedding_cache_size = getattr(self.config, "embedding_cache_size", 1000)
 
         # Performance metrics tracker
         self.metrics = MetricsTracker()
@@ -312,12 +312,21 @@ class LLM:
             self.logger.warning(
                 f"Failed to initialize provider '{provider_name}', falling back to OpenAI: {masked_error}"
             )
-            return ProviderFactory.create_provider(
-                "openai",
-                api_key=self.api_key,
-                base_url=self.base_url,
-                **self.extra_settings,
-            )
+            try:
+                return ProviderFactory.create_provider(
+                    "openai",
+                    api_key=self.api_key,
+                    base_url=self.base_url,
+                    **self.extra_settings,
+                )
+            except Exception as fallback_error:
+                # Construction must not fail (e.g. missing API key): defer the
+                # error to first use, where query() raises a friendly message.
+                self.logger.warning(
+                    "Provider client construction deferred: "
+                    f"{mask_string(str(fallback_error))}"
+                )
+                return None
 
     def _initialize_memory(self) -> MemoryManager:
         """Initialize memory management."""
@@ -1012,6 +1021,14 @@ class LLM:
     def _intent_requires_tools(self, prompt_text: str) -> bool:
         """Heuristic to decide whether tools are likely needed for this prompt."""
         return self.tool_selector.intent_requires_tools(prompt_text)
+
+    def _extract_explicit_tool(self, prompt_text: str) -> Optional[str]:
+        """Extract an explicitly requested tool name from the prompt."""
+        return self.tool_selector.extract_explicit_tool(prompt_text)
+
+    def _extract_intent(self, prompt_text: str) -> Dict[str, bool]:
+        """Extract lightweight tool intents from the prompt."""
+        return self.tool_selector.extract_intent(prompt_text)
 
     def _get_last_user_message(self, messages: Optional[List[Dict[str, Any]]]) -> str:
         if not messages:

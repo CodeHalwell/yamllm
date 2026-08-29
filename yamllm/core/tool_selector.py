@@ -28,7 +28,10 @@ class ToolSelector:
         self.logger = logger or logging.getLogger("yamllm.tool_selector")
 
     def filter_tools_for_prompt(
-        self, tools: List[Dict[str, Any]], messages: List[Dict[str, Any]]
+        self,
+        tools: List[Dict[str, Any]],
+        messages: List[Dict[str, Any]],
+        gate: bool = True,
     ) -> List[Dict[str, Any]]:
         """
         Filter tools based on prompt analysis.
@@ -36,10 +39,13 @@ class ToolSelector:
         Args:
             tools: List of available tool definitions
             messages: List of messages (for prompt analysis)
+            gate: When False, gating is disabled and all tools are returned
 
         Returns:
             Filtered list of relevant tools
         """
+        if not gate:
+            return tools
         if not tools or not messages:
             return tools
 
@@ -67,6 +73,12 @@ class ToolSelector:
         # Extract intents
         intents = self._extract_intent(prompt_text)
 
+        # No tool-related intent at all: send no tools, so trivial prompts
+        # stay fast and cheap
+        if not any(intents.values()):
+            self.logger.debug("No tool intent detected, omitting tools")
+            return []
+
         # Filter tools based on intents
         filtered = []
         for tool in tools:
@@ -83,6 +95,14 @@ class ToolSelector:
             f"Filtered to {len(filtered)} relevant tools from {len(tools)}"
         )
         return filtered
+
+    def extract_intent(self, prompt_text: str) -> Dict[str, bool]:
+        """Public API: extract lightweight intents from a prompt."""
+        return self._extract_intent(prompt_text)
+
+    def extract_explicit_tool(self, prompt_text: str) -> Optional[str]:
+        """Public API: extract an explicitly requested tool name, if any."""
+        return self._extract_explicit_tool(prompt_text)
 
     def _extract_intent(self, prompt_text: str) -> Dict[str, bool]:
         """Extract lightweight intents from prompt to guide tool selection."""

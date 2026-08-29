@@ -38,13 +38,15 @@ class MCPClient:
         self.logger.debug(f"Registered MCP connector: {connector.name}")
 
     async def discover_all_tools(
-        self, force_refresh: bool = False
+        self, force_refresh: bool = False, raise_on_error: bool = True
     ) -> Dict[str, List[Dict[str, Any]]]:
         """
         Discover tools from all registered MCP connectors.
 
         Args:
             force_refresh (bool): Whether to force a refresh of cached tools.
+            raise_on_error (bool): Propagate a connector's failure (default).
+                When False, log the error and continue with other connectors.
 
         Returns:
             Dict[str, List[Dict[str, Any]]]: Dictionary mapping connector names to their tool definitions.
@@ -59,7 +61,8 @@ class MCPClient:
                 self.logger.error(
                     f"Error discovering tools from connector {name}: {str(e)}"
                 )
-                # Continue with other connectors even if one fails
+                if raise_on_error:
+                    raise
 
         return all_tools
 
@@ -120,14 +123,21 @@ class MCPClient:
 
         return tool_definitions
 
-    async def _disconnect_all(self) -> None:
-        """Async helper to disconnect all connectors cleanly."""
+    async def disconnect_all(self) -> None:
+        """Disconnect all registered connectors (best-effort)."""
         for connector in self.connectors.values():
             try:
                 await connector.disconnect()
-            except Exception:
+            except Exception as e:
                 # Best-effort cleanup
+                self.logger.error(
+                    f"Error disconnecting connector {getattr(connector, 'name', '?')}: {e}"
+                )
                 continue
+
+    async def _disconnect_all(self) -> None:
+        """Backwards-compatible alias for :meth:`disconnect_all`."""
+        await self.disconnect_all()
 
     def close(self) -> None:
         """Synchronously close all connectors (best-effort)."""
