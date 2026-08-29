@@ -9,4 +9,3 @@ legacy UI behavior. Prefer importing providers from
 from yamllm.providers.openai import OpenAIProvider  # re-export
 
 __all__ = ["OpenAIProvider"]
-

@@ -7,4 +7,4 @@ broken down into focused modules for better maintainability.
 
 from .main import main
 
-__all__ = ['main']
+__all__ = ["main"]

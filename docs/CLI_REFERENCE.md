@@ -892,6 +892,7 @@ messages = store.get_messages()
 
 # Export to JSON
 import json
+
 with open("history.json", "w") as f:
     json.dump(messages, f, indent=2)
 ```

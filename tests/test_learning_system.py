@@ -12,7 +12,7 @@ from yamllm.agent.learning_system import (
     PerformanceMetrics,
     ExperienceStore,
     PatternAnalyzer,
-    LearningSystem
+    LearningSystem,
 )
 
 
@@ -52,7 +52,7 @@ def test_experience_dataclass():
         actions_taken=[{"action": "analyze"}, {"action": "fix"}],
         outcome=OutcomeType.SUCCESS,
         outcome_details={"fixed": True},
-        duration_seconds=120.5
+        duration_seconds=120.5,
     )
 
     assert experience.experience_id == "exp_1"
@@ -72,7 +72,7 @@ def test_learning_insight_dataclass():
         evidence_count=10,
         success_rate=0.9,
         context_conditions={"task_type": "debugging"},
-        recommendation="Apply pattern X when debugging"
+        recommendation="Apply pattern X when debugging",
     )
 
     assert insight.insight_id == "insight_1"
@@ -89,7 +89,7 @@ def test_performance_metrics_dataclass():
         successful_tasks=85,
         failed_tasks=15,
         average_duration=150.0,
-        success_rate=0.85
+        success_rate=0.85,
     )
 
     assert metrics.total_tasks == 100
@@ -125,7 +125,7 @@ def test_experience_store_store_and_retrieve(temp_db):
         actions_taken=[{"action": "test"}],
         outcome=OutcomeType.SUCCESS,
         outcome_details={"success": True},
-        duration_seconds=10.0
+        duration_seconds=10.0,
     )
 
     # Store experience
@@ -153,7 +153,7 @@ def test_experience_store_filter_by_outcome(temp_db):
             actions_taken=[],
             outcome=OutcomeType.SUCCESS if i < 2 else OutcomeType.FAILURE,
             outcome_details={},
-            duration_seconds=10.0
+            duration_seconds=10.0,
         )
         store.store_experience(exp)
 
@@ -179,7 +179,7 @@ def test_experience_store_filter_by_task_pattern(temp_db):
             actions_taken=[],
             outcome=OutcomeType.SUCCESS,
             outcome_details={},
-            duration_seconds=10.0
+            duration_seconds=10.0,
         )
         store.store_experience(exp)
 
@@ -200,7 +200,7 @@ def test_experience_store_store_and_retrieve_insights(temp_db):
         evidence_count=5,
         success_rate=0.9,
         context_conditions={"test": True},
-        recommendation="Use this pattern"
+        recommendation="Use this pattern",
     )
 
     # Store insight
@@ -228,7 +228,7 @@ def test_experience_store_filter_insights_by_confidence(temp_db):
             evidence_count=5,
             success_rate=0.8,
             context_conditions={},
-            recommendation="Test"
+            recommendation="Test",
         )
         store.store_insight(insight)
 
@@ -260,11 +260,11 @@ def test_pattern_analyzer_success_patterns():
             actions_taken=[
                 {"action_type": "analyze"},
                 {"action_type": "fix"},
-                {"action_type": "test"}
+                {"action_type": "test"},
             ],
             outcome=OutcomeType.SUCCESS,
             outcome_details={},
-            duration_seconds=10.0
+            duration_seconds=10.0,
         )
         for i in range(3)
     ]
@@ -290,7 +290,7 @@ def test_pattern_analyzer_failure_patterns():
             actions_taken=[{"action_type": "execute"}],
             outcome=OutcomeType.FAILURE,
             outcome_details={"error_type": "timeout"},
-            duration_seconds=10.0
+            duration_seconds=10.0,
         )
         for i in range(2)
     ]
@@ -307,26 +307,34 @@ def test_pattern_analyzer_generate_insights():
     llm = MockLLM()
     analyzer = PatternAnalyzer(llm)
 
-    success_patterns = [{
-        "task_type": "fix",
-        "pattern_type": "action_sequence",
-        "sequence": ["analyze", "fix", "test"],
-        "frequency": 5,
-        "total_examples": 10,
-        "confidence": 0.5
-    }]
+    success_patterns = [
+        {
+            "task_type": "fix",
+            "pattern_type": "action_sequence",
+            "sequence": ["analyze", "fix", "test"],
+            "frequency": 5,
+            "total_examples": 10,
+            "confidence": 0.5,
+        }
+    ]
 
-    failure_patterns = [{
-        "error_type": "timeout",
-        "frequency": 3,
-        "common_context": {"env": 2},
-        "example_actions": []
-    }]
+    failure_patterns = [
+        {
+            "error_type": "timeout",
+            "frequency": 3,
+            "common_context": {"env": 2},
+            "example_actions": [],
+        }
+    ]
 
-    insights = analyzer.generate_insights_from_patterns(success_patterns, failure_patterns)
+    insights = analyzer.generate_insights_from_patterns(
+        success_patterns, failure_patterns
+    )
 
     assert len(insights) >= 2
-    assert any(i.improvement_type == ImprovementType.REASONING_PATTERN for i in insights)
+    assert any(
+        i.improvement_type == ImprovementType.REASONING_PATTERN for i in insights
+    )
     assert any(i.improvement_type == ImprovementType.ERROR_RECOVERY for i in insights)
 
 
@@ -350,7 +358,7 @@ def test_learning_system_record_experience(temp_db):
         actions=[{"action": "test"}],
         outcome=OutcomeType.SUCCESS,
         outcome_details={"result": "ok"},
-        duration=10.0
+        duration=10.0,
     )
 
     assert experience.task_description == "Test task"
@@ -369,7 +377,7 @@ def test_learning_system_update_metrics(temp_db):
         actions=[],
         outcome=OutcomeType.SUCCESS,
         outcome_details={},
-        duration=10.0
+        duration=10.0,
     )
 
     # Record failed experience
@@ -378,7 +386,7 @@ def test_learning_system_update_metrics(temp_db):
         actions=[],
         outcome=OutcomeType.FAILURE,
         outcome_details={},
-        duration=20.0
+        duration=20.0,
     )
 
     metrics = learning.get_metrics()
@@ -399,13 +407,10 @@ def test_learning_system_analyze_and_learn(temp_db):
     for i in range(10):
         learning.record_experience(
             task_description="Fix bug",
-            actions=[
-                {"action_type": "analyze"},
-                {"action_type": "fix"}
-            ],
+            actions=[{"action_type": "analyze"}, {"action_type": "fix"}],
             outcome=OutcomeType.SUCCESS,
             outcome_details={},
-            duration=10.0
+            duration=10.0,
         )
 
     # Analyze and learn
@@ -428,7 +433,7 @@ def test_learning_system_get_recommendations(temp_db):
         evidence_count=5,
         success_rate=0.9,
         context_conditions={"task_type": "fix"},
-        recommendation="Always test after fixing"
+        recommendation="Always test after fixing",
     )
 
     learning.experience_store.store_insight(insight)
@@ -451,7 +456,7 @@ def test_learning_system_get_summary(temp_db):
             actions=[],
             outcome=OutcomeType.SUCCESS,
             outcome_details={},
-            duration=10.0
+            duration=10.0,
         )
 
     summary = learning.get_learning_summary()
@@ -476,12 +481,12 @@ def test_learning_system_export_knowledge(temp_db):
         evidence_count=5,
         success_rate=0.9,
         context_conditions={},
-        recommendation="Test recommendation"
+        recommendation="Test recommendation",
     )
     learning.experience_store.store_insight(insight)
 
     # Export to temp file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         export_path = f.name
 
     try:
@@ -490,7 +495,8 @@ def test_learning_system_export_knowledge(temp_db):
 
         # Verify exported content
         import json
-        with open(export_path, 'r') as f:
+
+        with open(export_path, "r") as f:
             data = json.load(f)
 
         assert "exported_at" in data
@@ -508,6 +514,7 @@ def test_learning_system_import_knowledge(temp_db):
 
     # Create knowledge file
     import json
+
     knowledge = {
         "exported_at": datetime.now().isoformat(),
         "insights": [
@@ -517,12 +524,12 @@ def test_learning_system_import_knowledge(temp_db):
                 "pattern": "Imported pattern",
                 "confidence": 0.85,
                 "evidence_count": 10,
-                "recommendation": "Imported recommendation"
+                "recommendation": "Imported recommendation",
             }
-        ]
+        ],
     }
 
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(knowledge, f)
         import_path = f.name
 
@@ -551,7 +558,7 @@ def test_learning_system_integration(temp_db):
             actions=[{"action_type": "code"}],
             outcome=outcome,
             outcome_details={},
-            duration=30.0 + i
+            duration=30.0 + i,
         )
 
     # 2. Analyze and learn

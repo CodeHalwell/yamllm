@@ -26,8 +26,16 @@ class FakeAsyncConnector:
 async def test_mcp_client_discover_all_tools_async():
     client = MCPClient()
     tools = [
-        {"name": "alpha", "description": "A", "parameters": {"type": "object", "properties": {}}},
-        {"name": "beta", "description": "B", "parameters": {"type": "object", "properties": {}}},
+        {
+            "name": "alpha",
+            "description": "A",
+            "parameters": {"type": "object", "properties": {}},
+        },
+        {
+            "name": "beta",
+            "description": "B",
+            "parameters": {"type": "object", "properties": {}},
+        },
     ]
     conn = FakeAsyncConnector("conn1", tools=tools)
     client.register_connector(conn)
@@ -52,7 +60,11 @@ async def test_mcp_client_execute_tool_async():
 async def test_convert_mcp_tools_to_definitions_async():
     client = MCPClient()
     tools = [
-        {"name": "gamma", "description": "G", "parameters": {"type": "object", "properties": {}}},
+        {
+            "name": "gamma",
+            "description": "G",
+            "parameters": {"type": "object", "properties": {}},
+        },
     ]
     conn = FakeAsyncConnector("srv", tools=tools)
     client.register_connector(conn)
@@ -65,6 +77,8 @@ async def test_convert_mcp_tools_to_definitions_async():
     assert td.description == "G"
     assert td.mcp_connector_name == "srv"
     assert td.mcp_tool_id == "gamma"
+
+
 @pytest.fixture
 def anyio_backend():
     return "asyncio"

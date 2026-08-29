@@ -3,6 +3,7 @@ import yaml
 from typing import Dict, Optional
 from pydantic import BaseModel
 
+
 class ThemeColors(BaseModel):
     primary: str = "cyan"
     secondary: str = "magenta"
@@ -12,8 +13,10 @@ class ThemeColors(BaseModel):
     info: str = "blue"
     dim: str = "grey70"
 
+
 class ThemeLayout(BaseModel):
     show_ascii_art: bool = True
+
 
 class Theme(BaseModel):
     name: str
@@ -22,16 +25,19 @@ class Theme(BaseModel):
     layout: ThemeLayout = ThemeLayout()
     ascii_art: Optional[str] = None
 
+
 class ThemeManager:
     def __init__(self, themes_dir: Optional[str] = None):
         if themes_dir:
             self.themes_dir = Path(themes_dir)
         else:
             self.themes_dir = Path(__file__).parent / "themes"
-        
+
         self.themes: Dict[str, Theme] = self._load_themes()
         self.current_theme_name: str = self.get_current_theme_name()
-        self.current_theme: Theme = self.themes.get(self.current_theme_name, self.themes.get("default"))
+        self.current_theme: Theme = self.themes.get(
+            self.current_theme_name, self.themes.get("default")
+        )
 
     def _load_themes(self) -> Dict[str, Theme]:
         themes = {}
@@ -40,14 +46,14 @@ class ThemeManager:
 
         for theme_file in self.themes_dir.glob("*.yaml"):
             try:
-                with open(theme_file, 'r') as f:
+                with open(theme_file, "r") as f:
                     theme_data = yaml.safe_load(f)
                     theme_name = theme_file.stem
                     themes[theme_name] = Theme(**theme_data)
             except Exception:
                 # Ignore invalid theme files
                 pass
-        
+
         if "default" not in themes:
             themes["default"] = Theme(name="Default", description="Default theme")
 
@@ -70,5 +76,6 @@ class ThemeManager:
             # In a real app, this would save to a config file
         else:
             raise ValueError(f"Theme '{name}' not found.")
+
 
 theme_manager = ThemeManager()

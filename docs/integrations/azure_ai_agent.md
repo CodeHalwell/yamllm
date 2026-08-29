@@ -52,32 +52,43 @@ from azure.ai.agents import AgentClient
 from azure.identity import DefaultAzureCredential
 from yamllm.core.providers.base import BaseProvider
 
+
 class AzureAIAgentProvider(BaseProvider):
-    def __init__(self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs):
+    def __init__(
+        self, api_key: str, model: str, base_url: Optional[str] = None, **kwargs
+    ):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url
-        
+
         # Extract Azure AI Agent-specific parameters
-        self.project_id = kwargs.get('project_id')
-        self.agent_id = kwargs.get('agent_id')
-        self.tools = kwargs.get('tools', [])
-        
+        self.project_id = kwargs.get("project_id")
+        self.agent_id = kwargs.get("agent_id")
+        self.tools = kwargs.get("tools", [])
+
         # Initialize Azure AI Agent client
         if self.api_key.lower() == "default":
             credential = DefaultAzureCredential()
             self.client = AgentClient(endpoint=self.base_url, credential=credential)
         else:
             self.client = AgentClient(endpoint=self.base_url, api_key=self.api_key)
-        
+
         # Store additional parameters
-        self.logger = kwargs.get('logger')
-    
-    def prepare_completion_params(self, messages: List[Message], temperature: float, max_tokens: int, 
-                                 top_p: float, stop_sequences: Optional[List[str]] = None) -> Dict[str, Any]:
+        self.logger = kwargs.get("logger")
+
+    def prepare_completion_params(
+        self,
+        messages: List[Message],
+        temperature: float,
+        max_tokens: int,
+        top_p: float,
+        stop_sequences: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
         # Convert Message objects to agent-compatible format
-        agent_messages = [{"role": message.role, "content": message.content} for message in messages]
-        
+        agent_messages = [
+            {"role": message.role, "content": message.content} for message in messages
+        ]
+
         params = {
             "project_id": self.project_id,
             "agent_id": self.agent_id,
@@ -86,12 +97,12 @@ class AzureAIAgentProvider(BaseProvider):
             "max_tokens": max_tokens,
             "top_p": top_p,
         }
-        
+
         if stop_sequences and len(stop_sequences) > 0:
             params["stop"] = stop_sequences
-            
+
         return params
-    
+
     # Implement other BaseProvider methods...
 ```
 
@@ -123,35 +134,36 @@ tools:
 from azure.ai.agents import AgentClient
 from azure.identity import DefaultAzureCredential
 
+
 class AzureAgentTool:
     def __init__(self, endpoint, project_id, agent_id, api_key=None):
         self.endpoint = endpoint
         self.project_id = project_id
         self.agent_id = agent_id
-        
+
         # Initialize Azure AI Agent client
         if api_key:
             self.client = AgentClient(endpoint=endpoint, api_key=api_key)
         else:
             credential = DefaultAzureCredential()
             self.client = AgentClient(endpoint=endpoint, credential=credential)
-    
+
     def execute(self, query: str):
         """
         Execute a query using Azure AI Agent.
-        
+
         Args:
             query (str): The query to send to the agent.
-            
+
         Returns:
             str: The response from the agent.
         """
         response = self.client.create_conversation(
             project_id=self.project_id,
             agent_id=self.agent_id,
-            messages=[{"role": "user", "content": query}]
+            messages=[{"role": "user", "content": query}],
         )
-        
+
         return response.response.content
 ```
 
@@ -169,22 +181,23 @@ In this approach, yamllm-core would be extended with a new component that can:
 from yamllm.core.llm import LLM
 from azure.ai.agents import AgentClient, AgentConfiguration, ToolConfiguration
 
+
 class AzureAgentManager:
     def __init__(self, config_path, endpoint, project_id=None):
         self.llm = LLM(config_path=config_path)
         self.endpoint = endpoint
         self.project_id = project_id
         self.client = AgentClient(endpoint=endpoint)
-        
+
     def create_agent_from_tools(self, name, description, tools):
         """
         Create an Azure AI Agent with the specified tools.
-        
+
         Args:
             name (str): The name of the agent.
             description (str): The description of the agent.
             tools (List[str]): The tools to enable for the agent.
-            
+
         Returns:
             str: The agent ID.
         """
@@ -200,20 +213,17 @@ class AzureAgentManager:
                     # (implementation details would vary)
                 )
                 tool_configs.append(tool_config)
-        
+
         # Create agent configuration
         agent_config = AgentConfiguration(
-            name=name,
-            description=description,
-            tools=tool_configs
+            name=name, description=description, tools=tool_configs
         )
-        
+
         # Create the agent
         response = self.client.create_agent(
-            project_id=self.project_id,
-            agent_configuration=agent_config
+            project_id=self.project_id, agent_configuration=agent_config
         )
-        
+
         return response.agent_id
 ```
 

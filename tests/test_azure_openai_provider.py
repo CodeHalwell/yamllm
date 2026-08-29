@@ -19,16 +19,14 @@ class TestAzureOpenAIProvider(unittest.TestCase):
         self.model = "gpt-4"
         self.base_url = "https://test-endpoint.openai.azure.com"
         self.api_version = "2023-05-15"
-        
+
         # Create a mock for the AzureOpenAI client (core path)
-        self.mock_client_patcher = patch('yamllm.providers.azure_openai.AzureOpenAI')
+        self.mock_client_patcher = patch("yamllm.providers.azure_openai.AzureOpenAI")
         self.mock_client = self.mock_client_patcher.start()
-        
+
         # Set up the provider (core constructor doesn't take model)
         self.provider = AzureOpenAIProvider(
-            api_key=self.api_key,
-            base_url=self.base_url,
-            api_version=self.api_version
+            api_key=self.api_key, base_url=self.base_url, api_version=self.api_version
         )
 
     def tearDown(self):
@@ -41,12 +39,12 @@ class TestAzureOpenAIProvider(unittest.TestCase):
         self.assertEqual(self.provider.api_key, self.api_key)
         self.assertEqual(self.provider.base_url, self.base_url)
         self.assertEqual(self.provider.api_version, self.api_version)
-        
+
         # Assert that the AzureOpenAI client was initialized with the correct parameters
         self.mock_client.assert_called_with(
             api_key=self.api_key,
             api_version=self.api_version,
-            azure_endpoint=self.base_url
+            azure_endpoint=self.base_url,
         )
 
     def test_get_completion_forwards_params(self):
@@ -77,7 +75,7 @@ class TestAzureOpenAIProvider(unittest.TestCase):
             max_tokens=max_tokens,
             top_p=top_p,
             stream=False,
-            stop=stop_sequences
+            stop=stop_sequences,
         )
 
     def test_get_completion_with_tools(self):
@@ -86,7 +84,12 @@ class TestAzureOpenAIProvider(unittest.TestCase):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": "What's the weather in New York?"},
         ]
-        tools = [{"type": "function", "function": {"name": "get_weather", "parameters": {"type": "object"}}}]
+        tools = [
+            {
+                "type": "function",
+                "function": {"name": "get_weather", "parameters": {"type": "object"}},
+            }
+        ]
 
         self.provider.get_completion(
             messages=messages,
@@ -109,8 +112,6 @@ class TestAzureOpenAIProvider(unittest.TestCase):
             tool_choice="auto",
         )
 
-    
-
     def test_create_embedding(self):
         """Test creation of embeddings."""
         text = "This is a test"
@@ -125,5 +126,5 @@ class TestAzureOpenAIProvider(unittest.TestCase):
         self.assertEqual(embedding, mock_embedding)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -300,7 +300,7 @@ print(f"Cache hit rate: {metrics['cache']['embedding_hit_rate_percent']}%")
 
 # Prometheus export
 prometheus = llm.get_prometheus_metrics()
-with open('/metrics/yamllm.prom', 'w') as f:
+with open("/metrics/yamllm.prom", "w") as f:
     f.write(prometheus)
 
 # Reset metrics

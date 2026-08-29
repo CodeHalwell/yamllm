@@ -20,7 +20,7 @@ self.response_orchestrator = ResponseOrchestrator(
     max_tokens=self.max_tokens,
     top_p=self.top_p,
     stop_sequences=self.stop_sequences,
-    logger=self.logger
+    logger=self.logger,
 )
 
 # ToolSelector - handles tool filtering and intent detection
@@ -76,6 +76,7 @@ def set_stream_callback(self, callback: Callable[[str], None]):
     self.stream_callback = callback
     if self._streaming_manager:
         self._streaming_manager.stream_callback = callback
+
 
 def set_event_callback(self, callback: Callable[[Dict[str, Any]], None]):
     self.event_callback = callback

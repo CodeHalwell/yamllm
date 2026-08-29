@@ -19,7 +19,7 @@ import os
 
 llm = OpenAIGPT(
     config_path=".config_examples/openai_minimal.yaml",
-    api_key=os.environ.get("OPENAI_API_KEY")
+    api_key=os.environ.get("OPENAI_API_KEY"),
 )
 response = llm.query("Hello!")
 ```

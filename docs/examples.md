@@ -52,7 +52,7 @@ response = llm.get_response("Hello!")
 
 # Streaming usage
 for chunk in llm.get_streaming_response("Explain AI"):
-    print(chunk, end='', flush=True)
+    print(chunk, end="", flush=True)
 ```
 
 ### Enhanced Error Handling

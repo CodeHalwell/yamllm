@@ -41,7 +41,9 @@ class Actor:
         # Update task status
         task.status = TaskStatus.IN_PROGRESS
 
-        # Build action prompt
+        # Build action prompt; operator MODIFY guidance is consumed only once
+        # the action reaches a terminal result (below), so an interrupt
+        # mid-action leaves it in the checkpoint for the resumed retry.
         prompt = self._build_action_prompt(task, state)
 
         start_time = time.time()
@@ -60,7 +62,7 @@ class Actor:
                 tool_calls=response.get("tool_calls", []),
                 tool_results=response.get("tool_results", []),
                 error=None,
-                execution_time=execution_time
+                execution_time=execution_time,
             )
 
             # Update task
@@ -81,11 +83,15 @@ class Actor:
                 tool_calls=[],
                 tool_results=[],
                 error=str(e),
-                execution_time=execution_time
+                execution_time=execution_time,
             )
 
             task.status = TaskStatus.FAILED
             task.error = str(e)
+
+        # Terminal result reached: the MODIFY guidance applied to this action
+        # only (an interrupt above propagates before this and retains it)
+        state.metadata.pop("user_feedback", None)
 
         return result
 
@@ -96,7 +102,17 @@ class Actor:
 
         # Get suggested tools if available
         suggested_tools = task.metadata.get("tools", [])
-        tools_hint = f"\nSuggested tools: {', '.join(suggested_tools)}" if suggested_tools else ""
+        tools_hint = (
+            f"\nSuggested tools: {', '.join(suggested_tools)}"
+            if suggested_tools
+            else ""
+        )
+
+        # Operator guidance from an interactive MODIFY decision
+        feedback = state.metadata.get("user_feedback")
+        feedback_hint = (
+            f"\nOperator guidance (must be followed): {feedback}" if feedback else ""
+        )
 
         return f"""You are working on achieving this goal: {state.goal}
 
@@ -104,7 +120,7 @@ Current Task: {task.description}
 
 Context from previous completed tasks:
 {completed_context}
-{tools_hint}
+{tools_hint}{feedback_hint}
 
 Execute this task using the available tools. Be specific, thorough, and focus on completing just this one task.
 
@@ -134,7 +150,7 @@ Important:
     def _list_available_tools(self) -> str:
         """List available tools (if LLM has tool manager)."""
         try:
-            if hasattr(self.llm, 'tool_orchestrator') and self.llm.tool_orchestrator:
+            if hasattr(self.llm, "tool_orchestrator") and self.llm.tool_orchestrator:
                 tools = self.llm.tool_orchestrator.tool_manager.list()
                 return ", ".join(tools)
         except Exception as e:

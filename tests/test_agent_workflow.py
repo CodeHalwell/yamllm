@@ -11,11 +11,9 @@ def mock_llm():
     """Create a mock LLM."""
     llm = Mock()
     llm.query = Mock(return_value="Mock response")
-    llm.get_completion_with_tools = Mock(return_value={
-        "content": "Mock response",
-        "tool_calls": [],
-        "tool_results": []
-    })
+    llm.get_completion_with_tools = Mock(
+        return_value={"content": "Mock response", "tool_calls": [], "tool_results": []}
+    )
     return llm
 
 
@@ -84,8 +82,7 @@ def test_workflow_creates_appropriate_goal(workflow_manager):
     context = {"feature_description": "New feature"}
 
     goal = workflow_manager._create_goal_from_workflow(
-        workflow_manager.WORKFLOWS["implement_feature"],
-        context
+        workflow_manager.WORKFLOWS["implement_feature"], context
     )
 
     assert "implement_feature" in goal.lower() or "implement" in goal.lower()

@@ -6,7 +6,7 @@ from yamllm.core.ensemble import (
     EnsembleManager,
     EnsembleStrategy,
     ModelResponse,
-    EnsembleResult
+    EnsembleResult,
 )
 
 
@@ -25,11 +25,7 @@ def mock_llms():
     llm3.query = Mock(return_value="Response from model 3")
     llm3.model = "gemini-pro"
 
-    return {
-        "openai": llm1,
-        "anthropic": llm2,
-        "google": llm3
-    }
+    return {"openai": llm1, "anthropic": llm2, "google": llm3}
 
 
 def test_ensemble_manager_initialization(mock_llms):
@@ -44,10 +40,7 @@ def test_ensemble_execute_all_models(mock_llms):
     """Test executing across all models."""
     manager = EnsembleManager(mock_llms)
 
-    result = manager.execute(
-        prompt="What is 2+2?",
-        strategy=EnsembleStrategy.CONSENSUS
-    )
+    result = manager.execute(prompt="What is 2+2?", strategy=EnsembleStrategy.CONSENSUS)
 
     # All LLMs should be called
     assert mock_llms["openai"].query.called
@@ -66,7 +59,7 @@ def test_ensemble_specific_providers(mock_llms):
     result = manager.execute(
         prompt="What is 2+2?",
         strategy=EnsembleStrategy.CONSENSUS,
-        providers=["openai", "anthropic"]
+        providers=["openai", "anthropic"],
     )
 
     # Only specified LLMs should be called
@@ -81,10 +74,7 @@ def test_consensus_strategy(mock_llms):
     """Test consensus strategy."""
     manager = EnsembleManager(mock_llms)
 
-    result = manager.execute(
-        prompt="What is 2+2?",
-        strategy=EnsembleStrategy.CONSENSUS
-    )
+    result = manager.execute(prompt="What is 2+2?", strategy=EnsembleStrategy.CONSENSUS)
 
     assert result.strategy == EnsembleStrategy.CONSENSUS
     assert result.agreement_score >= 0.0
@@ -106,13 +96,15 @@ def test_best_of_n_strategy(mock_llms):
     manager = EnsembleManager(mock_llms)
 
     result = manager.execute(
-        prompt="Explain quantum computing",
-        strategy=EnsembleStrategy.BEST_OF_N
+        prompt="Explain quantum computing", strategy=EnsembleStrategy.BEST_OF_N
     )
 
     assert result.strategy == EnsembleStrategy.BEST_OF_N
     # Should select the longer, more detailed response
-    assert "detailed" in result.final_response.lower() or "comprehensive" in result.final_response.lower()
+    assert (
+        "detailed" in result.final_response.lower()
+        or "comprehensive" in result.final_response.lower()
+    )
 
 
 def test_first_success_strategy(mock_llms):
@@ -120,8 +112,7 @@ def test_first_success_strategy(mock_llms):
     manager = EnsembleManager(mock_llms)
 
     result = manager.execute(
-        prompt="What is 2+2?",
-        strategy=EnsembleStrategy.FIRST_SUCCESS
+        prompt="What is 2+2?", strategy=EnsembleStrategy.FIRST_SUCCESS
     )
 
     assert result.strategy == EnsembleStrategy.FIRST_SUCCESS
@@ -135,10 +126,7 @@ def test_handle_model_errors(mock_llms):
 
     manager = EnsembleManager(mock_llms)
 
-    result = manager.execute(
-        prompt="What is 2+2?",
-        strategy=EnsembleStrategy.CONSENSUS
-    )
+    result = manager.execute(prompt="What is 2+2?", strategy=EnsembleStrategy.CONSENSUS)
 
     # Should still return result from working models
     assert result.final_response is not None
@@ -163,10 +151,7 @@ def test_all_models_fail():
 
     manager = EnsembleManager(llms)
 
-    result = manager.execute(
-        prompt="What is 2+2?",
-        strategy=EnsembleStrategy.CONSENSUS
-    )
+    result = manager.execute(prompt="What is 2+2?", strategy=EnsembleStrategy.CONSENSUS)
 
     assert result.final_response == "All models failed"
     assert result.agreement_score == 0.0
@@ -215,7 +200,7 @@ def test_model_response_dataclass():
         model="gpt-4",
         response="Test response",
         confidence=0.95,
-        execution_time=1.5
+        execution_time=1.5,
     )
 
     assert response.provider == "openai"
@@ -231,7 +216,7 @@ def test_ensemble_result_dataclass():
     """Test EnsembleResult dataclass."""
     responses = [
         ModelResponse("openai", "gpt-4", "Response 1"),
-        ModelResponse("anthropic", "claude-3", "Response 2")
+        ModelResponse("anthropic", "claude-3", "Response 2"),
     ]
 
     result = EnsembleResult(
@@ -240,7 +225,7 @@ def test_ensemble_result_dataclass():
         responses=responses,
         agreement_score=0.85,
         selected_model="openai/gpt-4",
-        reasoning="Best agreement"
+        reasoning="Best agreement",
     )
 
     assert result.strategy == EnsembleStrategy.CONSENSUS
@@ -254,10 +239,7 @@ def test_voting_strategy(mock_llms):
     """Test voting strategy (delegates to consensus)."""
     manager = EnsembleManager(mock_llms)
 
-    result = manager.execute(
-        prompt="What is 2+2?",
-        strategy=EnsembleStrategy.VOTING
-    )
+    result = manager.execute(prompt="What is 2+2?", strategy=EnsembleStrategy.VOTING)
 
     assert result.strategy == EnsembleStrategy.VOTING
     assert result.final_response is not None
@@ -267,10 +249,7 @@ def test_execution_time_tracking(mock_llms):
     """Test that execution time is tracked."""
     manager = EnsembleManager(mock_llms)
 
-    result = manager.execute(
-        prompt="What is 2+2?",
-        strategy=EnsembleStrategy.CONSENSUS
-    )
+    result = manager.execute(prompt="What is 2+2?", strategy=EnsembleStrategy.CONSENSUS)
 
     # All responses should have execution time
     for response in result.responses:
@@ -283,10 +262,7 @@ def test_empty_llms_dict():
     manager = EnsembleManager({})
 
     with pytest.raises(ValueError, match="No LLMs available"):
-        manager.execute(
-            prompt="What is 2+2?",
-            strategy=EnsembleStrategy.CONSENSUS
-        )
+        manager.execute(prompt="What is 2+2?", strategy=EnsembleStrategy.CONSENSUS)
 
 
 def test_similarity_matrix_calculation(mock_llms):
@@ -296,7 +272,7 @@ def test_similarity_matrix_calculation(mock_llms):
     responses = [
         ModelResponse("openai", "gpt-4", "The answer is four"),
         ModelResponse("anthropic", "claude-3", "The answer is four"),
-        ModelResponse("google", "gemini", "The result is 4")
+        ModelResponse("google", "gemini", "The result is 4"),
     ]
 
     matrix = manager._calculate_similarities(responses)

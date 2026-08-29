@@ -24,28 +24,50 @@ class GoogleGeminiProvider(BaseProvider):
         # Configure client
         genai.configure(api_key=self.api_key)
         if self.base_url:
-            genai.configure(transport="rest", client_options={"api_endpoint": self.base_url})
+            genai.configure(
+                transport="rest", client_options={"api_endpoint": self.base_url}
+            )
 
         # Model is passed per-call; keep a default if provided
         self.default_model = kwargs.get("model")
 
     # Message conversion
-    def _to_google_messages(self, messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _to_google_messages(
+        self, messages: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         processed: List[Dict[str, Any]] = []
         # Combine system messages into a user prompt header
-        sys_lines: List[str] = [m.get("content", "") for m in messages if m.get("role") == "system"]
+        sys_lines: List[str] = [
+            m.get("content", "") for m in messages if m.get("role") == "system"
+        ]
         if sys_lines:
-            processed.append({"role": "user", "parts": [{"text": "System instructions:\n" + "\n".join(sys_lines)}]})
-            processed.append({"role": "model", "parts": [{"text": "I'll follow these instructions."}]})
+            processed.append(
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": "System instructions:\n" + "\n".join(sys_lines)}
+                    ],
+                }
+            )
+            processed.append(
+                {
+                    "role": "model",
+                    "parts": [{"text": "I'll follow these instructions."}],
+                }
+            )
 
         for m in messages:
             role = m.get("role")
             if role == "system":
                 continue
             if role == "user":
-                processed.append({"role": "user", "parts": [{"text": m.get("content", "")}]} )
+                processed.append(
+                    {"role": "user", "parts": [{"text": m.get("content", "")}]}
+                )
             elif role == "assistant":
-                processed.append({"role": "model", "parts": [{"text": m.get("content", "")}]} )
+                processed.append(
+                    {"role": "model", "parts": [{"text": m.get("content", "")}]}
+                )
             # tool messages are not passed here; Gemini expects function responses appended as parts
         return processed
 
@@ -53,13 +75,19 @@ class GoogleGeminiProvider(BaseProvider):
         out: List[Dict[str, Any]] = []
         for t in tools or []:
             fn = t.get("function", {}) if isinstance(t, dict) else {}
-            out.append({
-                "function_declarations": [{
-                    "name": fn.get("name"),
-                    "description": fn.get("description"),
-                    "parameters": fn.get("parameters", {"type": "object", "properties": {}}),
-                }]
-            })
+            out.append(
+                {
+                    "function_declarations": [
+                        {
+                            "name": fn.get("name"),
+                            "description": fn.get("description"),
+                            "parameters": fn.get(
+                                "parameters", {"type": "object", "properties": {}}
+                            ),
+                        }
+                    ]
+                }
+            )
         return out
 
     def get_completion(
@@ -85,8 +113,14 @@ class GoogleGeminiProvider(BaseProvider):
         gm = genai.GenerativeModel(model_name=mdl)
         try:
             if tools:
-                return gm.generate_content(contents=contents, generation_config=generation_config, tools=self._to_google_tools(tools))
-            return gm.generate_content(contents=contents, generation_config=generation_config)
+                return gm.generate_content(
+                    contents=contents,
+                    generation_config=generation_config,
+                    tools=self._to_google_tools(tools),
+                )
+            return gm.generate_content(
+                contents=contents, generation_config=generation_config
+            )
         except Exception as e:
             logger.error(f"Google Gemini error: {e}")
             raise ProviderError("Google", f"API error: {e}", original_error=e) from e
@@ -113,20 +147,37 @@ class GoogleGeminiProvider(BaseProvider):
         gm = genai.GenerativeModel(model_name=mdl)
         try:
             if tools:
-                return gm.generate_content(contents=contents, generation_config=generation_config, tools=self._to_google_tools(tools), stream=True)
-            return gm.generate_content(contents=contents, generation_config=generation_config, stream=True)
+                return gm.generate_content(
+                    contents=contents,
+                    generation_config=generation_config,
+                    tools=self._to_google_tools(tools),
+                    stream=True,
+                )
+            return gm.generate_content(
+                contents=contents, generation_config=generation_config, stream=True
+            )
         except Exception as e:
             logger.error(f"Google Gemini streaming error: {e}")
-            raise ProviderError("Google", f"Streaming error: {e}", original_error=e) from e
+            raise ProviderError(
+                "Google", f"Streaming error: {e}", original_error=e
+            ) from e
 
-    def create_embedding(self, text: str, model: str = "models/text-embedding-004") -> List[float]:
+    def create_embedding(
+        self, text: str, model: str = "models/text-embedding-004"
+    ) -> List[float]:
         try:
             resp = genai.embed_content(model=model, content=text)
-            vec = resp.get("embedding") if isinstance(resp, dict) else getattr(resp, "embedding", None)
+            vec = (
+                resp.get("embedding")
+                if isinstance(resp, dict)
+                else getattr(resp, "embedding", None)
+            )
             return list(vec or [])
         except Exception as e:
             logger.error(f"Google Gemini embedding error: {e}")
-            raise ProviderError("Google", f"Embedding error: {e}", original_error=e) from e
+            raise ProviderError(
+                "Google", f"Embedding error: {e}", original_error=e
+            ) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         # Google returns function_call parts; callers using this provider should
@@ -140,31 +191,41 @@ class GoogleGeminiProvider(BaseProvider):
                     continue
                 name = getattr(fc, "name", None) or fc.get("name")
                 args = getattr(fc, "args", None) or fc.get("args") or {}
-                calls.append({
-                    "id": f"call_{idx}",
-                    "type": "function",
-                    "function": {
-                        "name": name,
-                        "arguments": args if isinstance(args, str) else json_dumps(args),
-                    },
-                })
+                calls.append(
+                    {
+                        "id": f"call_{idx}",
+                        "type": "function",
+                        "function": {
+                            "name": name,
+                            "arguments": args
+                            if isinstance(args, str)
+                            else json_dumps(args),
+                        },
+                    }
+                )
         except Exception:
             pass
         return calls
 
-    def format_tool_results(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def format_tool_results(
+        self, tool_results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         # Convert to Google function_response part format
         res: List[Dict[str, Any]] = []
         for r in tool_results:
-            res.append({
-                "role": "user",
-                "parts": [{
-                    "function_response": {
-                        "name": r.get("name"),
-                        "response": {"content": r.get("content")},
-                    }
-                }]
-            })
+            res.append(
+                {
+                    "role": "user",
+                    "parts": [
+                        {
+                            "function_response": {
+                                "name": r.get("name"),
+                                "response": {"content": r.get("content")},
+                            }
+                        }
+                    ],
+                }
+            )
         return res
 
     def close(self):
@@ -173,6 +234,7 @@ class GoogleGeminiProvider(BaseProvider):
 
 def json_dumps(obj: Any) -> str:
     import json
+
     try:
         return json.dumps(obj)
     except Exception:

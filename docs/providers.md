@@ -8,6 +8,7 @@ YAMLLM now supports a provider-agnostic interface that allows using different LL
 
 ```python
 from yamllm.core.llm import OpenAIGPT
+
 llm = OpenAIGPT(config_path="config.yaml", api_key="your-api-key")
 ```
 
@@ -25,6 +26,7 @@ provider:
 
 ```python
 from yamllm.core.llm import AnthropicAI
+
 llm = AnthropicAI(config_path="config.yaml", api_key="your-api-key")
 ```
 
@@ -44,6 +46,7 @@ provider:
 
 ```python
 from yamllm.core.llm import GoogleGemini
+
 llm = GoogleGemini(config_path="config.yaml", api_key="your-api-key")
 ```
 
@@ -63,6 +66,7 @@ The GoogleGeminiProvider now uses the native Google GenAI SDK for improved perfo
 
 ```python
 from yamllm.core.llm import MistralAI
+
 llm = MistralAI(config_path="config.yaml", api_key="your-api-key")
 ```
 
@@ -84,6 +88,7 @@ DeepSeek is supported through an OpenAI-compatible endpoint with some specific o
 
 ```python
 from yamllm.core.llm import DeepSeek
+
 llm = DeepSeek(config_path="config.yaml", api_key="your-api-key")
 ```
 
@@ -137,6 +142,7 @@ Azure AI Foundry is supported for access to custom models deployed in Azure AI F
 
 ```python
 from yamllm.core.llm import OpenAIGPT
+
 llm = OpenAIGPT(config_path="config.yaml", api_key="your-api-key")
 ```
 
@@ -160,31 +166,53 @@ For developers who want to add new providers, the provider interface can be exte
 ```python
 from yamllm.core.providers.base import BaseProvider
 
+
 class MyCustomProvider(BaseProvider):
     def __init__(self, api_key: str, base_url: Optional[str] = None, **kwargs):
         # Initialize your provider
         pass
-        
-    def get_completion(self, messages, model, temperature, max_tokens, top_p, stop_sequences=None, tools=None, stream=False, **kwargs):
+
+    def get_completion(
+        self,
+        messages,
+        model,
+        temperature,
+        max_tokens,
+        top_p,
+        stop_sequences=None,
+        tools=None,
+        stream=False,
+        **kwargs,
+    ):
         # Implement completion method
         pass
-        
-    def get_streaming_completion(self, messages, model, temperature, max_tokens, top_p, stop_sequences=None, tools=None, **kwargs):
+
+    def get_streaming_completion(
+        self,
+        messages,
+        model,
+        temperature,
+        max_tokens,
+        top_p,
+        stop_sequences=None,
+        tools=None,
+        **kwargs,
+    ):
         # Implement streaming completion method
         pass
-        
+
     def create_embedding(self, text, model):
         # Implement embedding creation
         pass
-        
+
     def format_tool_calls(self, tool_calls):
         # Format provider-specific tool calls to standard format
         pass
-        
+
     def format_tool_results(self, tool_results):
         # Format standard tool results to provider-specific format
         pass
-        
+
     def close(self):
         # Close any resources
         pass

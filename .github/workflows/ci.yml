@@ -26,17 +26,19 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install ruff black mypy pytest
+          pip install ruff mypy pytest
 
       - name: Lint (ruff)
         run: ruff check .
 
-      - name: Format (black --check)
-        run: black --check .
+      - name: Format (ruff format --check)
+        run: ruff format --check .
 
       - name: Type check (mypy)
         run: mypy yamllm || true
 
       - name: Run tests
+        # Run even when lint/format fail so test signal is never masked
+        if: success() || failure()
         run: pytest -q
 

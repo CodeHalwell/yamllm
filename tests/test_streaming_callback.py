@@ -32,8 +32,12 @@ def test_llm_streaming_callback_invoked():
     mock_config.context.memory.max_messages = 5
     mock_config.context.memory.session_id = "s"
     mock_config.context.memory.conversation_db = "memory/conversation_history.db"
-    mock_config.context.memory.vector_store.index_path = "memory/vector_store/faiss_index.idx"
-    mock_config.context.memory.vector_store.metadata_path = "memory/vector_store/metadata.pkl"
+    mock_config.context.memory.vector_store.index_path = (
+        "memory/vector_store/faiss_index.idx"
+    )
+    mock_config.context.memory.vector_store.metadata_path = (
+        "memory/vector_store/metadata.pkl"
+    )
     mock_config.context.memory.vector_store.top_k = 2
     mock_config.output.format = "text"
     mock_config.output.stream = True
@@ -116,7 +120,10 @@ def test_streaming_with_tools_stub_loop():
                     {
                         "id": "1",
                         "type": "function",
-                        "function": {"name": "calculator", "arguments": "{\"expression\": \"1+1\"}"},
+                        "function": {
+                            "name": "calculator",
+                            "arguments": '{"expression": "1+1"}',
+                        },
                     }
                 ]
                 yield {"status": "processing", "iteration": 1, "max_iterations": 5}

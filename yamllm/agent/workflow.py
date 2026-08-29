@@ -29,10 +29,10 @@ class WorkflowManager:
                 "Propose a fix for the bug",
                 "Implement the fix",
                 "Test the fix to ensure it works",
-                "Commit changes with descriptive message"
+                "Commit changes with descriptive message",
             ],
             "required_context": ["bug_description"],
-            "optional_context": ["file_path", "error_message", "expected_behavior"]
+            "optional_context": ["file_path", "error_message", "expected_behavior"],
         },
         "implement_feature": {
             "name": "Implement Feature",
@@ -45,10 +45,10 @@ class WorkflowManager:
                 "Add error handling and edge cases",
                 "Write tests for the new feature",
                 "Update documentation",
-                "Commit changes"
+                "Commit changes",
             ],
             "required_context": ["feature_description"],
-            "optional_context": ["requirements", "constraints", "files"]
+            "optional_context": ["requirements", "constraints", "files"],
         },
         "refactor_code": {
             "name": "Refactor Code",
@@ -59,10 +59,10 @@ class WorkflowManager:
                 "Plan refactoring steps",
                 "Execute refactoring incrementally",
                 "Run tests to verify behavior unchanged",
-                "Commit refactored code"
+                "Commit refactored code",
             ],
             "required_context": ["target_file"],
-            "optional_context": ["refactoring_goals", "constraints"]
+            "optional_context": ["refactoring_goals", "constraints"],
         },
         "write_tests": {
             "name": "Write Tests",
@@ -73,10 +73,10 @@ class WorkflowManager:
                 "Write unit tests",
                 "Write integration tests if needed",
                 "Run tests and verify coverage",
-                "Commit test code"
+                "Commit test code",
             ],
             "required_context": ["target_file"],
-            "optional_context": ["test_framework", "coverage_goal"]
+            "optional_context": ["test_framework", "coverage_goal"],
         },
         "review_code": {
             "name": "Review Code",
@@ -87,10 +87,10 @@ class WorkflowManager:
                 "Evaluate code style and best practices",
                 "Check for security vulnerabilities",
                 "Suggest improvements and optimizations",
-                "Provide summary of findings"
+                "Provide summary of findings",
             ],
             "required_context": ["files_to_review"],
-            "optional_context": ["diff", "pr_description"]
+            "optional_context": ["diff", "pr_description"],
         },
         "investigate_issue": {
             "name": "Investigate Issue",
@@ -101,11 +101,11 @@ class WorkflowManager:
                 "Examine related code and configuration",
                 "Identify potential causes",
                 "Test hypotheses",
-                "Document findings and recommendations"
+                "Document findings and recommendations",
             ],
             "required_context": ["issue_description"],
-            "optional_context": ["logs", "error_messages", "reproduction_steps"]
-        }
+            "optional_context": ["logs", "error_messages", "reproduction_steps"],
+        },
     }
 
     def __init__(self, agent: Agent, logger: Optional[logging.Logger] = None):
@@ -120,9 +120,7 @@ class WorkflowManager:
         self.logger = logger or logging.getLogger(__name__)
 
     def execute_workflow(
-        self,
-        workflow_name: str,
-        context: Dict[str, Any]
+        self, workflow_name: str, context: Dict[str, Any]
     ) -> AgentState:
         """
         Execute a named workflow.
@@ -139,7 +137,9 @@ class WorkflowManager:
         """
         if workflow_name not in self.WORKFLOWS:
             available = ", ".join(self.WORKFLOWS.keys())
-            raise ValueError(f"Unknown workflow: {workflow_name}. Available: {available}")
+            raise ValueError(
+                f"Unknown workflow: {workflow_name}. Available: {available}"
+            )
 
         workflow = self.WORKFLOWS[workflow_name]
 
@@ -162,7 +162,7 @@ class WorkflowManager:
                 "title": workflow["name"],
                 "description": workflow["description"],
                 "required_context": workflow.get("required_context", []),
-                "optional_context": workflow.get("optional_context", [])
+                "optional_context": workflow.get("optional_context", []),
             }
             for name, workflow in self.WORKFLOWS.items()
         ]
@@ -174,7 +174,9 @@ class WorkflowManager:
 
         return self.WORKFLOWS[workflow_name]
 
-    def _validate_context(self, workflow: Dict[str, Any], context: Dict[str, Any]) -> None:
+    def _validate_context(
+        self, workflow: Dict[str, Any], context: Dict[str, Any]
+    ) -> None:
         """
         Validate that required context is provided.
 
@@ -193,7 +195,9 @@ class WorkflowManager:
                 f"Missing required context for workflow '{workflow['name']}': {', '.join(missing)}"
             )
 
-    def _create_goal_from_workflow(self, workflow: Dict[str, Any], context: Dict[str, Any]) -> str:
+    def _create_goal_from_workflow(
+        self, workflow: Dict[str, Any], context: Dict[str, Any]
+    ) -> str:
         """
         Create a goal string from workflow template.
 
@@ -208,7 +212,7 @@ class WorkflowManager:
             f"Workflow: {workflow['name']}",
             f"Description: {workflow['description']}",
             "",
-            "Context:"
+            "Context:",
         ]
 
         # Add context information
@@ -218,19 +222,20 @@ class WorkflowManager:
             else:
                 goal_parts.append(f"- {key}: (provided)")
 
-        goal_parts.extend([
-            "",
-            "Follow these steps:",
-        ])
+        goal_parts.extend(
+            [
+                "",
+                "Follow these steps:",
+            ]
+        )
 
         # Add workflow steps
-        for i, step in enumerate(workflow['steps'], 1):
+        for i, step in enumerate(workflow["steps"], 1):
             goal_parts.append(f"{i}. {step}")
 
-        goal_parts.extend([
-            "",
-            "Complete as many steps as possible to achieve the workflow goal."
-        ])
+        goal_parts.extend(
+            ["", "Complete as many steps as possible to achieve the workflow goal."]
+        )
 
         return "\n".join(goal_parts)
 

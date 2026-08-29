@@ -16,14 +16,14 @@
 - Run examples: `uv run examples/openai_example.py`
 - Tests (quiet): `uv run -m pytest -q`
 - Lint: `uv run ruff check .`
-- Format check: `uv run black --check .`
+- Format check: `uv run ruff format --check .`
 - Types: `uv run mypy yamllm`
 
 ## Coding Style & Naming Conventions
 - Python 3.10+; PEP 8; 4‑space indentation
 - Names: `snake_case` for functions/variables, `PascalCase` for classes, `UPPER_SNAKE_CASE` for constants
 - Keep modules focused and small; avoid cross‑layer imports (UI → core only)
-- Use `ruff` and `black`; keep diffs minimal and scoped
+- Use `ruff` (lint and format); keep diffs minimal and scoped
 
 ## Testing Guidelines
 - Framework: `pytest`

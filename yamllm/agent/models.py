@@ -8,6 +8,7 @@ import uuid
 
 class TaskStatus(Enum):
     """Status of a task in the agent workflow."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
@@ -28,13 +29,40 @@ class Task:
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def create(cls, description: str, dependencies: Optional[List[str]] = None, **metadata) -> "Task":
+    def create(
+        cls, description: str, dependencies: Optional[List[str]] = None, **metadata
+    ) -> "Task":
         """Create a new task with auto-generated ID."""
         return cls(
             id=str(uuid.uuid4())[:8],
             description=description,
             dependencies=dependencies or [],
-            metadata=metadata
+            metadata=metadata,
+        )
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to a JSON-serialisable dictionary."""
+        return {
+            "id": self.id,
+            "description": self.description,
+            "status": self.status.value,
+            "dependencies": list(self.dependencies),
+            "result": self.result,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Task":
+        """Recreate a task from :meth:`to_dict` output."""
+        return cls(
+            id=data["id"],
+            description=data["description"],
+            status=TaskStatus(data.get("status", TaskStatus.PENDING.value)),
+            dependencies=list(data.get("dependencies", [])),
+            result=data.get("result"),
+            error=data.get("error"),
+            metadata=data.get("metadata", {}),
         )
 
 
@@ -67,12 +95,20 @@ class AgentState:
         return [t for t in self.tasks if t.status == TaskStatus.PENDING]
 
     def get_available_tasks(self) -> List[Task]:
-        """Get tasks that can be executed (dependencies met, not completed)."""
+        """Get tasks that can be executed (dependencies met, not terminal).
+
+        FAILED is terminal: a task that failed or was rejected by an
+        operator must not be offered for execution again.
+        """
         available = []
         completed_ids = {t.id for t in self.tasks if t.status == TaskStatus.COMPLETED}
 
         for task in self.tasks:
-            if task.status in [TaskStatus.COMPLETED, TaskStatus.IN_PROGRESS]:
+            if task.status in [
+                TaskStatus.COMPLETED,
+                TaskStatus.IN_PROGRESS,
+                TaskStatus.FAILED,
+            ]:
                 continue
 
             # Check if all dependencies are completed
@@ -98,6 +134,39 @@ class AgentState:
         """Add an action to the history."""
         self.action_history.append(action)
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to a JSON-serialisable dictionary (used for checkpoints)."""
+        return {
+            "goal": self.goal,
+            "tasks": [t.to_dict() for t in self.tasks],
+            "current_task_id": self.current_task_id,
+            "iteration": self.iteration,
+            "max_iterations": self.max_iterations,
+            "thought_history": list(self.thought_history),
+            "action_history": list(self.action_history),
+            "completed": self.completed,
+            "success": self.success,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AgentState":
+        """Recreate state from :meth:`to_dict` output (checkpoint resume)."""
+        return cls(
+            goal=data["goal"],
+            tasks=[Task.from_dict(t) for t in data.get("tasks", [])],
+            current_task_id=data.get("current_task_id"),
+            iteration=data.get("iteration", 0),
+            max_iterations=data.get("max_iterations", 10),
+            thought_history=list(data.get("thought_history", [])),
+            action_history=list(data.get("action_history", [])),
+            completed=data.get("completed", False),
+            success=data.get("success", False),
+            error=data.get("error"),
+            metadata=data.get("metadata", {}),
+        )
+
 
 @dataclass
 class ActionResult:
@@ -120,7 +189,7 @@ class ActionResult:
             "tool_calls": self.tool_calls,
             "tool_results": self.tool_results,
             "error": self.error,
-            "execution_time": self.execution_time
+            "execution_time": self.execution_time,
         }
 
 
@@ -142,5 +211,5 @@ class Observation:
             learned=data.get("learned", ""),
             unblocked_tasks=data.get("unblocked_tasks", []),
             progress_made=data.get("progress_made", ""),
-            plan_adjustments=data.get("plan_adjustments", "")
+            plan_adjustments=data.get("plan_adjustments", ""),
         )

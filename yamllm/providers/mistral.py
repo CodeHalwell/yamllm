@@ -83,7 +83,9 @@ class MistralProvider(BaseProvider):
             return list(resp.data[0].embedding)
         except Exception as e:
             logger.error(f"Mistral embedding error: {e}")
-            raise ProviderError("Mistral", f"Embedding error: {e}", original_error=e) from e
+            raise ProviderError(
+                "Mistral", f"Embedding error: {e}", original_error=e
+            ) from e
 
     def format_tool_calls(self, tool_calls: Any) -> List[Dict[str, Any]]:
         out: List[Dict[str, Any]] = []
@@ -112,7 +114,9 @@ class MistralProvider(BaseProvider):
                 )
         return out
 
-    def format_tool_results(self, tool_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def format_tool_results(
+        self, tool_results: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         return [
             {
                 "role": "tool",

@@ -1,5 +1,6 @@
 from typing import Dict, Any, List, Optional
 
+
 class Tool:
     def __init__(self, name: Optional[str] = None, description: Optional[str] = None):
         # Allow subclasses to define class attributes for name/description
@@ -29,10 +30,12 @@ class Tool:
             },
         }
 
+
 class ToolRegistry:
     """
     Deprecated: Use ToolManager instead. Kept for backward compatibility in docs.
     """
+
     def __init__(self):
         self._tools: Dict[str, Tool] = {}
 

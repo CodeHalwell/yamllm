@@ -77,7 +77,9 @@ class SecurityManager:
                 continue
 
         if not is_allowed:
-            raise ToolExecutionError(f"Access denied: {file_path} is outside allowed directories")
+            raise ToolExecutionError(
+                f"Access denied: {file_path} is outside allowed directories"
+            )
 
         return abs_path
 
@@ -109,17 +111,20 @@ class SecurityManager:
                 or ip.is_multicast
                 or ip.is_reserved
             ):
-                raise ToolExecutionError(f"Access to internal IP address {ip} is not allowed")
+                raise ToolExecutionError(
+                    f"Access to internal IP address {ip} is not allowed"
+                )
         except ValueError:
             # Not a raw IP; check blocked domains list
             # Block mDNS/zeroconf style hostnames and user-specified blocked domains
             if host.endswith(".local"):
                 raise ToolExecutionError("Access to .local domains is not allowed")
+
             # Only block exact domain or subdomains, not arbitrary substring matches
             def _is_blocked_domain(blocked: str, hostname: str) -> bool:
-                blocked = blocked.strip('.').lower()
-                hostname = (hostname or '').strip('.').lower()
-                return hostname == blocked or hostname.endswith('.' + blocked)
+                blocked = blocked.strip(".").lower()
+                hostname = (hostname or "").strip(".").lower()
+                return hostname == blocked or hostname.endswith("." + blocked)
 
             if any(_is_blocked_domain(bd, host) for bd in self.blocked_domains if bd):
                 raise ToolExecutionError(f"Access to domain {host} is blocked")

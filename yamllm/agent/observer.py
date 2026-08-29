@@ -1,10 +1,10 @@
 """Observation component for interpreting action results."""
 
-import json
 import logging
 from typing import Optional
 
 from .models import AgentState, ActionResult, Observation, TaskStatus
+from .parsing import parse_json_response
 
 
 class Observer:
@@ -46,14 +46,16 @@ class Observer:
 
         # For simple success/failure, we can skip LLM observation
         if not action_result.success:
-            self.logger.warning(f"Task {action_result.task_id} failed: {action_result.error}")
+            self.logger.warning(
+                f"Task {action_result.task_id} failed: {action_result.error}"
+            )
             # Don't ask LLM to interpret obvious failures
             observations = Observation(
                 success_assessment=False,
                 learned=f"Task failed with error: {action_result.error}",
                 unblocked_tasks=[],
                 progress_made="No progress - task failed",
-                plan_adjustments="May need to retry or adjust approach"
+                plan_adjustments="May need to retry or adjust approach",
             )
         else:
             # Build observation prompt
@@ -76,7 +78,7 @@ class Observer:
                     learned="Task completed successfully",
                     unblocked_tasks=[],
                     progress_made="Made progress on goal",
-                    plan_adjustments=""
+                    plan_adjustments="",
                 )
 
         # Update state based on observations
@@ -84,9 +86,14 @@ class Observer:
 
         return state
 
-    def _build_observation_prompt(self, action_result: ActionResult, state: AgentState) -> str:
+    def _build_observation_prompt(
+        self, action_result: ActionResult, state: AgentState
+    ) -> str:
         """Build prompt for observation."""
-        tool_names = [tc.get("function", {}).get("name", "unknown") for tc in action_result.tool_calls]
+        tool_names = [
+            tc.get("function", {}).get("name", "unknown")
+            for tc in action_result.tool_calls
+        ]
 
         return f"""You are observing the result of an action taken to achieve this goal: {state.goal}
 
@@ -96,9 +103,9 @@ Action taken:
 
 Result:
 - Success: {action_result.success}
-- Tools used: {tool_names if tool_names else 'None'}
-- Output: {action_result.response[:500] if action_result.response else 'N/A'}
-- Error: {action_result.error or 'None'}
+- Tools used: {tool_names if tool_names else "None"}
+- Output: {action_result.response[:500] if action_result.response else "N/A"}
+- Error: {action_result.error or "None"}
 - Execution time: {action_result.execution_time:.2f}s
 
 Remaining tasks:
@@ -145,11 +152,7 @@ Important: Keep responses concise. Ensure valid JSON."""
     def _parse_observations(self, response: str) -> Observation:
         """Parse observation response."""
         try:
-            # Extract JSON
-            json_str = self._extract_json(response)
-            data = json.loads(json_str)
-
-            return Observation.from_dict(data)
+            return Observation.from_dict(parse_json_response(response))
 
         except Exception as e:
             self.logger.warning(f"Failed to parse observations: {e}")
@@ -159,31 +162,11 @@ Important: Keep responses concise. Ensure valid JSON."""
                 learned="Task completed",
                 unblocked_tasks=[],
                 progress_made="Made progress",
-                plan_adjustments=""
+                plan_adjustments="",
             )
 
-    def _extract_json(self, text: str) -> str:
-        """Extract JSON from text."""
-        # Try to find JSON block in markdown
-        if "```json" in text:
-            start = text.find("```json") + 7
-            end = text.find("```", start)
-            if end > start:
-                return text[start:end].strip()
-
-        # Try to find JSON object
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        if start >= 0 and end > start:
-            return text[start:end]
-
-        return text
-
     def _update_state(
-        self,
-        observations: Observation,
-        state: AgentState,
-        action_result: ActionResult
+        self, observations: Observation, state: AgentState, action_result: ActionResult
     ) -> AgentState:
         """Update state based on observations."""
 
@@ -204,10 +187,12 @@ Important: Keep responses concise. Ensure valid JSON."""
         # Store observation in metadata
         if "observations" not in state.metadata:
             state.metadata["observations"] = []
-        state.metadata["observations"].append({
-            "task_id": action_result.task_id,
-            "learned": observations.learned,
-            "progress": observations.progress_made
-        })
+        state.metadata["observations"].append(
+            {
+                "task_id": action_result.task_id,
+                "learned": observations.learned,
+                "progress": observations.progress_made,
+            }
+        )
 
         return state

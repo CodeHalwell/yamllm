@@ -11,6 +11,7 @@ The foundational class for all LLM providers:
 ```python
 from yamllm.core.llm import LLM
 
+
 class LLM:
     def __init__(self, config_path: str, api_key: str):
         """
@@ -50,18 +51,20 @@ class LLM:
             bytes: The embedding as bytes.
         """
 
-    def _make_api_call(self, api_func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
+    def _make_api_call(
+        self, api_func: Callable[..., T], *args: Any, **kwargs: Any
+    ) -> T:
         """
         Make an API call with retry and exponential backoff for transient failures.
-        
+
         Args:
             api_func: The API function to call
             *args: Positional arguments to pass to the API function
             **kwargs: Keyword arguments to pass to the API function
-            
+
         Returns:
             The result of the API function call
-            
+
         Raises:
             Exception: If all retry attempts fail
         """
@@ -125,9 +128,10 @@ class LLM:
 ```python
 from yamllm.core.llm import OpenAIGPT
 
+
 class OpenAIGPT(LLM):
     """OpenAI GPT model implementation."""
-    
+
     def __init__(self, config_path: str, api_key: str):
         """
         Initialize OpenAI GPT client.
@@ -143,9 +147,10 @@ class OpenAIGPT(LLM):
 ```python
 from yamllm.core.llm import GoogleGemini
 
+
 class GoogleGemini(LLM):
     """Google Gemini model implementation."""
-    
+
     def __init__(self, config_path: str, api_key: str):
         """
         Initialize Google Gemini client.
@@ -161,9 +166,10 @@ class GoogleGemini(LLM):
 ```python
 from yamllm.core.llm import DeepSeek
 
+
 class DeepSeek(LLM):
     """DeepSeek model implementation."""
-    
+
     def __init__(self, config_path: str, api_key: str):
         """
         Initialize DeepSeek client.
@@ -179,9 +185,10 @@ class DeepSeek(LLM):
 ```python
 from yamllm.core.llm import MistralAI
 
+
 class MistralAI(LLM):
     """MistralAI model implementation."""
-    
+
     def __init__(self, config_path: str, api_key: str):
         """
         Initialize MistralAI client.
@@ -199,9 +206,10 @@ class MistralAI(LLM):
 ```python
 from yamllm import ConversationStore
 
+
 class ConversationStore:
     """SQLite-based conversation history manager."""
-    
+
     def __init__(self, db_path: str = "yamllm/memory/conversation_history.db"):
         """
         Initialize conversation store.
@@ -209,7 +217,7 @@ class ConversationStore:
         Args:
             db_path (str): Path to SQLite database
         """
-    
+
     def add_message(self, session_id: str, role: str, content: str) -> int:
         """
         Add a message to history.
@@ -223,7 +231,9 @@ class ConversationStore:
             int: Message ID
         """
 
-    def get_messages(self, session_id: str = None, limit: int = None) -> List[Dict[str, str]]:
+    def get_messages(
+        self, session_id: str = None, limit: int = None
+    ) -> List[Dict[str, str]]:
         """
         Retrieve conversation history.
 
@@ -241,10 +251,13 @@ class ConversationStore:
 ```python
 from yamllm import VectorStore
 
+
 class VectorStore:
     """FAISS-based vector storage for semantic search."""
-    
-    def __init__(self, vector_dim: int = 1536, store_path: str = "yamllm/memory/vector_store"):
+
+    def __init__(
+        self, vector_dim: int = 1536, store_path: str = "yamllm/memory/vector_store"
+    ):
         """
         Initialize vector store.
 
@@ -253,7 +266,9 @@ class VectorStore:
             store_path (str): Path to store files
         """
 
-    def add_vector(self, vector: List[float], message_id: int, content: str, role: str) -> None:
+    def add_vector(
+        self, vector: List[float], message_id: int, content: str, role: str
+    ) -> None:
         """
         Add vector to store.
 

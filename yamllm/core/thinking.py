@@ -81,14 +81,41 @@ class ThinkingManager:
             return True
         # Multiple tool intents
         intents = 0
-        intents += 1 if any(k in p for k in ("http://", "https://", "search", "scrape", "website")) else 0
-        intents += 1 if any(k in p for k in ("calculate", "sum", "difference", "+", "-", "*", "/")) else 0
-        intents += 1 if any(k in p for k in ("convert", "units", "km", "miles", "celsius", "fahrenheit")) else 0
-        intents += 1 if any(k in p for k in ("timezone", "time in", "utc", "pst", "est")) else 0
+        intents += (
+            1
+            if any(
+                k in p for k in ("http://", "https://", "search", "scrape", "website")
+            )
+            else 0
+        )
+        intents += (
+            1
+            if any(
+                k in p for k in ("calculate", "sum", "difference", "+", "-", "*", "/")
+            )
+            else 0
+        )
+        intents += (
+            1
+            if any(
+                k in p
+                for k in ("convert", "units", "km", "miles", "celsius", "fahrenheit")
+            )
+            else 0
+        )
+        intents += (
+            1
+            if any(k in p for k in ("timezone", "time in", "utc", "pst", "est"))
+            else 0
+        )
         return intents >= 2
 
     def generate_thinking(
-        self, prompt: str, available_tools: List[str], provider_client: Any, model_fallback: str
+        self,
+        prompt: str,
+        available_tools: List[str],
+        provider_client: Any,
+        model_fallback: str,
     ) -> List[ThinkingBlock]:
         if not self.enabled:
             return []
@@ -97,15 +124,23 @@ class ThinkingManager:
 
         # 1) Analysis
         analysis_prompt = self._create_analysis_prompt(prompt, available_tools)
-        analysis = self._get_thinking_response(analysis_prompt, provider_client, model_fallback)
+        analysis = self._get_thinking_response(
+            analysis_prompt, provider_client, model_fallback
+        )
         blocks.append(
-            ThinkingBlock(step=ThinkingStep.ANALYSIS, content=analysis, timestamp=time.time())
+            ThinkingBlock(
+                step=ThinkingStep.ANALYSIS, content=analysis, timestamp=time.time()
+            )
         )
 
         # 2) Tool planning
         if available_tools and self.show_tool_reasoning:
-            tool_prompt = self._create_tool_planning_prompt(prompt, available_tools, analysis)
-            tool_thinking = self._get_thinking_response(tool_prompt, provider_client, model_fallback)
+            tool_prompt = self._create_tool_planning_prompt(
+                prompt, available_tools, analysis
+            )
+            tool_thinking = self._get_thinking_response(
+                tool_prompt, provider_client, model_fallback
+            )
             blocks.append(
                 ThinkingBlock(
                     step=ThinkingStep.TOOL_PLANNING,
@@ -117,9 +152,15 @@ class ThinkingManager:
 
         # 3) Execution plan
         exec_prompt = self._create_execution_prompt(prompt, blocks)
-        exec_plan = self._get_thinking_response(exec_prompt, provider_client, model_fallback)
+        exec_plan = self._get_thinking_response(
+            exec_prompt, provider_client, model_fallback
+        )
         blocks.append(
-            ThinkingBlock(step=ThinkingStep.EXECUTION_PLAN, content=exec_plan, timestamp=time.time())
+            ThinkingBlock(
+                step=ThinkingStep.EXECUTION_PLAN,
+                content=exec_plan,
+                timestamp=time.time(),
+            )
         )
 
         self.thinking_blocks = blocks
@@ -171,7 +212,9 @@ class ThinkingManager:
             "Final approach:\n"
         )
 
-    def _get_thinking_response(self, prompt: str, provider_client: Any, model_fallback: str) -> str:
+    def _get_thinking_response(
+        self, prompt: str, provider_client: Any, model_fallback: str
+    ) -> str:
         try:
             model_name = self.thinking_model or model_fallback
             params = dict(
@@ -198,7 +241,11 @@ class ThinkingManager:
             return str(resp)
         except Exception as e:
             # Redact internal error text if redaction enabled
-            return "[Thinking unavailable]" if self.redact_logs else f"[Thinking error: {e}]"
+            return (
+                "[Thinking unavailable]"
+                if self.redact_logs
+                else f"[Thinking error: {e}]"
+            )
 
     def format_thinking_for_display(self, blocks: List[ThinkingBlock]) -> str:
         if not blocks:
@@ -211,4 +258,3 @@ class ThinkingManager:
             parts.append("=" * 50 + "\n")
         parts.append("</thinking>\n")
         return "".join(parts)
-

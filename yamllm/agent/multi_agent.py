@@ -10,19 +10,21 @@ import json
 
 class AgentRole(Enum):
     """Specialized agent roles."""
+
     COORDINATOR = "coordinator"  # Coordinates other agents
-    RESEARCHER = "researcher"    # Gathers information
-    CODER = "coder"             # Writes code
-    REVIEWER = "reviewer"        # Reviews work
-    TESTER = "tester"           # Tests functionality
-    DEBUGGER = "debugger"        # Fixes bugs
-    DOCUMENTER = "documenter"    # Writes documentation
-    ANALYST = "analyst"          # Analyzes data/problems
+    RESEARCHER = "researcher"  # Gathers information
+    CODER = "coder"  # Writes code
+    REVIEWER = "reviewer"  # Reviews work
+    TESTER = "tester"  # Tests functionality
+    DEBUGGER = "debugger"  # Fixes bugs
+    DOCUMENTER = "documenter"  # Writes documentation
+    ANALYST = "analyst"  # Analyzes data/problems
 
 
 @dataclass
 class AgentMessage:
     """Message passed between agents."""
+
     from_agent: str
     to_agent: str
     message_type: str  # "request", "response", "broadcast", "notification"
@@ -34,6 +36,7 @@ class AgentMessage:
 @dataclass
 class AgentCapability:
     """Defines what an agent can do."""
+
     role: AgentRole
     skills: List[str]
     max_concurrent_tasks: int = 1
@@ -43,6 +46,7 @@ class AgentCapability:
 @dataclass
 class CollaborativeTask:
     """Task for multi-agent collaboration."""
+
     task_id: str
     description: str
     required_roles: List[AgentRole]
@@ -61,7 +65,7 @@ class CollaborativeAgent:
         agent_id: str,
         llm,
         capability: AgentCapability,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """
         Initialize collaborative agent.
@@ -94,7 +98,7 @@ class CollaborativeAgent:
         to_agent: str,
         message_type: str,
         content: Dict[str, Any],
-        priority: int = 1
+        priority: int = 1,
     ):
         """Send message to another agent."""
         message = AgentMessage(
@@ -102,7 +106,7 @@ class CollaborativeAgent:
             to_agent=to_agent,
             message_type=message_type,
             content=content,
-            priority=priority
+            priority=priority,
         )
         self.outbox.append(message)
         return message
@@ -138,7 +142,7 @@ class CollaborativeAgent:
             return self.send_message(
                 to_agent=message.from_agent,
                 message_type="response",
-                content={"result": result, "status": "completed"}
+                content={"result": result, "status": "completed"},
             )
 
         elif request_type == "review":
@@ -149,7 +153,7 @@ class CollaborativeAgent:
             return self.send_message(
                 to_agent=message.from_agent,
                 message_type="response",
-                content={"review": review}
+                content={"review": review},
             )
 
         return None
@@ -160,23 +164,15 @@ class CollaborativeAgent:
 
 Task: {task_description}
 
-Your skills: {', '.join(self.capability.skills)}
+Your skills: {", ".join(self.capability.skills)}
 
 Provide your response:"""
 
         try:
             response = self.llm.query(prompt)
-            return {
-                "success": True,
-                "result": response,
-                "agent": self.agent_id
-            }
+            return {"success": True, "result": response, "agent": self.agent_id}
         except Exception as e:
-            return {
-                "success": False,
-                "error": str(e),
-                "agent": self.agent_id
-            }
+            return {"success": False, "error": str(e), "agent": self.agent_id}
 
     def _review_work(self, work: str) -> Dict[str, Any]:
         """Review work from another agent."""
@@ -196,24 +192,16 @@ Your review:"""
             return {
                 "reviewer": self.agent_id,
                 "feedback": review,
-                "approved": "approve" in review.lower()
+                "approved": "approve" in review.lower(),
             }
         except Exception as e:
-            return {
-                "reviewer": self.agent_id,
-                "error": str(e),
-                "approved": False
-            }
+            return {"reviewer": self.agent_id, "error": str(e), "approved": False}
 
 
 class AgentCoordinator:
     """Coordinates multiple agents for collaborative tasks."""
 
-    def __init__(
-        self,
-        coordinator_llm,
-        logger: Optional[logging.Logger] = None
-    ):
+    def __init__(self, coordinator_llm, logger: Optional[logging.Logger] = None):
         """
         Initialize agent coordinator.
 
@@ -237,14 +225,16 @@ class AgentCoordinator:
     def register_agent(self, agent: CollaborativeAgent):
         """Register an agent with the coordinator."""
         self.agents[agent.agent_id] = agent
-        self.logger.info(f"Registered agent: {agent.agent_id} ({agent.capability.role.value})")
+        self.logger.info(
+            f"Registered agent: {agent.agent_id} ({agent.capability.role.value})"
+        )
 
     def create_task(
         self,
         task_id: str,
         description: str,
         required_roles: List[AgentRole],
-        dependencies: Optional[List[str]] = None
+        dependencies: Optional[List[str]] = None,
     ) -> CollaborativeTask:
         """Create a collaborative task.
 
@@ -309,7 +299,10 @@ class AgentCoordinator:
         for role in task.required_roles:
             # Find available agent with this role
             for agent_id, agent in self.agents.items():
-                if agent.capability.role == role and agent_id not in task.assigned_agents.values():
+                if (
+                    agent.capability.role == role
+                    and agent_id not in task.assigned_agents.values()
+                ):
                     # Check capacity
                     if len(agent.current_tasks) < agent.capability.max_concurrent_tasks:
                         task.assigned_agents[role] = agent_id
@@ -320,9 +313,7 @@ class AgentCoordinator:
         return len(task.assigned_agents) == len(task.required_roles)
 
     def execute_collaborative_task(
-        self,
-        goal: str,
-        max_iterations: int = 10
+        self, goal: str, max_iterations: int = 10
     ) -> Dict[str, Any]:
         """
         Execute a goal using collaborative agents.
@@ -357,7 +348,9 @@ class AgentCoordinator:
                 # Assign agents if not already assigned
                 if not task.assigned_agents:
                     if not self.assign_agents(task_id):
-                        self.logger.warning(f"Could not assign agents to task: {task_id}")
+                        self.logger.warning(
+                            f"Could not assign agents to task: {task_id}"
+                        )
                         continue
 
                 # Execute task
@@ -375,7 +368,7 @@ class AgentCoordinator:
             "goal": goal,
             "tasks_completed": len(results),
             "results": results,
-            "iterations": iteration + 1
+            "iterations": iteration + 1,
         }
 
     def _decompose_goal(self, goal: str) -> List[CollaborativeTask]:
@@ -419,7 +412,7 @@ Tasks:"""
                     task_id=task_def["task_id"],
                     description=task_def["description"],
                     required_roles=[AgentRole(r) for r in task_def["required_roles"]],
-                    dependencies=task_def.get("dependencies", [])
+                    dependencies=task_def.get("dependencies", []),
                 )
                 tasks.append(task)
 
@@ -431,7 +424,7 @@ Tasks:"""
             task = self.create_task(
                 task_id="task_1",
                 description=goal,
-                required_roles=[AgentRole.RESEARCHER, AgentRole.CODER]
+                required_roles=[AgentRole.RESEARCHER, AgentRole.CODER],
             )
             return [task]
 
@@ -461,8 +454,8 @@ Tasks:"""
                 content={
                     "request_type": "execute_task",
                     "task_description": task.description,
-                    "task_id": task.task_id
-                }
+                    "task_id": task.task_id,
+                },
             )
 
             agent.receive_message(message)
@@ -480,7 +473,9 @@ Tasks:"""
             reviewer = self.agents[reviewer_id]
 
             # Get work to review
-            work_results = [r.get("result") for r in results.values() if r.get("result")]
+            work_results = [
+                r.get("result") for r in results.values() if r.get("result")
+            ]
 
             if work_results:
                 review_msg = AgentMessage(
@@ -489,8 +484,8 @@ Tasks:"""
                     message_type="request",
                     content={
                         "request_type": "review",
-                        "work": "\n".join(str(w) for w in work_results)
-                    }
+                        "work": "\n".join(str(w) for w in work_results),
+                    },
                 )
 
                 reviewer.receive_message(review_msg)
@@ -542,13 +537,15 @@ Tasks:"""
         return {
             "registered_agents": len(self.agents),
             "active_tasks": len(self.task_queue),
-            "completed_tasks": len([t for t in self.tasks.values() if t.status == "completed"]),
+            "completed_tasks": len(
+                [t for t in self.tasks.values() if t.status == "completed"]
+            ),
             "agents": {
                 agent_id: {
                     "role": agent.capability.role.value,
                     "current_tasks": len(agent.current_tasks),
-                    "completed_tasks": len(agent.completed_tasks)
+                    "completed_tasks": len(agent.completed_tasks),
                 }
                 for agent_id, agent in self.agents.items()
-            }
+            },
         }

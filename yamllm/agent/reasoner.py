@@ -1,10 +1,11 @@
 """Reasoning component for deciding next actions."""
 
-import json
 import logging
+import re
 from typing import Tuple, List, Optional
 
 from .models import Task, AgentState
+from .parsing import parse_json_response
 
 
 class Reasoner:
@@ -66,26 +67,42 @@ class Reasoner:
 
             if next_task is None or next_task not in available_tasks:
                 # Fallback to first available task
-                self.logger.warning(f"Selected task {selected_task_id} not available, using first available")
+                self.logger.warning(
+                    f"Selected task {selected_task_id} not available, using first available"
+                )
                 next_task = available_tasks[0]
                 thought = f"{thought}\n(Fallback: Selected first available task)"
 
-            self.logger.info(f"Reasoned to select task {next_task.id}: {next_task.description}")
+            self.logger.info(
+                f"Reasoned to select task {next_task.id}: {next_task.description}"
+            )
             return thought, next_task
 
         except Exception as e:
             self.logger.error(f"Reasoning failed: {e}. Selecting first available task.")
             task = available_tasks[0]
-            thought = f"Reasoning failed, selecting first available task: {task.description}"
+            thought = (
+                f"Reasoning failed, selecting first available task: {task.description}"
+            )
             return thought, task
 
-    def _build_reasoning_prompt(self, state: AgentState, available_tasks: List[Task]) -> str:
+    def _build_reasoning_prompt(
+        self, state: AgentState, available_tasks: List[Task]
+    ) -> str:
         """Build prompt for reasoning."""
         completed_count = len(state.get_completed_tasks())
         total_count = len(state.tasks)
 
-        recent_thoughts = state.thought_history[-3:] if len(state.thought_history) > 0 else ["None yet"]
-        recent_actions = self._format_recent_actions(state.action_history[-3:]) if state.action_history else "None yet"
+        recent_thoughts = (
+            state.thought_history[-3:]
+            if len(state.thought_history) > 0
+            else ["None yet"]
+        )
+        recent_actions = (
+            self._format_recent_actions(state.action_history[-3:])
+            if state.action_history
+            else "None yet"
+        )
 
         tasks_text = self._format_tasks(available_tasks)
 
@@ -124,9 +141,15 @@ Important: Ensure the JSON is valid."""
         for task in tasks:
             complexity = task.metadata.get("complexity", "unknown")
             tools = task.metadata.get("tools", [])
-            deps = f" (depends on: {', '.join(task.dependencies)})" if task.dependencies else ""
+            deps = (
+                f" (depends on: {', '.join(task.dependencies)})"
+                if task.dependencies
+                else ""
+            )
             tools_str = f" [tools: {', '.join(tools)}]" if tools else ""
-            lines.append(f"- {task.id}: {task.description}{deps}{tools_str} [complexity: {complexity}]")
+            lines.append(
+                f"- {task.id}: {task.description}{deps}{tools_str} [complexity: {complexity}]"
+            )
         return "\n".join(lines) if lines else "No tasks available"
 
     def _format_recent_actions(self, actions: List[dict]) -> str:
@@ -154,9 +177,7 @@ Important: Ensure the JSON is valid."""
             (thought, selected_task_id)
         """
         try:
-            # Extract JSON
-            json_str = self._extract_json(response)
-            data = json.loads(json_str)
+            data = parse_json_response(response)
 
             thought = data.get("thought", "No thought provided")
             rationale = data.get("rationale", "")
@@ -173,26 +194,8 @@ Important: Ensure the JSON is valid."""
             task_id = self._extract_task_id_fallback(response)
             return response[:200], task_id
 
-    def _extract_json(self, text: str) -> str:
-        """Extract JSON from text."""
-        # Try to find JSON block in markdown
-        if "```json" in text:
-            start = text.find("```json") + 7
-            end = text.find("```", start)
-            if end > start:
-                return text[start:end].strip()
-
-        # Try to find JSON object
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        if start >= 0 and end > start:
-            return text[start:end]
-
-        return text
-
     def _extract_task_id_fallback(self, text: str) -> str:
         """Extract task_id from text as fallback."""
         # Look for patterns like "task_1", "task_2", etc.
-        import re
-        match = re.search(r'task_\d+', text)
+        match = re.search(r"task_\d+", text)
         return match.group(0) if match else ""

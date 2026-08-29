@@ -8,7 +8,4 @@ MCP allows language models to interact with external tools and services in a sta
 from .client import MCPClient
 from .connector import MCPConnector
 
-__all__ = [
-    "MCPClient",
-    "MCPConnector"
-]
+__all__ = ["MCPClient", "MCPConnector"]

@@ -30,24 +30,26 @@ class TestAzureFoundryProvider(unittest.TestCase):
         self.model = "my-gpt4-deployment"
         self.base_url = "https://test-project.azureai.azure.com"
         self.project_id = "test-project-id"
-        
+
         # Create a mock for the ChatCompletionsClient
-        self.mock_chat_client_patcher = patch('azure.ai.inference.ChatCompletionsClient')
+        self.mock_chat_client_patcher = patch(
+            "azure.ai.inference.ChatCompletionsClient"
+        )
         self.mock_chat_client = self.mock_chat_client_patcher.start()
 
         # Create a mock for the EmbeddingsClient
-        self.mock_embeddings_client_patcher = patch('azure.ai.inference.EmbeddingsClient')
+        self.mock_embeddings_client_patcher = patch(
+            "azure.ai.inference.EmbeddingsClient"
+        )
         self.mock_embeddings_client = self.mock_embeddings_client_patcher.start()
-        
+
         # Create a mock for DefaultAzureCredential
-        self.mock_credential_patcher = patch('azure.identity.DefaultAzureCredential')
+        self.mock_credential_patcher = patch("azure.identity.DefaultAzureCredential")
         self.mock_credential = self.mock_credential_patcher.start()
-        
+
         # Set up the provider
         self.provider = AzureFoundryProvider(
-            api_key=self.api_key,
-            base_url=self.base_url,
-            project_id=self.project_id
+            api_key=self.api_key, base_url=self.base_url, project_id=self.project_id
         )
 
     def tearDown(self):
@@ -62,11 +64,14 @@ class TestAzureFoundryProvider(unittest.TestCase):
         self.assertEqual(self.provider.api_key, self.api_key)
         self.assertEqual(self.provider.base_url, self.base_url)
         self.assertEqual(self.provider.project_id, self.project_id)
-        
-        # Assert that the clients were initialized with the correct parameters
-        self.mock_chat_client.assert_called_with(endpoint=self.base_url, credential=unittest.mock.ANY)
-        self.mock_embeddings_client.assert_called_with(endpoint=self.base_url, credential=unittest.mock.ANY)
 
+        # Assert that the clients were initialized with the correct parameters
+        self.mock_chat_client.assert_called_with(
+            endpoint=self.base_url, credential=unittest.mock.ANY
+        )
+        self.mock_embeddings_client.assert_called_with(
+            endpoint=self.base_url, credential=unittest.mock.ANY
+        )
 
     def test_init_with_default_credential(self):
         """Test initialization with DefaultAzureCredential."""
@@ -75,10 +80,14 @@ class TestAzureFoundryProvider(unittest.TestCase):
 
         # Assert that DefaultAzureCredential was created
         self.mock_credential.assert_called_once()
-        
+
         # Assert that clients were initialized with the credential
-        self.mock_chat_client.assert_called_with(endpoint=self.base_url, credential=self.mock_credential.return_value)
-        self.mock_embeddings_client.assert_called_with(endpoint=self.base_url, credential=self.mock_credential.return_value)
+        self.mock_chat_client.assert_called_with(
+            endpoint=self.base_url, credential=self.mock_credential.return_value
+        )
+        self.mock_embeddings_client.assert_called_with(
+            endpoint=self.base_url, credential=self.mock_credential.return_value
+        )
 
     def test_get_completion_forwards_params(self):
         """Test get_completion forwards parameters to Azure Inference SDK."""
@@ -121,8 +130,6 @@ class TestAzureFoundryProvider(unittest.TestCase):
         out = self.provider.get_completion(model=self.model, **params)
         self.assertEqual(out.choices[0].message.content, "I'm doing well, thank you!")
 
-    
-
     def test_create_embedding(self):
         """Test creation of embeddings."""
         text = "This is a test"
@@ -137,5 +144,5 @@ class TestAzureFoundryProvider(unittest.TestCase):
         self.assertEqual(embedding, mock_embedding)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

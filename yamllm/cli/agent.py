@@ -4,9 +4,13 @@ import argparse
 import json
 
 from rich.console import Console
+from rich.text import Text
 
 from yamllm import LLM
-from yamllm.agent import Agent, WorkflowManager, SimpleAgent
+from yamllm.agent import Agent, WorkflowManager
+from yamllm.agent.events import AgentEvent, EventKind
+from yamllm.agent.harness import AgentHarness, ApprovalPolicy, load_checkpoint
+from yamllm.agent.interactive_steering import SteeringAction, SteeringDecision
 from yamllm.ui.agent_ui import AgentUI
 
 console = Console()
@@ -16,44 +20,86 @@ def setup_agent_commands(subparsers):
     """Setup agent-related CLI commands."""
 
     # yamllm agent
-    agent_parser = subparsers.add_parser(
-        "agent",
-        help="Autonomous agent operations"
+    agent_parser = subparsers.add_parser("agent", help="Autonomous agent operations")
+    agent_subparsers = agent_parser.add_subparsers(
+        dest="agent_command", help="Agent commands"
     )
-    agent_subparsers = agent_parser.add_subparsers(dest="agent_command", help="Agent commands")
 
     # yamllm agent run
-    run_parser = agent_subparsers.add_parser(
-        "run",
-        help="Run agent with a goal"
-    )
+    run_parser = agent_subparsers.add_parser("run", help="Run agent with a goal")
     run_parser.add_argument("goal", help="Goal to achieve")
     run_parser.add_argument("--config", required=True, help="Config file path")
     run_parser.add_argument("--context", help="JSON context file")
-    run_parser.add_argument("--max-iterations", type=int, default=10, help="Max iterations")
-    run_parser.add_argument("--simple", action="store_true", help="Use simple agent (no planning)")
-    run_parser.add_argument("--interactive", "-i", action="store_true", help="Enable interactive steering")
-    run_parser.add_argument("--auto-approve", action="store_true", help="Auto-approve all actions (with interactive)")
+    run_parser.add_argument(
+        "--max-iterations", type=int, default=10, help="Max iterations"
+    )
+    run_parser.add_argument(
+        "--max-wall-time", type=float, help="Wall-clock budget in seconds"
+    )
+    run_parser.add_argument(
+        "--simple", action="store_true", help="Use simple agent (no planning)"
+    )
+    run_parser.add_argument(
+        "--interactive",
+        "-i",
+        action="store_true",
+        help="Approve each action before it runs (Textual TUI unless --plain)",
+    )
+    run_parser.add_argument(
+        "--tui",
+        action="store_true",
+        help="Show the live Textual dashboard even without approval gating",
+    )
+    run_parser.add_argument(
+        "--plain",
+        action="store_true",
+        help="Plain console output; with --interactive, prompt-based approvals",
+    )
+    run_parser.add_argument(
+        "--auto-approve",
+        action="store_true",
+        help="Auto-approve all actions (with interactive)",
+    )
     run_parser.add_argument("--output", "-o", help="Save result to file")
+    run_parser.add_argument(
+        "--checkpoint-dir", help="Save a state checkpoint after each iteration"
+    )
+    run_parser.add_argument("--resume", help="Resume from a checkpoint file")
+    run_parser.add_argument(
+        "--record", action="store_true", help="Record the session for replay"
+    )
+    run_parser.add_argument("--recording-dir", help="Directory for session recordings")
+    run_parser.add_argument(
+        "--events-jsonl", help="Append the run's event stream to a JSONL file"
+    )
+    run_parser.add_argument(
+        "--log-thoughts",
+        action="store_true",
+        help="Include agent reasoning verbatim in --events-jsonl (redacted by default)",
+    )
     run_parser.set_defaults(func=run_agent)
 
     # yamllm agent workflow
     workflow_parser = agent_subparsers.add_parser(
-        "workflow",
-        help="Run predefined workflow"
+        "workflow", help="Run predefined workflow"
     )
     workflow_parser.add_argument("workflow", help="Workflow name")
     workflow_parser.add_argument("--config", required=True, help="Config file path")
-    workflow_parser.add_argument("--context", help="JSON context (required fields depend on workflow)")
-    workflow_parser.add_argument("--list", action="store_true", help="List available workflows")
-    workflow_parser.add_argument("--info", action="store_true", help="Show workflow info")
+    workflow_parser.add_argument(
+        "--context", help="JSON context (required fields depend on workflow)"
+    )
+    workflow_parser.add_argument(
+        "--list", action="store_true", help="List available workflows"
+    )
+    workflow_parser.add_argument(
+        "--info", action="store_true", help="Show workflow info"
+    )
     workflow_parser.add_argument("--output", "-o", help="Save result to file")
     workflow_parser.set_defaults(func=run_workflow)
 
     # yamllm agent debug
     debug_parser = agent_subparsers.add_parser(
-        "debug",
-        help="Debug a bug (shortcut for debug workflow)"
+        "debug", help="Debug a bug (shortcut for debug workflow)"
     )
     debug_parser.add_argument("description", help="Bug description")
     debug_parser.add_argument("--config", required=True, help="Config file path")
@@ -64,8 +110,7 @@ def setup_agent_commands(subparsers):
 
     # yamllm agent implement
     implement_parser = agent_subparsers.add_parser(
-        "implement",
-        help="Implement a feature (shortcut for implement workflow)"
+        "implement", help="Implement a feature (shortcut for implement workflow)"
     )
     implement_parser.add_argument("description", help="Feature description")
     implement_parser.add_argument("--config", required=True, help="Config file path")
@@ -74,6 +119,79 @@ def setup_agent_commands(subparsers):
     implement_parser.set_defaults(func=implement_feature)
 
     return agent_parser
+
+
+def _console_event_renderer(event: AgentEvent) -> None:
+    """Render a harness event as an incremental console line."""
+    payload = event.payload
+
+    if event.kind == EventKind.PLAN_CREATED:
+        console.print(
+            f"[cyan]Plan created: {len(payload.get('tasks', []))} tasks[/cyan]"
+        )
+        for task in payload.get("tasks", []):
+            console.print(f"  [dim]{task.get('id')}[/dim] {task.get('description')}")
+    elif event.kind == EventKind.ITERATION_STARTED:
+        console.rule(
+            f"[dim]iteration {payload.get('iteration')}/{payload.get('max_iterations')}[/dim]"
+        )
+    elif event.kind == EventKind.THOUGHT:
+        console.print(Text(f"💭 {payload.get('thought', '')}", style="italic dim"))
+    elif event.kind == EventKind.ACTION_STARTED:
+        task = payload.get("task", {})
+        console.print(f"[yellow]⚡ {task.get('description', '')}[/yellow]")
+    elif event.kind == EventKind.ACTION_FINISHED:
+        result = payload.get("result", {})
+        if result.get("success"):
+            response = (result.get("response") or "").strip()
+            if len(response) > 300:
+                response = response[:300] + "…"
+            if response:
+                console.print(Text(response))
+        else:
+            console.print(f"[red]✗ {result.get('error', 'failed')}[/red]")
+    elif event.kind == EventKind.OBSERVATION:
+        learned = payload.get("learned")
+        if learned:
+            console.print(f"[green]👁 {learned}[/green]")
+    elif event.kind == EventKind.BUDGET_EXCEEDED:
+        console.print(
+            f"[bold red]⛔ {payload.get('detail', 'budget exceeded')}[/bold red]"
+        )
+    elif event.kind == EventKind.ERROR:
+        console.print(f"[bold red]Error: {payload.get('error')}[/bold red]")
+
+
+def _event_for_log(event: AgentEvent, log_thoughts: bool) -> AgentEvent:
+    """Redact agent reasoning from persisted events unless opted in.
+
+    The repo's working agreement is that internal reasoning is redacted in
+    logs; the live TUI/console transcript is unaffected.
+    """
+    if log_thoughts or "thought" not in event.payload:
+        return event
+    payload = dict(event.payload)
+    payload["thought"] = "[redacted]"
+    return AgentEvent(kind=event.kind, payload=payload, timestamp=event.timestamp)
+
+
+def _build_harness(
+    llm,
+    args: argparse.Namespace,
+    approval_policy: ApprovalPolicy,
+    enable_planning: bool = True,
+) -> AgentHarness:
+    """Create an AgentHarness from CLI arguments."""
+    return AgentHarness(
+        llm,
+        max_iterations=args.max_iterations,
+        max_wall_time=getattr(args, "max_wall_time", None),
+        approval_policy=approval_policy,
+        enable_planning=enable_planning,
+        checkpoint_dir=getattr(args, "checkpoint_dir", None),
+        enable_recording=getattr(args, "record", False),
+        recording_dir=getattr(args, "recording_dir", None),
+    )
 
 
 def run_agent(args: argparse.Namespace) -> int:
@@ -86,70 +204,119 @@ def run_agent(args: argparse.Namespace) -> int:
         # Load context if provided
         context = None
         if args.context:
-            with open(args.context, 'r') as f:
+            with open(args.context, "r") as f:
                 context = json.load(f)
 
-        # Create agent
-        if args.simple:
-            agent = SimpleAgent(llm)
-            console.print("[yellow]Using SimpleAgent (no planning)[/yellow]")
-        else:
-            agent = Agent(llm, max_iterations=args.max_iterations)
-            console.print(f"[cyan]Using full Agent (max {args.max_iterations} iterations)[/cyan]")
+        # Resume support
+        initial_state = None
+        if getattr(args, "resume", None):
+            initial_state = load_checkpoint(args.resume)
+            console.print(
+                f"[cyan]Resuming from {args.resume} "
+                f"(iteration {initial_state.iteration})[/cyan]"
+            )
+        elif args.simple:
+            # Interactive/TUI simple run: seed a single task, skip planning
+            from yamllm.agent import AgentState, Task
 
-        # Check for interactive mode
-        if args.interactive:
-            from yamllm.agent.interactive_steering import InteractiveAgent, InteractiveSteering
+            initial_state = AgentState(
+                goal=args.goal,
+                tasks=[Task.create(args.goal)],
+                max_iterations=args.max_iterations,
+                metadata=context or {},
+            )
+            console.print("[yellow]Simple mode (no planning)[/yellow]")
 
-            console.print("[bold cyan]Interactive mode enabled![/bold cyan]")
-            console.print("[dim]You will be able to review and approve each action.[/dim]\n")
-
-            # Create steering controller
-            steering = InteractiveSteering(
-                console=console,
-                auto_approve=args.auto_approve,
-                pause_before_action=True
+        # --interactive keeps approval gating on; --auto-approve answers the
+        # first request with AUTO so the harness never blocks on a human.
+        approval_policy = (
+            ApprovalPolicy.ALWAYS if args.interactive else ApprovalPolicy.NEVER
+        )
+        harness = _build_harness(
+            llm, args, approval_policy, enable_planning=not args.simple
+        )
+        if args.interactive and args.auto_approve:
+            harness.decision_provider = lambda point: SteeringDecision(
+                action=SteeringAction.AUTO
             )
 
-            # Wrap agent with interactive control
-            interactive_agent = InteractiveAgent(agent, steering=steering)
+        jsonl_file = None
+        if getattr(args, "events_jsonl", None):
+            jsonl_file = open(args.events_jsonl, "a", buffering=1)
+            log_thoughts = getattr(args, "log_thoughts", False)
+            harness.add_listener(
+                lambda ev: jsonl_file.write(
+                    _event_for_log(ev, log_thoughts).to_json() + "\n"
+                )
+            )
 
-            # Execute with interactive control
-            console.print("\n[bold green]Starting interactive agent execution...[/bold green]\n")
-            console.print(f"[bold]Goal:[/bold] {args.goal}\n")
+        goal = initial_state.goal if initial_state else args.goal
 
-            state = interactive_agent.execute(args.goal, context)
-        else:
-            # Create UI
-            ui = AgentUI(console)
+        try:
+            use_tui = (args.interactive or args.tui) and not args.plain
+            if use_tui:
+                try:
+                    from yamllm.ui.agent_tui import run_agent_tui
+                except ImportError:
+                    console.print(
+                        "[yellow]Textual is not installed "
+                        "(pip install textual); falling back to plain output.[/yellow]"
+                    )
+                    use_tui = False
 
-            # Setup progress callback
-            def progress_callback(state):
-                ui.render_full_state(state)
+            if use_tui:
+                state = run_agent_tui(
+                    harness, goal, context, initial_state=initial_state
+                )
+                if state is None:
+                    console.print("[red]Run did not produce a final state[/red]")
+                    return 1
+            else:
+                if args.interactive and not args.auto_approve:
+                    # Legacy prompt-based approvals on the plain console
+                    from yamllm.agent.interactive_steering import InteractiveSteering
 
-            agent.progress_callback = progress_callback
+                    steering = InteractiveSteering(console=console)
+                    harness.decision_provider = steering.request_decision
+                    console.print(
+                        "[bold cyan]Interactive mode:[/bold cyan] "
+                        "[dim]you will review each action before it runs.[/dim]"
+                    )
 
-            # Execute
-            console.print("\n[bold green]Starting agent execution...[/bold green]\n")
-            console.print(f"[bold]Goal:[/bold] {args.goal}\n")
+                harness.add_listener(_console_event_renderer)
+                console.print(
+                    "\n[bold green]Starting agent execution...[/bold green]\n"
+                )
+                console.print(f"[bold]Goal:[/bold] {goal}\n")
+                state = harness.run(goal, context, initial_state=initial_state)
+        finally:
+            if jsonl_file:
+                jsonl_file.close()
 
-            state = agent.execute(args.goal, context)
-
-        # Show completion
-        console.print("\n")
-        ui = AgentUI(console)
-        ui.render_completion(state)
-
-        # Save output if requested
-        if args.output:
-            save_agent_result(state, args.output)
-            console.print(f"\n[green]Result saved to {args.output}[/green]")
-
-        return 0 if state.success else 1
+        return _report_result(state, args)
 
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         return 1
+
+
+def _report_result(state, args: argparse.Namespace) -> int:
+    """Render the completion summary and persist output if requested."""
+    console.print("\n")
+    ui = AgentUI(console)
+    ui.render_completion(state)
+
+    if getattr(state, "metadata", {}).get("checkpoint_path"):
+        console.print(f"[dim]Checkpoint: {state.metadata['checkpoint_path']}[/dim]")
+    if getattr(state, "metadata", {}).get("recording_path"):
+        console.print(f"[dim]Recording: {state.metadata['recording_path']}[/dim]")
+
+    output = getattr(args, "output", None)
+    if output:
+        save_agent_result(state, output)
+        console.print(f"\n[green]Result saved to {output}[/green]")
+
+    return 0 if state.success else 1
 
 
 def run_workflow(args: argparse.Namespace) -> int:
@@ -171,7 +338,7 @@ def run_workflow(args: argparse.Namespace) -> int:
                 console.print(f"[bold]{wf['name']}[/bold]")
                 console.print(f"  {wf['description']}")
                 console.print(f"  Required: {', '.join(wf['required_context'])}")
-                if wf['optional_context']:
+                if wf["optional_context"]:
                     console.print(f"  Optional: {', '.join(wf['optional_context'])}")
                 console.print()
 
@@ -183,7 +350,7 @@ def run_workflow(args: argparse.Namespace) -> int:
             console.print(f"\n[bold cyan]{info['name']}[/bold cyan]\n")
             console.print(f"[bold]Description:[/bold] {info['description']}\n")
             console.print("[bold]Steps:[/bold]")
-            for i, step in enumerate(info['steps'], 1):
+            for i, step in enumerate(info["steps"], 1):
                 console.print(f"  {i}. {step}")
             console.print()
             return 0
@@ -286,12 +453,12 @@ def save_agent_result(state, output_path: str) -> None:
                 "description": t.description,
                 "status": t.status.value,
                 "result": t.result,
-                "error": t.error
+                "error": t.error,
             }
             for t in state.tasks
         ],
-        "learnings": state.metadata.get("learnings", [])
+        "learnings": state.metadata.get("learnings", []),
     }
 
-    with open(output_path, 'w') as f:
+    with open(output_path, "w") as f:
         json.dump(result, f, indent=2)

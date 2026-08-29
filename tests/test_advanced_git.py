@@ -9,7 +9,7 @@ from yamllm.tools.advanced_git import (
     GitStatus,
     CommitAnalysis,
     BranchStrategy,
-    ConflictResolutionStrategy
+    ConflictResolutionStrategy,
 )
 
 
@@ -18,22 +18,32 @@ def temp_repo():
     """Create a temporary git repository for testing."""
     with tempfile.TemporaryDirectory() as tmpdir:
         # Initialize git repo
-        subprocess.run(['git', 'init'], cwd=tmpdir, check=True, capture_output=True)
-        subprocess.run(['git', 'config', 'user.email', 'test@test.com'], cwd=tmpdir, check=True)
-        subprocess.run(['git', 'config', 'user.name', 'Test User'], cwd=tmpdir, check=True)
+        subprocess.run(["git", "init"], cwd=tmpdir, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "user.email", "test@test.com"], cwd=tmpdir, check=True
+        )
+        subprocess.run(
+            ["git", "config", "user.name", "Test User"], cwd=tmpdir, check=True
+        )
         # Disable commit signing locally so the suite is portable to environments
         # that have global commit.gpgsign enabled.
-        subprocess.run(['git', 'config', 'commit.gpgsign', 'false'], cwd=tmpdir, check=True)
-        subprocess.run(['git', 'config', 'tag.gpgsign', 'false'], cwd=tmpdir, check=True)
+        subprocess.run(
+            ["git", "config", "commit.gpgsign", "false"], cwd=tmpdir, check=True
+        )
+        subprocess.run(
+            ["git", "config", "tag.gpgsign", "false"], cwd=tmpdir, check=True
+        )
 
         # Create initial commit
-        test_file = Path(tmpdir) / 'README.md'
-        test_file.write_text('# Test Repo\n')
-        subprocess.run(['git', 'add', '.'], cwd=tmpdir, check=True)
-        subprocess.run(['git', 'commit', '-m', 'Initial commit'], cwd=tmpdir, check=True)
+        test_file = Path(tmpdir) / "README.md"
+        test_file.write_text("# Test Repo\n")
+        subprocess.run(["git", "add", "."], cwd=tmpdir, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Initial commit"], cwd=tmpdir, check=True
+        )
         # Normalize the default branch name. `git init` may produce either
         # `main` or `master` depending on the environment; tests assume `main`.
-        subprocess.run(['git', 'branch', '-M', 'main'], cwd=tmpdir, check=True)
+        subprocess.run(["git", "branch", "-M", "main"], cwd=tmpdir, check=True)
 
         yield tmpdir
 
@@ -69,19 +79,19 @@ def test_get_status_clean(temp_repo):
 def test_get_status_with_changes(temp_repo):
     """Test status with changes."""
     # Create untracked file
-    test_file = Path(temp_repo) / 'new_file.txt'
-    test_file.write_text('New content\n')
+    test_file = Path(temp_repo) / "new_file.txt"
+    test_file.write_text("New content\n")
 
     # Modify existing file
-    readme = Path(temp_repo) / 'README.md'
-    readme.write_text('# Modified\n')
+    readme = Path(temp_repo) / "README.md"
+    readme.write_text("# Modified\n")
 
     git = AdvancedGitWorkflow(temp_repo)
     status = git.get_status()
 
     assert status.is_dirty
-    assert 'new_file.txt' in status.untracked_files
-    assert 'README.md' in status.unstaged_files
+    assert "new_file.txt" in status.untracked_files
+    assert "README.md" in status.unstaged_files
 
 
 def test_detect_components():
@@ -89,16 +99,16 @@ def test_detect_components():
     git = AdvancedGitWorkflow.__new__(AdvancedGitWorkflow)
 
     files = [
-        'src/api/handler.py',
-        'src/api/routes.py',
-        'tests/test_api.py',
-        'docs/readme.md'
+        "src/api/handler.py",
+        "src/api/routes.py",
+        "tests/test_api.py",
+        "docs/readme.md",
     ]
 
     components = git._detect_components(files)
 
-    assert 'src' in components
-    assert 'tests' in components or 'docs' in components
+    assert "src" in components
+    assert "tests" in components or "docs" in components
 
 
 def test_detect_breaking_changes():
@@ -163,7 +173,7 @@ def test_git_status_dataclass():
         untracked_files=["file3.py"],
         ahead=2,
         behind=1,
-        stashed=0
+        stashed=0,
     )
 
     assert status.branch == "main"
@@ -181,7 +191,7 @@ def test_commit_analysis_dataclass():
         lines_deleted=10,
         affected_components=["api", "frontend"],
         suggested_message="feat(api): add new endpoint",
-        breaking_changes=False
+        breaking_changes=False,
     )
 
     assert analysis.files_changed == 5
@@ -193,7 +203,7 @@ def test_commit_analysis_dataclass():
 def test_analyze_changes(temp_repo):
     """Test change analysis."""
     # Create and stage changes
-    new_file = Path(temp_repo) / 'src/api/handler.py'
+    new_file = Path(temp_repo) / "src/api/handler.py"
     new_file.parent.mkdir(parents=True, exist_ok=True)
     new_file.write_text('''
 def new_handler():
@@ -201,7 +211,7 @@ def new_handler():
     return {"status": "ok"}
 ''')
 
-    subprocess.run(['git', 'add', '.'], cwd=temp_repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=temp_repo, check=True)
 
     git = AdvancedGitWorkflow(temp_repo)
     analysis = git.analyze_changes()
@@ -217,19 +227,18 @@ def test_smart_branch(temp_repo):
     git = AdvancedGitWorkflow(temp_repo)
 
     branch_name = git.smart_branch(
-        "Add user authentication",
-        strategy=BranchStrategy.GITHUB_FLOW
+        "Add user authentication", strategy=BranchStrategy.GITHUB_FLOW
     )
 
     assert "user" in branch_name or "authentication" in branch_name
 
     # Verify branch was created
     result = subprocess.run(
-        ['git', 'branch', '--show-current'],
+        ["git", "branch", "--show-current"],
         cwd=temp_repo,
         capture_output=True,
         text=True,
-        check=True
+        check=True,
     )
 
     assert result.stdout.strip() == branch_name
@@ -261,12 +270,12 @@ def test_branch_strategies():
 def test_auto_pr_generation(temp_repo):
     """Test PR info generation."""
     # Create feature branch with commits
-    subprocess.run(['git', 'checkout', '-b', 'feature/test'], cwd=temp_repo, check=True)
+    subprocess.run(["git", "checkout", "-b", "feature/test"], cwd=temp_repo, check=True)
 
-    test_file = Path(temp_repo) / 'feature.py'
+    test_file = Path(temp_repo) / "feature.py"
     test_file.write_text('print("feature")\n')
-    subprocess.run(['git', 'add', '.'], cwd=temp_repo, check=True)
-    subprocess.run(['git', 'commit', '-m', 'Add feature'], cwd=temp_repo, check=True)
+    subprocess.run(["git", "add", "."], cwd=temp_repo, check=True)
+    subprocess.run(["git", "commit", "-m", "Add feature"], cwd=temp_repo, check=True)
 
     git = AdvancedGitWorkflow(temp_repo)
     pr_info = git.auto_pr(base="main")

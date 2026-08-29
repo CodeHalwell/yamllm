@@ -18,7 +18,15 @@ from .security import SecurityManager, ToolExecutionError
 dotenv.load_dotenv()
 
 
-def _request_with_retries(session: requests.Session, method: str, url: str, *, timeout: int, max_retries: int, **kwargs) -> requests.Response:
+def _request_with_retries(
+    session: requests.Session,
+    method: str,
+    url: str,
+    *,
+    timeout: int,
+    max_retries: int,
+    **kwargs,
+) -> requests.Response:
     """Helper to perform an HTTP request with retries/backoff similar to NetworkTool.
 
     Retries on 429/5xx timeouts and connection errors, with simple exponential backoff.
@@ -32,19 +40,32 @@ def _request_with_retries(session: requests.Session, method: str, url: str, *, t
                 raise requests.HTTPError("429 rate limited", response=resp)
             resp.raise_for_status()
             return resp
-        except (requests.Timeout, requests.ConnectionError, requests.HTTPError, ValueError) as e:
+        except (
+            requests.Timeout,
+            requests.ConnectionError,
+            requests.HTTPError,
+            ValueError,
+        ) as e:
             last_error = e
             attempt += 1
             if attempt >= max_retries:
                 break
             import time as _t
+
             _t.sleep(0.5 * attempt)
     raise RuntimeError(f"Request failed after {max_retries} attempts: {last_error}")
 
 
 class WeatherTool(NetworkTool):
     "Tool to get current weather information from OpenWeatherMap API. Query is performed by city name."
-    def __init__(self, api_key: str, timeout: int = 15, max_retries: int = 3, security_manager: Optional[SecurityManager] = None):
+
+    def __init__(
+        self,
+        api_key: str,
+        timeout: int = 15,
+        max_retries: int = 3,
+        security_manager: Optional[SecurityManager] = None,
+    ):
         super().__init__(
             name="weather",
             description="Get current weather information from OpenWeatherMap API",
@@ -53,11 +74,11 @@ class WeatherTool(NetworkTool):
             security_manager=security_manager,
         )
 
-        self.api_key = os.environ.get('WEATHER_API_KEY') if api_key is None else api_key
+        self.api_key = os.environ.get("WEATHER_API_KEY") if api_key is None else api_key
         self.base_url = "https://api.openweathermap.org/data/2.5/weather"
         self.params = {
             "appid": self.api_key,
-            "units": "metric"  # Use metric units by default
+            "units": "metric",  # Use metric units by default
         }
 
     def execute(self, location: str) -> Dict:
@@ -70,21 +91,21 @@ class WeatherTool(NetworkTool):
             self.params["q"] = location
             response = self.make_request("GET", self.base_url, params=self.params)
             response.raise_for_status()
-            
+
             data = response.json()
-            
+
             if data.get("cod") != 200:
                 return {"error": "City not found"}
-            
+
             # Extract relevant information from the response
             weather_info = {
                 "city": data["name"],
                 "temperature": data["main"]["temp"],
                 "description": data["weather"][0]["description"],
                 "humidity": data["main"]["humidity"],
-                "wind_speed": data["wind"]["speed"]
+                "wind_speed": data["wind"]["speed"],
             }
-            
+
             return weather_info
         except NetworkError as e:
             return {"error": f"Network error: {e}"}
@@ -95,16 +116,28 @@ class WeatherTool(NetworkTool):
         return {
             "type": "object",
             "properties": {
-                "location": {"type": "string", "description": "City name, e.g. 'London'"}
+                "location": {
+                    "type": "string",
+                    "description": "City name, e.g. 'London'",
+                }
             },
             "required": ["location"],
         }
+
 
 class WebSearch(NetworkTool):
     """
     Tool to perform web searches using DuckDuckGo API. This performs a search query and returns the results, typically a wide range of information.
     """
-    def __init__(self, api_key: str = None, timeout: int = 15, max_retries: int = 3, providers: Optional[List[Any]] = None, security_manager: Optional[SecurityManager] = None):  # DuckDuckGo no key
+
+    def __init__(
+        self,
+        api_key: str = None,
+        timeout: int = 15,
+        max_retries: int = 3,
+        providers: Optional[List[Any]] = None,
+        security_manager: Optional[SecurityManager] = None,
+    ):  # DuckDuckGo no key
         super().__init__(
             name="web_search",
             description="Search the web for current information using DuckDuckGo/SerpAPI",
@@ -117,22 +150,43 @@ class WebSearch(NetworkTool):
 
     def _build_providers(self) -> List[Any]:
         providers: List[Any] = [DuckDuckGoProvider()]
-        
+
         # Add SerpAPI provider if key is available
         serp_key = os.environ.get("SERPAPI_API_KEY")
         if serp_key:
-            providers.append(SerpAPIProvider(session=self.session, api_key=serp_key, timeout=self.timeout, max_retries=self.max_retries))
-        
+            providers.append(
+                SerpAPIProvider(
+                    session=self.session,
+                    api_key=serp_key,
+                    timeout=self.timeout,
+                    max_retries=self.max_retries,
+                )
+            )
+
         # Add Tavily provider if key is available
         tavily_key = os.environ.get("TAVILY_API_KEY")
         if tavily_key:
-            providers.append(TavilyProvider(session=self.session, api_key=tavily_key, timeout=self.timeout, max_retries=self.max_retries))
-        
+            providers.append(
+                TavilyProvider(
+                    session=self.session,
+                    api_key=tavily_key,
+                    timeout=self.timeout,
+                    max_retries=self.max_retries,
+                )
+            )
+
         # Add Bing Search provider if key is available
         bing_key = os.environ.get("BING_SEARCH_API_KEY")
         if bing_key:
-            providers.append(BingSearchProvider(session=self.session, api_key=bing_key, timeout=self.timeout, max_retries=self.max_retries))
-        
+            providers.append(
+                BingSearchProvider(
+                    session=self.session,
+                    api_key=bing_key,
+                    timeout=self.timeout,
+                    max_retries=self.max_retries,
+                )
+            )
+
         return providers
 
     def execute(self, query: str, max_results: int = 5) -> List[Dict]:
@@ -144,7 +198,11 @@ class WebSearch(NetworkTool):
             try:
                 results = provider.search(query, max_results=max_results)
                 if results:
-                    return {"query": query, "num_results": len(results), "results": results}
+                    return {
+                        "query": query,
+                        "num_results": len(results),
+                        "results": results,
+                    }
             except Exception as e:
                 last_error = str(e)
                 continue
@@ -155,7 +213,11 @@ class WebSearch(NetworkTool):
             "type": "object",
             "properties": {
                 "query": {"type": "string", "description": "Search query"},
-                "max_results": {"type": "integer", "description": "Limit number of results", "default": 5},
+                "max_results": {
+                    "type": "integer",
+                    "description": "Limit number of results",
+                    "default": 5,
+                },
             },
             "required": ["query"],
         }
@@ -173,16 +235,19 @@ class DuckDuckGoProvider:
                 with DDGS() as ddgs:
                     search_results = list(ddgs.text(query, max_results=max_results))
                     for result in search_results:
-                        results.append({
-                            "title": result.get("title", "No title"),
-                            "snippet": result.get("body", "No description"),
-                            "url": result.get("href", "No URL"),
-                        })
+                        results.append(
+                            {
+                                "title": result.get("title", "No title"),
+                                "snippet": result.get("body", "No description"),
+                                "url": result.get("href", "No URL"),
+                            }
+                        )
             except Exception as e:
                 last_err = str(e)
                 # Exponential backoff on known 202 rate limit
                 if "202 Ratelimit" in (last_err or ""):
                     import time as _t
+
                     _t.sleep(0.5 * attempts)
                     continue
                 # Non-rate-limit errors: stop early
@@ -193,7 +258,9 @@ class DuckDuckGoProvider:
 
 
 class SerpAPIProvider:
-    def __init__(self, session: requests.Session, api_key: str, timeout: int, max_retries: int) -> None:
+    def __init__(
+        self, session: requests.Session, api_key: str, timeout: int, max_retries: int
+    ) -> None:
         self.session = session
         self.api_key = api_key
         # Respect centralized clamping bounds
@@ -207,7 +274,14 @@ class SerpAPIProvider:
         last_error: Optional[Exception] = None
         while attempt < self.max_retries:
             try:
-                resp = _request_with_retries(self.session, "GET", url, timeout=self.timeout, max_retries=1, params=params)
+                resp = _request_with_retries(
+                    self.session,
+                    "GET",
+                    url,
+                    timeout=self.timeout,
+                    max_retries=1,
+                    params=params,
+                )
                 data = resp.json()
                 org = data.get("organic_results", [])
                 results = [
@@ -219,14 +293,22 @@ class SerpAPIProvider:
                     for it in org
                 ]
                 return results[:max_results]
-            except (requests.Timeout, requests.ConnectionError, requests.HTTPError, ValueError) as e:
+            except (
+                requests.Timeout,
+                requests.ConnectionError,
+                requests.HTTPError,
+                ValueError,
+            ) as e:
                 last_error = e
                 attempt += 1
                 if attempt >= self.max_retries:
                     break
                 import time as _t
+
                 _t.sleep(0.5 * attempt)
-        raise RuntimeError(f"SerpAPI failed after {self.max_retries} attempts: {last_error}")
+        raise RuntimeError(
+            f"SerpAPI failed after {self.max_retries} attempts: {last_error}"
+        )
 
 
 class TavilyProvider:
@@ -235,7 +317,9 @@ class TavilyProvider:
     See https://docs.tavily.com/ for API details.
     """
 
-    def __init__(self, session: requests.Session, api_key: str, timeout: int, max_retries: int) -> None:
+    def __init__(
+        self, session: requests.Session, api_key: str, timeout: int, max_retries: int
+    ) -> None:
         self.session = session
         self.api_key = api_key
         self.timeout = max(1, min(int(timeout), 30))
@@ -253,7 +337,14 @@ class TavilyProvider:
         last_error: Optional[Exception] = None
         while attempt < self.max_retries:
             try:
-                resp = _request_with_retries(self.session, "POST", url, timeout=self.timeout, max_retries=1, json=payload)
+                resp = _request_with_retries(
+                    self.session,
+                    "POST",
+                    url,
+                    timeout=self.timeout,
+                    max_retries=1,
+                    json=payload,
+                )
                 data = resp.json() or {}
                 items = data.get("results", []) or []
                 results = [
@@ -265,20 +356,30 @@ class TavilyProvider:
                     for it in items
                 ]
                 return results[:max_results]
-            except (requests.Timeout, requests.ConnectionError, requests.HTTPError, ValueError) as e:
+            except (
+                requests.Timeout,
+                requests.ConnectionError,
+                requests.HTTPError,
+                ValueError,
+            ) as e:
                 last_error = e
                 attempt += 1
                 if attempt >= self.max_retries:
                     break
                 import time as _t
+
                 _t.sleep(0.5 * attempt)
-        raise RuntimeError(f"Tavily failed after {self.max_retries} attempts: {last_error}")
+        raise RuntimeError(
+            f"Tavily failed after {self.max_retries} attempts: {last_error}"
+        )
 
 
 class BingSearchProvider:
     """Bing Search API provider for web search fallback."""
-    
-    def __init__(self, session: requests.Session, api_key: str, timeout: int, max_retries: int) -> None:
+
+    def __init__(
+        self, session: requests.Session, api_key: str, timeout: int, max_retries: int
+    ) -> None:
         self.session = session
         self.api_key = api_key
         self.timeout = max(1, min(int(timeout), 30))
@@ -288,10 +389,10 @@ class BingSearchProvider:
     def search(self, query: str, max_results: int = 5) -> List[Dict]:
         headers = {"Ocp-Apim-Subscription-Key": self.api_key}
         params = {"q": query, "count": max_results, "responseFilter": "webpages"}
-        
+
         attempt = 0
         last_error: Optional[Exception] = None
-        
+
         while attempt < self.max_retries:
             try:
                 resp = _request_with_retries(
@@ -304,7 +405,7 @@ class BingSearchProvider:
                     headers=headers,
                 )
                 data = resp.json()
-                
+
                 web_pages = data.get("webPages", {}).get("value", [])
                 results = [
                     {
@@ -315,23 +416,30 @@ class BingSearchProvider:
                     for page in web_pages
                 ]
                 return results[:max_results]
-                
-            except (requests.Timeout, requests.ConnectionError, requests.HTTPError, ValueError) as e:
+
+            except (
+                requests.Timeout,
+                requests.ConnectionError,
+                requests.HTTPError,
+                ValueError,
+            ) as e:
                 last_error = e
                 attempt += 1
                 if attempt >= self.max_retries:
                     break
                 import time as _t
+
                 _t.sleep(0.5 * attempt)
-                
-        raise RuntimeError(f"Bing Search failed after {self.max_retries} attempts: {last_error}")
+
+        raise RuntimeError(
+            f"Bing Search failed after {self.max_retries} attempts: {last_error}"
+        )
 
 
 class Calculator(Tool):
     def __init__(self):
         super().__init__(
-            name="calculator",
-            description="Perform mathematical calculations"
+            name="calculator", description="Perform mathematical calculations"
         )
 
     def execute(self, expression: str) -> Dict:
@@ -353,19 +461,23 @@ class Calculator(Tool):
             def _eval(node):
                 if isinstance(node, ast.Expression):
                     return _eval(node.body)
-                if isinstance(node, (ast.Num, getattr(ast, 'Constant', ast.Num))):
-                    return getattr(node, 'n', getattr(node, 'value', None))
-                if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+                if isinstance(node, (ast.Num, getattr(ast, "Constant", ast.Num))):
+                    return getattr(node, "n", getattr(node, "value", None))
+                if isinstance(node, ast.UnaryOp) and isinstance(
+                    node.op, (ast.UAdd, ast.USub)
+                ):
                     val = _eval(node.operand)
                     return +val if isinstance(node.op, ast.UAdd) else -val
-                if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod)):
+                if isinstance(node, ast.BinOp) and isinstance(
+                    node.op, (ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Pow, ast.Mod)
+                ):
                     left, right = _eval(node.left), _eval(node.right)
                     return {
                         ast.Add: left + right,
                         ast.Sub: left - right,
                         ast.Mult: left * right,
                         ast.Div: left / right,
-                        ast.Pow: left ** right,
+                        ast.Pow: left**right,
                         ast.Mod: left % right,
                     }[type(node.op)]
                 if isinstance(node, ast.Call) and isinstance(node.func, ast.Name):
@@ -386,7 +498,9 @@ class Calculator(Tool):
             return {
                 "expression": expression,
                 "result": result,
-                "formatted_result": f"{result:,}" if isinstance(result, (int, float)) else str(result),
+                "formatted_result": f"{result:,}"
+                if isinstance(result, (int, float))
+                else str(result),
             }
         except Exception as e:
             return {"expression": expression, "error": f"Invalid expression: {str(e)}"}
@@ -395,7 +509,10 @@ class Calculator(Tool):
         return {
             "type": "object",
             "properties": {
-                "expression": {"type": "string", "description": "Math expression using +,-,*,/,**,mod and sin,cos,tan,sqrt,log,log10,exp,pi,e"}
+                "expression": {
+                    "type": "string",
+                    "description": "Math expression using +,-,*,/,**,mod and sin,cos,tan,sqrt,log,log10,exp,pi,e",
+                }
             },
             "required": ["expression"],
         }
@@ -403,10 +520,7 @@ class Calculator(Tool):
 
 class TimezoneTool(Tool):
     def __init__(self):
-        super().__init__(
-            name="timezone",
-            description="Convert between timezones"
-        )
+        super().__init__(name="timezone", description="Convert between timezones")
 
     def execute(self, time: str, from_tz: str, to_tz: str) -> Dict:
         """
@@ -422,26 +536,26 @@ class TimezoneTool(Tool):
         """
         try:
             # Parse the ISO-8601 time string, replacing 'Z' with '+00:00'
-            dt = datetime.fromisoformat(time.replace('Z', '+00:00'))
-            
+            dt = datetime.fromisoformat(time.replace("Z", "+00:00"))
+
             # Localize the datetime to the source timezone without any tz info
             source_timezone = pytz.timezone(from_tz)
             dt_source = source_timezone.localize(dt.replace(tzinfo=None))
-            
+
             # Convert the localized time to the target timezone
             target_timezone = pytz.timezone(to_tz)
             dt_target = dt_source.astimezone(target_timezone)
-            
+
             result = {
                 "original_time": time,
                 "original_timezone": from_tz,
                 "converted_time": dt_target.isoformat(),
-                "converted_timezone": to_tz
+                "converted_timezone": to_tz,
             }
             return result
         except Exception as e:
             return {"error": f"Error converting timezone: {str(e)}"}
-    
+
     def _get_parameters(self) -> Dict:
         return {
             "type": "object",
@@ -453,11 +567,11 @@ class TimezoneTool(Tool):
             "required": ["time", "from_tz", "to_tz"],
         }
 
+
 class UnitConverter(Tool):
     def __init__(self):
         super().__init__(
-            name="unit_converter",
-            description="Convert between different units"
+            name="unit_converter", description="Convert between different units"
         )
 
     def execute(self, value: float, from_unit: str, to_unit: str) -> Dict:
@@ -473,36 +587,38 @@ class UnitConverter(Tool):
             "kg_to_lb": 2.20462,
             "lb_to_kg": 0.453592,
             # Temperature needs special handling
-            "celsius_to_fahrenheit": lambda c: c * 9/5 + 32,
-            "fahrenheit_to_celsius": lambda f: (f - 32) * 5/9,
+            "celsius_to_fahrenheit": lambda c: c * 9 / 5 + 32,
+            "fahrenheit_to_celsius": lambda f: (f - 32) * 5 / 9,
         }
-        
+
         try:
             # Create a key for the conversion map
             conversion_key = f"{from_unit.lower()}_to_{to_unit.lower()}"
-            
+
             # Check if conversion exists
             if conversion_key in conversion_map:
                 conversion = conversion_map[conversion_key]
-                
+
                 # Handle functions (e.g., temperature conversions)
                 if callable(conversion):
                     result = conversion(value)
                 else:
                     result = value * conversion
-                    
+
                 return {
                     "original_value": value,
                     "original_unit": from_unit,
                     "converted_value": result,
-                    "converted_unit": to_unit
+                    "converted_unit": to_unit,
                 }
             else:
-                return {"error": f"Conversion from {from_unit} to {to_unit} is not supported"}
-                
+                return {
+                    "error": f"Conversion from {from_unit} to {to_unit} is not supported"
+                }
+
         except Exception as e:
             return {"error": f"Error converting units: {str(e)}"}
-        
+
     def _get_parameters(self) -> Dict:
         return {
             "type": "object",
@@ -514,11 +630,18 @@ class UnitConverter(Tool):
             "required": ["value", "from_unit", "to_unit"],
         }
 
+
 class WebScraper(NetworkTool):
     """
     Tool to scrape data from a webpage. This tool fetches the HTML content of a given URL and returns the text content.
     """
-    def __init__(self, timeout: int = 15, max_retries: int = 3, security_manager: Optional[SecurityManager] = None):
+
+    def __init__(
+        self,
+        timeout: int = 15,
+        max_retries: int = 3,
+        security_manager: Optional[SecurityManager] = None,
+    ):
         super().__init__(
             name="web_scraper",
             description="Scrape data from a webpage and return the text content",
@@ -539,24 +662,27 @@ class WebScraper(NetworkTool):
                 return {"error": "URL cannot be empty."}
             if not normalized.lower().startswith(("http://", "https://")):
                 # Accept bare domains like example.com or example.co.uk and default to https
-                domain_match = re.match(r"^(?:[a-z0-9-]+\.)+(?:[a-z]{2,})(?:/.*)?$", normalized, re.IGNORECASE)
+                domain_match = re.match(
+                    r"^(?:[a-z0-9-]+\.)+(?:[a-z]{2,})(?:/.*)?$",
+                    normalized,
+                    re.IGNORECASE,
+                )
                 if domain_match:
                     normalized = "https://" + normalized.lstrip("/")
                 else:
-                    return {"error": "Invalid URL. Provide a full URL starting with http:// or https://"}
+                    return {
+                        "error": "Invalid URL. Provide a full URL starting with http:// or https://"
+                    }
             resp = self.make_request("GET", normalized)
             resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            soup = BeautifulSoup(resp.text, "html.parser")
             text = soup.get_text()
             # Clean up the text content
-            text = ' '.join(text.split())
-            text = text.replace('\n', ' ').replace('\r', ' ').strip()
-            
+            text = " ".join(text.split())
+            text = text.replace("\n", " ").replace("\r", " ").strip()
+
             # Return the text content (trimmed)
-            return {
-                "url": normalized,
-                "content": text[:1000]
-            }
+            return {"url": normalized, "content": text[:1000]}
         except NetworkError as e:
             return {"error": f"Network error: {e}"}
         except Exception as e:
@@ -566,16 +692,24 @@ class WebScraper(NetworkTool):
         return {
             "type": "object",
             "properties": {
-                "url": {"type": "string", "description": "URL to fetch and extract text from"}
+                "url": {
+                    "type": "string",
+                    "description": "URL to fetch and extract text from",
+                }
             },
             "required": ["url"],
         }
 
+
 class DateTimeTool(Tool):
     def __init__(self):
-        super().__init__(name="datetime", description="Get current time, add offsets, or format")
+        super().__init__(
+            name="datetime", description="Get current time, add offsets, or format"
+        )
 
-    def execute(self, action: str = "now", offset_seconds: int = 0, fmt: str = None) -> Dict:
+    def execute(
+        self, action: str = "now", offset_seconds: int = 0, fmt: str = None
+    ) -> Dict:
         try:
             now = datetime.utcnow()
             if action == "add":
@@ -588,25 +722,25 @@ class DateTimeTool(Tool):
             return {"iso": now.isoformat() + "Z"}
         except Exception as e:
             return {"error": str(e)}
-    
+
     def _convert_format(self, fmt: str) -> str:
         """Convert common date format patterns to Python strftime format."""
         # Order matters - replace longer patterns first
         conversions = [
-            ('yyyy', '%Y'),
-            ('MMMM', '%B'),  # Full month name (before MMM)
-            ('MMM', '%b'),   # Abbreviated month name (before MM)
-            ('MM', '%m'),    # Month number (after month names)
-            ('dd', '%d'),
-            ('HH', '%H'),
-            ('mm', '%M'),
-            ('ss', '%S'),
+            ("yyyy", "%Y"),
+            ("MMMM", "%B"),  # Full month name (before MMM)
+            ("MMM", "%b"),  # Abbreviated month name (before MM)
+            ("MM", "%m"),  # Month number (after month names)
+            ("dd", "%d"),
+            ("HH", "%H"),
+            ("mm", "%M"),
+            ("ss", "%S"),
         ]
-        
+
         result = fmt
         for pattern, replacement in conversions:
             result = result.replace(pattern, replacement)
-        
+
         return result
 
     def _get_parameters(self) -> Dict:
@@ -619,12 +753,14 @@ class DateTimeTool(Tool):
             },
         }
 
+
 class UUIDTool(Tool):
     def __init__(self):
         super().__init__(name="uuid", description="Generate UUID v4 strings")
 
     def execute(self, count: int = 1) -> Dict:
         import uuid
+
         try:
             count = max(1, min(int(count), 20))
             uuids = [str(uuid.uuid4()) for _ in range(count)]
@@ -633,15 +769,22 @@ class UUIDTool(Tool):
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"count": {"type": "integer", "default": 1}}}
+        return {
+            "type": "object",
+            "properties": {"count": {"type": "integer", "default": 1}},
+        }
+
 
 class RandomStringTool(Tool):
     def __init__(self):
-        super().__init__(name="random_string", description="Generate a random alphanumeric string")
+        super().__init__(
+            name="random_string", description="Generate a random alphanumeric string"
+        )
 
     def execute(self, length: int = 16) -> Dict:
         import secrets
         import string
+
         try:
             length = max(1, min(int(length), 1024))
             alphabet = string.ascii_letters + string.digits
@@ -651,14 +794,21 @@ class RandomStringTool(Tool):
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"length": {"type": "integer", "default": 16}}}
+        return {
+            "type": "object",
+            "properties": {"length": {"type": "integer", "default": 16}},
+        }
+
 
 class RandomNumberTool(Tool):
     def __init__(self):
-        super().__init__(name="random_number", description="Generate a random integer in a range")
+        super().__init__(
+            name="random_number", description="Generate a random integer in a range"
+        )
 
     def execute(self, minimum: int = 0, maximum: int = 100) -> Dict:
         import random
+
         try:
             a, b = int(minimum), int(maximum)
             if a > b:
@@ -668,7 +818,14 @@ class RandomNumberTool(Tool):
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"minimum": {"type": "integer", "default": 0}, "maximum": {"type": "integer", "default": 100}}}
+        return {
+            "type": "object",
+            "properties": {
+                "minimum": {"type": "integer", "default": 0},
+                "maximum": {"type": "integer", "default": 100},
+            },
+        }
+
 
 class Base64EncodeTool(Tool):
     def __init__(self):
@@ -676,6 +833,7 @@ class Base64EncodeTool(Tool):
 
     def execute(self, text: str) -> Dict:
         import base64
+
         try:
             data = base64.b64encode(text.encode("utf-8")).decode("ascii")
             return {"encoded": data}
@@ -683,7 +841,12 @@ class Base64EncodeTool(Tool):
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]}
+        return {
+            "type": "object",
+            "properties": {"text": {"type": "string"}},
+            "required": ["text"],
+        }
+
 
 class Base64DecodeTool(Tool):
     def __init__(self):
@@ -691,6 +854,7 @@ class Base64DecodeTool(Tool):
 
     def execute(self, data: str) -> Dict:
         import base64
+
         try:
             text = base64.b64decode(data.encode("ascii")).decode("utf-8")
             return {"text": text}
@@ -698,14 +862,22 @@ class Base64DecodeTool(Tool):
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"data": {"type": "string"}}, "required": ["data"]}
+        return {
+            "type": "object",
+            "properties": {"data": {"type": "string"}},
+            "required": ["data"],
+        }
+
 
 class HashTool(Tool):
     def __init__(self):
-        super().__init__(name="hash_text", description="Hash text with a selected algorithm")
+        super().__init__(
+            name="hash_text", description="Hash text with a selected algorithm"
+        )
 
     def execute(self, text: str, algorithm: str = "sha256") -> Dict:
         import hashlib
+
         try:
             alg = algorithm.lower()
             if alg not in hashlib.algorithms_available:
@@ -726,9 +898,12 @@ class HashTool(Tool):
             "required": ["text"],
         }
 
+
 class JSONTool(Tool):
     def __init__(self):
-        super().__init__(name="json_tool", description="Pretty-print, minify or validate JSON")
+        super().__init__(
+            name="json_tool", description="Pretty-print, minify or validate JSON"
+        )
 
     def execute(self, text: str, mode: str = "pretty") -> Dict:
         try:
@@ -736,7 +911,9 @@ class JSONTool(Tool):
             if mode == "pretty":
                 return {"result": json.dumps(obj, indent=2, ensure_ascii=False)}
             elif mode == "minify":
-                return {"result": json.dumps(obj, separators=(",", ":"), ensure_ascii=False)}
+                return {
+                    "result": json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
+                }
             else:
                 return {"valid": True}
         except Exception as e:
@@ -747,17 +924,25 @@ class JSONTool(Tool):
             "type": "object",
             "properties": {
                 "text": {"type": "string"},
-                "mode": {"type": "string", "enum": ["pretty", "minify", "validate"], "default": "pretty"},
+                "mode": {
+                    "type": "string",
+                    "enum": ["pretty", "minify", "validate"],
+                    "default": "pretty",
+                },
             },
             "required": ["text"],
         }
 
+
 class RegexExtractTool(Tool):
     def __init__(self):
-        super().__init__(name="regex_extract", description="Extract regex matches from text")
+        super().__init__(
+            name="regex_extract", description="Extract regex matches from text"
+        )
 
     def execute(self, text: str, pattern: str, flags: str = "") -> Dict:
         import re
+
         try:
             f = 0
             if "i" in flags.lower():
@@ -777,14 +962,20 @@ class RegexExtractTool(Tool):
             "properties": {
                 "text": {"type": "string"},
                 "pattern": {"type": "string"},
-                "flags": {"type": "string", "description": "Combine: i (ignorecase), m (multiline), s (dotall)"},
+                "flags": {
+                    "type": "string",
+                    "description": "Combine: i (ignorecase), m (multiline), s (dotall)",
+                },
             },
             "required": ["text", "pattern"],
         }
 
+
 class LoremIpsumTool(Tool):
     def __init__(self):
-        super().__init__(name="lorem_ipsum", description="Generate placeholder Lorem Ipsum text")
+        super().__init__(
+            name="lorem_ipsum", description="Generate placeholder Lorem Ipsum text"
+        )
 
     def execute(self, sentences: int = 3) -> Dict:
         try:
@@ -800,15 +991,22 @@ class LoremIpsumTool(Tool):
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"sentences": {"type": "integer", "default": 3}}}
+        return {
+            "type": "object",
+            "properties": {"sentences": {"type": "integer", "default": 3}},
+        }
+
 
 class FileReadTool(Tool):
     def __init__(self, security_manager: Optional[SecurityManager] = None):
-        super().__init__(name="file_read", description="Read a small text file from the workspace")
+        super().__init__(
+            name="file_read", description="Read a small text file from the workspace"
+        )
         self.security = security_manager
 
     def execute(self, path: str, max_bytes: int = 4096) -> Dict:
         import os
+
         try:
             max_bytes = max(1, min(int(max_bytes), 1024 * 1024))
             if self.security:
@@ -842,14 +1040,19 @@ class FileReadTool(Tool):
             "required": ["path"],
         }
 
+
 class FileSearchTool(Tool):
     def __init__(self, security_manager: Optional[SecurityManager] = None):
-        super().__init__(name="file_search", description="Search for files by pattern within the workspace")
+        super().__init__(
+            name="file_search",
+            description="Search for files by pattern within the workspace",
+        )
         self.security = security_manager
 
     def execute(self, pattern: str = "*.md", max_results: int = 50) -> Dict:
         import os
         import fnmatch
+
         try:
             max_results = max(1, min(int(max_results), 1000))
             roots: List[str]
@@ -876,16 +1079,26 @@ class FileSearchTool(Tool):
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"pattern": {"type": "string", "default": "*.md"}, "max_results": {"type": "integer", "default": 50}}}
+        return {
+            "type": "object",
+            "properties": {
+                "pattern": {"type": "string", "default": "*.md"},
+                "max_results": {"type": "integer", "default": 50},
+            },
+        }
+
 
 class CSVPreviewTool(Tool):
     def __init__(self, security_manager: Optional[SecurityManager] = None):
-        super().__init__(name="csv_preview", description="Preview CSV headers and first rows")
+        super().__init__(
+            name="csv_preview", description="Preview CSV headers and first rows"
+        )
         self.security = security_manager
 
     def execute(self, path: str, limit: int = 5) -> Dict:
         import os
         import csv
+
         try:
             if self.security:
                 abs_path = self.security.validate_file_access(path)
@@ -901,7 +1114,7 @@ class CSVPreviewTool(Tool):
                 reader = csv.reader(f)
                 rows = list(reader)
             headers = rows[0] if rows else []
-            preview = rows[1: 1 + limit] if len(rows) > 1 else []
+            preview = rows[1 : 1 + limit] if len(rows) > 1 else []
             return {"path": abs_path, "headers": headers, "rows": preview}
         except ToolExecutionError as e:
             return {"error": str(e)}
@@ -911,9 +1124,13 @@ class CSVPreviewTool(Tool):
     def _get_parameters(self) -> Dict:
         return {
             "type": "object",
-            "properties": {"path": {"type": "string"}, "limit": {"type": "integer", "default": 5}},
+            "properties": {
+                "path": {"type": "string"},
+                "limit": {"type": "integer", "default": 5},
+            },
             "required": ["path"],
         }
+
 
 class URLMetadataTool(NetworkTool):
     def __init__(self, timeout: int = 15, max_retries: int = 3):
@@ -926,14 +1143,24 @@ class URLMetadataTool(NetworkTool):
 
     def execute(self, url: str) -> Dict:
         try:
-            if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+            if not isinstance(url, str) or not url.lower().startswith(
+                ("http://", "https://")
+            ):
                 return {"error": "Invalid URL. Must start with http:// or https://"}
             resp = self.make_request("GET", url)
             resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, 'html.parser')
-            title = soup.title.string.strip() if soup.title and soup.title.string else None
-            desc_tag = soup.find("meta", attrs={"name": "description"}) or soup.find("meta", attrs={"property": "og:description"})
-            desc = desc_tag["content"].strip() if desc_tag and desc_tag.get("content") else None
+            soup = BeautifulSoup(resp.text, "html.parser")
+            title = (
+                soup.title.string.strip() if soup.title and soup.title.string else None
+            )
+            desc_tag = soup.find("meta", attrs={"name": "description"}) or soup.find(
+                "meta", attrs={"property": "og:description"}
+            )
+            desc = (
+                desc_tag["content"].strip()
+                if desc_tag and desc_tag.get("content")
+                else None
+            )
             return {"url": url, "title": title, "description": desc}
         except NetworkError as e:
             return {"error": f"Network error: {e}"}
@@ -941,27 +1168,40 @@ class URLMetadataTool(NetworkTool):
             return {"error": f"Metadata fetch failed: {e}"}
 
     def _get_parameters(self) -> Dict:
-        return {"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]}
+        return {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
+        }
 
 
 class ToolsHelpTool(Tool):
     def __init__(self, tool_manager):
-        super().__init__(name="tools_help", description="List available tools and their parameter schemas")
+        super().__init__(
+            name="tools_help",
+            description="List available tools and their parameter schemas",
+        )
         self._tool_manager = tool_manager
 
-    def execute(self, names: Optional[List[str]] = None, include_schema: bool = True) -> Dict:
+    def execute(
+        self, names: Optional[List[str]] = None, include_schema: bool = True
+    ) -> Dict:
         try:
             defs = self._tool_manager.get_tool_definitions()
             if names:
                 names_set = set(names)
-                defs = [d for d in defs if d.get("function", {}).get("name") in names_set]
+                defs = [
+                    d for d in defs if d.get("function", {}).get("name") in names_set
+                ]
             if include_schema:
                 return {"tools": defs}
             # Strip parameters if not requested
             simple = []
             for d in defs:
                 fn = d.get("function", {})
-                simple.append({"name": fn.get("name"), "description": fn.get("description")})
+                simple.append(
+                    {"name": fn.get("name"), "description": fn.get("description")}
+                )
             return {"tools": simple}
         except Exception as e:
             return {"error": str(e)}
@@ -975,6 +1215,7 @@ class ToolsHelpTool(Tool):
             },
         }
 
+
 class WebHeadlinesTool(NetworkTool):
     def __init__(self, timeout: int = 15, max_retries: int = 3):
         super().__init__(
@@ -986,11 +1227,13 @@ class WebHeadlinesTool(NetworkTool):
 
     def execute(self, url: str, max_items: int = 10) -> Dict:
         try:
-            if not isinstance(url, str) or not url.lower().startswith(("http://", "https://")):
+            if not isinstance(url, str) or not url.lower().startswith(
+                ("http://", "https://")
+            ):
                 return {"error": "Invalid URL. Must start with http:// or https://"}
             resp = self.make_request("GET", url)
             resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, 'html.parser')
+            soup = BeautifulSoup(resp.text, "html.parser")
             heads = []
             for tag in soup.find_all(["h1", "h2", "h3"]):
                 text = (tag.get_text() or "").strip()

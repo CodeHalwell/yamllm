@@ -4,8 +4,8 @@ import os
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig
 import yaml
 
-class TestParserConfig(unittest.TestCase):
 
+class TestParserConfig(unittest.TestCase):
     def setUp(self):
         self.valid_yaml_content = """
         provider:
@@ -50,7 +50,7 @@ class TestParserConfig(unittest.TestCase):
         """
 
     def test_parse_yaml_config_valid(self):
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as temp_file:
             temp_file.write(self.valid_yaml_content)
             temp_file_path = temp_file.name
 
@@ -62,7 +62,9 @@ class TestParserConfig(unittest.TestCase):
             self.assertEqual(config.provider.base_url, "http://example.com")
             self.assertEqual(config.model_settings.temperature, 0.7)
             self.assertEqual(config.request.timeout, 30)
-            self.assertEqual(config.context.system_prompt, "You are a helpful assistant.")
+            self.assertEqual(
+                config.context.system_prompt, "You are a helpful assistant."
+            )
             self.assertEqual(config.output.format, "text")
             self.assertEqual(config.logging.level, "INFO")
             self.assertTrue(config.safety.content_filtering)
@@ -82,7 +84,7 @@ class TestParserConfig(unittest.TestCase):
           api_key: null
           base_url: "http://example.com
         """
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as temp_file:
             temp_file.write(invalid_yaml_content)
             temp_file_path = temp_file.name
 
@@ -93,7 +95,7 @@ class TestParserConfig(unittest.TestCase):
             os.remove(temp_file_path)
 
     def test_parse_yaml_config_empty_file(self):
-        with tempfile.NamedTemporaryFile(delete=False, mode='w') as temp_file:
+        with tempfile.NamedTemporaryFile(delete=False, mode="w") as temp_file:
             temp_file.write("")
             temp_file_path = temp_file.name
 
@@ -103,5 +105,6 @@ class TestParserConfig(unittest.TestCase):
         finally:
             os.remove(temp_file_path)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

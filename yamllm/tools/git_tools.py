@@ -8,13 +8,16 @@ import os
 
 class GitError(Exception):
     """Exception raised for git command errors."""
+
     pass
 
 
 class GitTool(Tool):
     """Base class for git operations with common functionality."""
 
-    def __init__(self, name: str, description: str, cwd: Optional[str] = None, timeout: int = 30):
+    def __init__(
+        self, name: str, description: str, cwd: Optional[str] = None, timeout: int = 30
+    ):
         """
         Initialize GitTool.
 
@@ -30,7 +33,9 @@ class GitTool(Tool):
         self.cwd = cwd or os.getcwd()
         self.timeout = timeout
 
-    def _run_git_command(self, args: list, capture_output: bool = True, check: bool = True) -> subprocess.CompletedProcess:
+    def _run_git_command(
+        self, args: list, capture_output: bool = True, check: bool = True
+    ) -> subprocess.CompletedProcess:
         """Execute a git command and return the result."""
         try:
             result = subprocess.run(
@@ -39,7 +44,7 @@ class GitTool(Tool):
                 capture_output=capture_output,
                 text=True,
                 check=check,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
             return result
         except subprocess.CalledProcessError as e:
@@ -65,7 +70,7 @@ class GitStatusTool(GitTool):
         super().__init__(
             name="git_status",
             description="Get the current status of the git repository including staged, unstaged, and untracked files",
-            cwd=cwd
+            cwd=cwd,
         )
 
     def execute(self) -> Dict[str, Any]:
@@ -92,11 +97,11 @@ class GitStatusTool(GitTool):
                 status = line[:2]
                 filename = line[3:]
 
-                if status[0] != ' ' and status[0] != '?':
+                if status[0] != " " and status[0] != "?":
                     staged.append({"file": filename, "status": status[0]})
-                if status[1] != ' ' and status[1] != '?':
+                if status[1] != " " and status[1] != "?":
                     unstaged.append({"file": filename, "status": status[1]})
-                if status == '??':
+                if status == "??":
                     untracked.append(filename)
 
             return {
@@ -104,17 +109,15 @@ class GitStatusTool(GitTool):
                 "staged": staged,
                 "unstaged": unstaged,
                 "untracked": untracked,
-                "clean": len(staged) == 0 and len(unstaged) == 0 and len(untracked) == 0
+                "clean": len(staged) == 0
+                and len(unstaged) == 0
+                and len(untracked) == 0,
             }
         except GitError as e:
             return {"error": str(e)}
 
     def _get_parameters(self) -> Dict:
-        return {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
+        return {"type": "object", "properties": {}, "required": []}
 
 
 class GitDiffTool(GitTool):
@@ -124,10 +127,12 @@ class GitDiffTool(GitTool):
         super().__init__(
             name="git_diff",
             description="Show changes in the working directory or staged changes. Can diff specific files or all changes.",
-            cwd=cwd
+            cwd=cwd,
         )
 
-    def execute(self, staged: bool = False, file_path: Optional[str] = None) -> Dict[str, Any]:
+    def execute(
+        self, staged: bool = False, file_path: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Execute git diff command.
 
@@ -151,7 +156,7 @@ class GitDiffTool(GitTool):
                 "diff": result.stdout,
                 "staged": staged,
                 "file": file_path,
-                "has_changes": bool(result.stdout.strip())
+                "has_changes": bool(result.stdout.strip()),
             }
         except GitError as e:
             return {"error": str(e)}
@@ -163,14 +168,14 @@ class GitDiffTool(GitTool):
                 "staged": {
                     "type": "boolean",
                     "description": "Show staged changes instead of unstaged",
-                    "default": False
+                    "default": False,
                 },
                 "file_path": {
                     "type": "string",
-                    "description": "Optional path to specific file to diff"
-                }
+                    "description": "Optional path to specific file to diff",
+                },
             },
-            "required": []
+            "required": [],
         }
 
 
@@ -181,10 +186,12 @@ class GitLogTool(GitTool):
         super().__init__(
             name="git_log",
             description="Show commit history with author, date, and message",
-            cwd=cwd
+            cwd=cwd,
         )
 
-    def execute(self, max_count: int = 10, file_path: Optional[str] = None) -> Dict[str, Any]:
+    def execute(
+        self, max_count: int = 10, file_path: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Execute git log command.
 
@@ -200,7 +207,7 @@ class GitLogTool(GitTool):
                 "log",
                 f"-{max_count}",
                 "--pretty=format:%H|%an|%ae|%ad|%s",
-                "--date=iso"
+                "--date=iso",
             ]
             if file_path:
                 args.extend(["--", file_path])
@@ -213,19 +220,17 @@ class GitLogTool(GitTool):
                     continue
                 parts = line.split("|", 4)
                 if len(parts) == 5:
-                    commits.append({
-                        "hash": parts[0][:8],  # Short hash
-                        "author": parts[1],
-                        "email": parts[2],
-                        "date": parts[3],
-                        "message": parts[4]
-                    })
+                    commits.append(
+                        {
+                            "hash": parts[0][:8],  # Short hash
+                            "author": parts[1],
+                            "email": parts[2],
+                            "date": parts[3],
+                            "message": parts[4],
+                        }
+                    )
 
-            return {
-                "commits": commits,
-                "count": len(commits),
-                "file": file_path
-            }
+            return {"commits": commits, "count": len(commits), "file": file_path}
         except GitError as e:
             return {"error": str(e)}
 
@@ -236,14 +241,14 @@ class GitLogTool(GitTool):
                 "max_count": {
                     "type": "integer",
                     "description": "Maximum number of commits to show",
-                    "default": 10
+                    "default": 10,
                 },
                 "file_path": {
                     "type": "string",
-                    "description": "Optional file path to show history for"
-                }
+                    "description": "Optional file path to show history for",
+                },
             },
-            "required": []
+            "required": [],
         }
 
 
@@ -254,10 +259,12 @@ class GitBranchTool(GitTool):
         super().__init__(
             name="git_branch",
             description="List, create, or switch git branches",
-            cwd=cwd
+            cwd=cwd,
         )
 
-    def execute(self, action: str = "list", branch_name: Optional[str] = None) -> Dict[str, Any]:
+    def execute(
+        self, action: str = "list", branch_name: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Execute git branch operations.
 
@@ -283,10 +290,7 @@ class GitBranchTool(GitTool):
                     if is_current:
                         current = branch
 
-                return {
-                    "branches": branches,
-                    "current": current
-                }
+                return {"branches": branches, "current": current}
 
             elif action == "create":
                 if not branch_name:
@@ -296,7 +300,7 @@ class GitBranchTool(GitTool):
                 return {
                     "action": "created",
                     "branch": branch_name,
-                    "message": f"Branch '{branch_name}' created"
+                    "message": f"Branch '{branch_name}' created",
                 }
 
             elif action == "switch":
@@ -307,11 +311,13 @@ class GitBranchTool(GitTool):
                 return {
                     "action": "switched",
                     "branch": branch_name,
-                    "message": f"Switched to branch '{branch_name}'"
+                    "message": f"Switched to branch '{branch_name}'",
                 }
 
             else:
-                return {"error": f"Unknown action: {action}. Use 'list', 'create', or 'switch'"}
+                return {
+                    "error": f"Unknown action: {action}. Use 'list', 'create', or 'switch'"
+                }
 
         except GitError as e:
             return {"error": str(e)}
@@ -324,14 +330,14 @@ class GitBranchTool(GitTool):
                     "type": "string",
                     "enum": ["list", "create", "switch"],
                     "description": "Operation to perform",
-                    "default": "list"
+                    "default": "list",
                 },
                 "branch_name": {
                     "type": "string",
-                    "description": "Branch name for create/switch operations"
-                }
+                    "description": "Branch name for create/switch operations",
+                },
             },
-            "required": []
+            "required": [],
         }
 
 
@@ -342,7 +348,7 @@ class GitCommitTool(GitTool):
         super().__init__(
             name="git_commit",
             description="Create a git commit with staged changes",
-            cwd=cwd
+            cwd=cwd,
         )
 
     def execute(self, message: str, add_all: bool = False) -> Dict[str, Any]:
@@ -375,7 +381,7 @@ class GitCommitTool(GitTool):
                 "success": True,
                 "commit_hash": commit_hash,
                 "message": message,
-                "output": result.stdout
+                "output": result.stdout,
             }
         except GitError as e:
             return {"error": str(e)}
@@ -386,15 +392,15 @@ class GitCommitTool(GitTool):
             "properties": {
                 "message": {
                     "type": "string",
-                    "description": "Commit message describing the changes"
+                    "description": "Commit message describing the changes",
                 },
                 "add_all": {
                     "type": "boolean",
                     "description": "Stage all changes before committing",
-                    "default": False
-                }
+                    "default": False,
+                },
             },
-            "required": ["message"]
+            "required": ["message"],
         }
 
 
@@ -405,10 +411,12 @@ class GitPushTool(GitTool):
         super().__init__(
             name="git_push",
             description="Push local commits to remote repository",
-            cwd=cwd
+            cwd=cwd,
         )
 
-    def execute(self, remote: str = "origin", branch: Optional[str] = None, force: bool = False) -> Dict[str, Any]:
+    def execute(
+        self, remote: str = "origin", branch: Optional[str] = None, force: bool = False
+    ) -> Dict[str, Any]:
         """
         Execute git push command.
 
@@ -435,7 +443,7 @@ class GitPushTool(GitTool):
                 "success": True,
                 "remote": remote,
                 "branch": branch or "current",
-                "output": result.stderr  # Git push writes to stderr
+                "output": result.stderr,  # Git push writes to stderr
             }
         except GitError as e:
             return {"error": str(e)}
@@ -447,19 +455,19 @@ class GitPushTool(GitTool):
                 "remote": {
                     "type": "string",
                     "description": "Remote repository name",
-                    "default": "origin"
+                    "default": "origin",
                 },
                 "branch": {
                     "type": "string",
-                    "description": "Branch to push (default: current branch)"
+                    "description": "Branch to push (default: current branch)",
                 },
                 "force": {
                     "type": "boolean",
                     "description": "Force push (WARNING: can overwrite remote history)",
-                    "default": False
-                }
+                    "default": False,
+                },
             },
-            "required": []
+            "required": [],
         }
 
 
@@ -470,10 +478,12 @@ class GitPullTool(GitTool):
         super().__init__(
             name="git_pull",
             description="Pull and merge changes from remote repository",
-            cwd=cwd
+            cwd=cwd,
         )
 
-    def execute(self, remote: str = "origin", branch: Optional[str] = None) -> Dict[str, Any]:
+    def execute(
+        self, remote: str = "origin", branch: Optional[str] = None
+    ) -> Dict[str, Any]:
         """
         Execute git pull command.
 
@@ -495,7 +505,7 @@ class GitPullTool(GitTool):
                 "success": True,
                 "remote": remote,
                 "branch": branch or "current",
-                "output": result.stdout
+                "output": result.stdout,
             }
         except GitError as e:
             return {"error": str(e)}
@@ -507,14 +517,11 @@ class GitPullTool(GitTool):
                 "remote": {
                     "type": "string",
                     "description": "Remote repository name",
-                    "default": "origin"
+                    "default": "origin",
                 },
-                "branch": {
-                    "type": "string",
-                    "description": "Branch to pull from"
-                }
+                "branch": {"type": "string", "description": "Branch to pull from"},
             },
-            "required": []
+            "required": [],
         }
 
 
@@ -527,5 +534,5 @@ __all__ = [
     "GitCommitTool",
     "GitPushTool",
     "GitPullTool",
-    "GitError"
+    "GitError",
 ]

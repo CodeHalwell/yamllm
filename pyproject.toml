@@ -23,25 +23,26 @@ dependencies = [
     "google-generativeai>=0.4.0",
     "httpx[http2]>=0.27.0",
     "mcp[cli]>=1.14.1",
-    "mistralai>=1.7.1",
+    "mistralai>=1.7.1,<2",
     "numpy>=2.2.3",
     "openai>=1.63.0",
     "pydantic>=2.10.6",
     "python-dotenv>=1.0.1",
+    "pytz>=2024.1",
     "pyyaml>=6.0.2",
     "requests>=2.32.3",
     "rich>=13.9.4",
-    "ruff>=0.9.6",
     "tabulate>=0.9.0",
+    "textual>=1.0.0",
     "websockets>=12.0",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest>=8.0.0",
-    "black>=24.1.1",
     "isort>=5.13.2",
     "mypy>=1.8.0",
+    "ruff>=0.9.6",
 ]
 viz = [
     "pandas>=2.2.3",
@@ -88,4 +89,13 @@ dev = [
     "pytest>=8.3.4",
     "azure-ai-inference>=1.0.0b1",
     "azure-identity>=1.15.0",
+    "ruff>=0.9.6",
 ]
+
+[tool.ruff]
+target-version = "py310"
+
+[tool.ruff.lint]
+# Pin the rule set explicitly so CI results don't drift as ruff's
+# defaults expand across versions.
+select = ["E4", "E7", "E9", "F"]

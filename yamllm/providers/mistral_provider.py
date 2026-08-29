@@ -8,4 +8,3 @@ legacy UI behavior.
 from yamllm.providers.mistral import MistralProvider  # re-export
 
 __all__ = ["MistralProvider"]
-

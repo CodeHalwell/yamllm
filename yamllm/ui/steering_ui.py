@@ -23,7 +23,7 @@ class SteeringUI:
         state: Any,
         current_thought: str,
         planned_action: Dict[str, Any],
-        decision_history: List[Any]
+        decision_history: List[Any],
     ):
         """
         Render complete agent dashboard.
@@ -40,21 +40,22 @@ class SteeringUI:
         layout.split_column(
             Layout(name="header", size=3),
             Layout(name="main"),
-            Layout(name="footer", size=8)
+            Layout(name="footer", size=8),
         )
 
         # Split main into left and right
-        layout["main"].split_row(
-            Layout(name="left"),
-            Layout(name="right")
-        )
+        layout["main"].split_row(Layout(name="left"), Layout(name="right"))
 
         # Header
-        header_text = Text("Agent Steering Dashboard", style="bold cyan", justify="center")
+        header_text = Text(
+            "Agent Steering Dashboard", style="bold cyan", justify="center"
+        )
         layout["header"].update(Panel(header_text, border_style="cyan"))
 
         # Left: Current state
-        layout["left"].update(self._render_current_state(state, current_thought, planned_action))
+        layout["left"].update(
+            self._render_current_state(state, current_thought, planned_action)
+        )
 
         # Right: History and context
         layout["right"].update(self._render_history(decision_history))
@@ -65,21 +66,24 @@ class SteeringUI:
         self.console.print(layout)
 
     def _render_current_state(
-        self,
-        state: Any,
-        thought: str,
-        action: Dict[str, Any]
+        self, state: Any, thought: str, action: Dict[str, Any]
     ) -> Panel:
         """Render current agent state panel."""
         content = []
 
         # Progress
-        if hasattr(state, 'get_progress'):
+        if hasattr(state, "get_progress"):
             progress = state.get_progress()
-            completed = len(state.get_completed_tasks()) if hasattr(state, 'get_completed_tasks') else 0
-            total = len(state.tasks) if hasattr(state, 'tasks') else 0
+            completed = (
+                len(state.get_completed_tasks())
+                if hasattr(state, "get_completed_tasks")
+                else 0
+            )
+            total = len(state.tasks) if hasattr(state, "tasks") else 0
 
-            content.append(f"[bold]Progress:[/bold] {progress:.1%} ({completed}/{total} tasks)")
+            content.append(
+                f"[bold]Progress:[/bold] {progress:.1%} ({completed}/{total} tasks)"
+            )
 
         # Current thought
         content.append(f"\n[bold yellow]Reasoning:[/bold yellow]\n{thought[:200]}")
@@ -89,11 +93,7 @@ class SteeringUI:
         for key, value in list(action.items())[:3]:
             content.append(f"  {key}: {str(value)[:50]}")
 
-        return Panel(
-            "\n".join(content),
-            title="Current State",
-            border_style="blue"
-        )
+        return Panel("\n".join(content), title="Current State", border_style="blue")
 
     def _render_history(self, decision_history: List[Any]) -> Panel:
         """Render decision history panel."""
@@ -107,7 +107,7 @@ class SteeringUI:
                 "approve": "green",
                 "reject": "red",
                 "modify": "yellow",
-                "skip": "blue"
+                "skip": "blue",
             }.get(decision.action.value, "white")
 
             details = decision.feedback[:30] if decision.feedback else "-"
@@ -115,7 +115,7 @@ class SteeringUI:
             table.add_row(
                 str(i),
                 f"[{action_style}]{decision.action.value}[/{action_style}]",
-                details
+                details,
             )
 
         return Panel(table, title="Decision History", border_style="magenta")
@@ -125,20 +125,16 @@ class SteeringUI:
         controls = [
             "[green]a[/green] Approve  [yellow]m[/yellow] Modify  [red]r[/red] Reject",
             "[blue]p[/blue] Pause     [magenta]s[/magenta] Skip    [red]x[/red] Stop",
-            "[cyan]auto[/cyan] Auto-approve remaining"
+            "[cyan]auto[/cyan] Auto-approve remaining",
         ]
 
-        return Panel(
-            "\n".join(controls),
-            title="Controls",
-            border_style="white"
-        )
+        return Panel("\n".join(controls), title="Controls", border_style="white")
 
     def render_task_tree(self, state: Any):
         """Render task tree showing dependencies."""
         tree = Tree("[bold]Agent Tasks[/bold]")
 
-        if not hasattr(state, 'tasks'):
+        if not hasattr(state, "tasks"):
             return
 
         # Group by status
@@ -187,23 +183,26 @@ class SteeringUI:
 
     def show_progress(self, state: Any):
         """Show animated progress bar."""
-        if not hasattr(state, 'get_progress'):
+        if not hasattr(state, "get_progress"):
             return
 
         progress = state.get_progress()
-        completed = len(state.get_completed_tasks()) if hasattr(state, 'get_completed_tasks') else 0
-        total = len(state.tasks) if hasattr(state, 'tasks') else 0
+        completed = (
+            len(state.get_completed_tasks())
+            if hasattr(state, "get_completed_tasks")
+            else 0
+        )
+        total = len(state.tasks) if hasattr(state, "tasks") else 0
 
         with Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
             BarColumn(),
             TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-            console=self.console
+            console=self.console,
         ) as progress_bar:
             task = progress_bar.add_task(
-                f"Agent Progress ({completed}/{total} tasks)",
-                total=100
+                f"Agent Progress ({completed}/{total} tasks)", total=100
             )
             progress_bar.update(task, completed=progress * 100)
 
@@ -221,17 +220,13 @@ class SteeringUI:
 
         for i, alt in enumerate(alternatives[:5], 1):
             table.add_row(
-                str(i),
-                alt.get("action", "Unknown"),
-                alt.get("reason", "")[:50]
+                str(i), alt.get("action", "Unknown"), alt.get("reason", "")[:50]
             )
 
         self.console.print(table)
 
     def show_comparison(
-        self,
-        original_action: Dict[str, Any],
-        modified_action: Dict[str, Any]
+        self, original_action: Dict[str, Any], modified_action: Dict[str, Any]
     ):
         """Show comparison between original and modified actions."""
         self.console.print("\n[bold]Action Comparison:[/bold]\n")
@@ -252,9 +247,7 @@ class SteeringUI:
             style = "bold" if orig_val != mod_val else ""
 
             table.add_row(
-                key,
-                f"[{style}]{orig_val}[/{style}]",
-                f"[{style}]{mod_val}[/{style}]"
+                key, f"[{style}]{orig_val}[/{style}]", f"[{style}]{mod_val}[/{style}]"
             )
 
         self.console.print(table)
@@ -263,13 +256,13 @@ class SteeringUI:
         """Render detailed state inspector."""
         self.console.print("\n[bold cyan]═══ State Inspector ═══[/bold cyan]\n")
 
-        if hasattr(state, '__dict__'):
+        if hasattr(state, "__dict__"):
             table = Table(title="Agent State", box=box.DOUBLE)
             table.add_column("Property", style="cyan", width=20)
             table.add_column("Value", style="white")
 
             for key, value in state.__dict__.items():
-                if not key.startswith('_'):
+                if not key.startswith("_"):
                     # Format complex values
                     if isinstance(value, (list, dict)):
                         val_str = f"{type(value).__name__}[{len(value)}]"
@@ -289,25 +282,19 @@ class SteeringUI:
             for key, value in context.items():
                 content.append(f"  {key}: {value}")
 
-        self.console.print(Panel(
-            "\n".join(content),
-            title="Error",
-            border_style="red"
-        ))
+        self.console.print(Panel("\n".join(content), title="Error", border_style="red"))
 
     def show_success(self, message: str):
         """Show success message."""
-        self.console.print(Panel(
-            f"[bold green]✓ {message}[/bold green]",
-            border_style="green"
-        ))
+        self.console.print(
+            Panel(f"[bold green]✓ {message}[/bold green]", border_style="green")
+        )
 
     def show_warning(self, message: str):
         """Show warning message."""
-        self.console.print(Panel(
-            f"[bold yellow]⚠ {message}[/bold yellow]",
-            border_style="yellow"
-        ))
+        self.console.print(
+            Panel(f"[bold yellow]⚠ {message}[/bold yellow]", border_style="yellow")
+        )
 
     def render_diff(self, before: str, after: str, context_lines: int = 3):
         """Render diff between before and after states."""
@@ -315,18 +302,18 @@ class SteeringUI:
             import difflib
 
             diff = difflib.unified_diff(
-                before.splitlines(),
-                after.splitlines(),
-                lineterm='',
-                n=context_lines
+                before.splitlines(), after.splitlines(), lineterm="", n=context_lines
             )
 
             diff_text = "\n".join(diff)
 
             if diff_text:
                 from rich.syntax import Syntax
+
                 syntax = Syntax(diff_text, "diff", theme="monokai", line_numbers=True)
-                self.console.print(Panel(syntax, title="Changes", border_style="yellow"))
+                self.console.print(
+                    Panel(syntax, title="Changes", border_style="yellow")
+                )
 
         except Exception as e:
             self.console.print(f"[dim]Could not render diff: {e}[/dim]")

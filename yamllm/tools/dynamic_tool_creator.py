@@ -11,6 +11,7 @@ from dataclasses import dataclass
 @dataclass
 class ToolSpecification:
     """Specification for a dynamically created tool."""
+
     name: str
     description: str
     parameters: Dict[str, Any]
@@ -23,18 +24,33 @@ class ToolValidator:
     """Validates dynamically generated tool code for safety."""
 
     FORBIDDEN_IMPORTS = {
-        "os.system", "subprocess", "eval", "exec", "compile",
-        "__import__", "open", "file", "input", "raw_input"
+        "os.system",
+        "subprocess",
+        "eval",
+        "exec",
+        "compile",
+        "__import__",
+        "open",
+        "file",
+        "input",
+        "raw_input",
     }
 
-    FORBIDDEN_KEYWORDS = {
-        "exec", "eval", "compile", "__import__"
-    }
+    FORBIDDEN_KEYWORDS = {"exec", "eval", "compile", "__import__"}
 
     ALLOWED_IMPORTS = {
-        "json", "re", "math", "datetime", "time", "random",
-        "collections", "itertools", "functools", "operator",
-        "string", "typing"
+        "json",
+        "re",
+        "math",
+        "datetime",
+        "time",
+        "random",
+        "collections",
+        "itertools",
+        "functools",
+        "operator",
+        "string",
+        "typing",
     }
 
     @staticmethod
@@ -106,7 +122,7 @@ class DynamicTool:
         description: str,
         parameters: Dict[str, Any],
         execute_func: Callable,
-        example_usage: Optional[str] = None
+        example_usage: Optional[str] = None,
     ):
         """
         Initialize dynamic tool.
@@ -131,8 +147,8 @@ class DynamicTool:
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": self.parameters
-            }
+                "parameters": self.parameters,
+            },
         }
 
     def execute(self, **kwargs) -> Any:
@@ -159,10 +175,7 @@ class ToolCreator:
         self.created_tools: Dict[str, DynamicTool] = {}
 
     def create_tool(
-        self,
-        description: str,
-        name: Optional[str] = None,
-        validate: bool = True
+        self, description: str, name: Optional[str] = None, validate: bool = True
     ) -> DynamicTool:
         """
         Create a tool from natural language description.
@@ -198,7 +211,7 @@ class ToolCreator:
             description=spec.description,
             parameters=spec.parameters,
             execute_func=execute_func,
-            example_usage=spec.example_usage
+            example_usage=spec.example_usage,
         )
 
         # Store tool
@@ -208,9 +221,7 @@ class ToolCreator:
         return tool
 
     def _generate_tool_spec(
-        self,
-        description: str,
-        name: Optional[str] = None
+        self, description: str, name: Optional[str] = None
     ) -> ToolSpecification:
         """Generate tool specification using LLM."""
         prompt = f"""Create a Python tool based on this description: {description}
@@ -267,7 +278,7 @@ Generate the tool specification now:"""
                 parameters=spec_dict["parameters"],
                 code=spec_dict["code"],
                 example_usage=spec_dict.get("example_usage"),
-                safety_notes=spec_dict.get("safety_notes")
+                safety_notes=spec_dict.get("safety_notes"),
             )
 
         except (json.JSONDecodeError, KeyError) as e:
@@ -279,20 +290,77 @@ Generate the tool specification now:"""
     # eval, compile, __import__, getattr, setattr, delattr, globals, locals,
     # vars, breakpoint, help, input, exit, quit, etc.
     _SAFE_BUILTINS = {
-        name: getattr(__builtins__, name) if hasattr(__builtins__, name) else __builtins__[name]
+        name: getattr(__builtins__, name)
+        if hasattr(__builtins__, name)
+        else __builtins__[name]
         for name in (
-            "abs", "all", "any", "ascii", "bin", "bool", "bytearray", "bytes",
-            "chr", "complex", "dict", "divmod", "enumerate", "filter", "float",
-            "format", "frozenset", "hash", "hex", "id", "int", "isinstance",
-            "issubclass", "iter", "len", "list", "map", "max", "min", "next",
-            "object", "oct", "ord", "pow", "print", "range", "repr", "reversed",
-            "round", "set", "slice", "sorted", "str", "sum", "tuple", "type",
-            "zip", "True", "False", "None",
-            "Exception", "ValueError", "TypeError", "KeyError", "IndexError",
-            "AttributeError", "ArithmeticError", "ZeroDivisionError",
-            "OverflowError", "RuntimeError", "StopIteration",
+            "abs",
+            "all",
+            "any",
+            "ascii",
+            "bin",
+            "bool",
+            "bytearray",
+            "bytes",
+            "chr",
+            "complex",
+            "dict",
+            "divmod",
+            "enumerate",
+            "filter",
+            "float",
+            "format",
+            "frozenset",
+            "hash",
+            "hex",
+            "id",
+            "int",
+            "isinstance",
+            "issubclass",
+            "iter",
+            "len",
+            "list",
+            "map",
+            "max",
+            "min",
+            "next",
+            "object",
+            "oct",
+            "ord",
+            "pow",
+            "print",
+            "range",
+            "repr",
+            "reversed",
+            "round",
+            "set",
+            "slice",
+            "sorted",
+            "str",
+            "sum",
+            "tuple",
+            "type",
+            "zip",
+            "True",
+            "False",
+            "None",
+            "Exception",
+            "ValueError",
+            "TypeError",
+            "KeyError",
+            "IndexError",
+            "AttributeError",
+            "ArithmeticError",
+            "ZeroDivisionError",
+            "OverflowError",
+            "RuntimeError",
+            "StopIteration",
         )
-        if (hasattr(__builtins__, name) if hasattr(__builtins__, "__name__") else name in __builtins__)
+        if (
+            hasattr(__builtins__, name)
+            if hasattr(__builtins__, "__name__")
+            else name in __builtins__
+        )
     }
 
     def _compile_tool_function(self, code: str, name: str) -> Callable:
@@ -337,7 +405,7 @@ Generate the tool specification now:"""
             {
                 "name": tool.name,
                 "description": tool.description,
-                "example": tool.example_usage or "N/A"
+                "example": tool.example_usage or "N/A",
             }
             for tool in self.created_tools.values()
         ]
@@ -364,15 +432,15 @@ Generate the tool specification now:"""
             "description": tool.description,
             "parameters": tool.parameters,
             "code": inspect.getsource(tool.execute_func),
-            "example_usage": tool.example_usage
+            "example_usage": tool.example_usage,
         }
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             json.dump(spec, f, indent=2)
 
     def import_tool(self, filepath: str) -> DynamicTool:
         """Import tool specification from file."""
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             spec_dict = json.load(f)
 
         spec = ToolSpecification(
@@ -380,7 +448,7 @@ Generate the tool specification now:"""
             description=spec_dict["description"],
             parameters=spec_dict["parameters"],
             code=spec_dict["code"],
-            example_usage=spec_dict.get("example_usage")
+            example_usage=spec_dict.get("example_usage"),
         )
 
         # Validate and compile
@@ -395,7 +463,7 @@ Generate the tool specification now:"""
             description=spec.description,
             parameters=spec.parameters,
             execute_func=execute_func,
-            example_usage=spec.example_usage
+            example_usage=spec.example_usage,
         )
 
         self.created_tools[spec.name] = tool

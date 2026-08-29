@@ -2,9 +2,10 @@ from typing import Optional, Dict, Any
 from pydantic import BaseModel
 from yamllm.core.parser import parse_yaml_config
 
+
 class Config(BaseModel):
     """Configuration class for YAMLLM.
-    
+
     Attributes:
         model (str): The name of the LLM model to use
         temperature (float): Sampling temperature for text generation
@@ -15,7 +16,7 @@ class Config(BaseModel):
         api_key (Optional[str]): API key for the LLM service
         additional_params (Dict[str, Any]): Additional model parameters
     """
-    
+
     model: str = "gpt-4-turbo-preview"
     temperature: float = 0.7
     max_tokens: int = 500
@@ -27,7 +28,7 @@ class Config(BaseModel):
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert configuration to dictionary format.
-        
+
         Returns:
             Dict[str, Any]: Configuration as a dictionary
         """
@@ -36,10 +37,10 @@ class Config(BaseModel):
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "Config":
         """Create configuration from dictionary.
-        
+
         Args:
             config_dict (Dict[str, Any]): Configuration dictionary
-            
+
         Returns:
             Config: New configuration instance
         """

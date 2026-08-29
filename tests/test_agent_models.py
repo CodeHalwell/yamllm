@@ -105,10 +105,7 @@ def test_agent_state_progress():
 def test_action_result_to_dict():
     """Test action result serialization."""
     result = ActionResult(
-        task_id="task_1",
-        success=True,
-        response="Test response",
-        execution_time=1.5
+        task_id="task_1", success=True, response="Test response", execution_time=1.5
     )
 
     data = result.to_dict()
@@ -126,7 +123,7 @@ def test_observation_from_dict():
         "learned": "Something learned",
         "unblocked_tasks": ["task_2"],
         "progress_made": "Good progress",
-        "plan_adjustments": "No adjustments"
+        "plan_adjustments": "No adjustments",
     }
 
     obs = Observation.from_dict(data)

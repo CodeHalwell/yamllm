@@ -12,6 +12,7 @@ import sqlite3
 
 class OutcomeType(Enum):
     """Types of task outcomes."""
+
     SUCCESS = "success"
     FAILURE = "failure"
     PARTIAL = "partial"
@@ -21,6 +22,7 @@ class OutcomeType(Enum):
 
 class ImprovementType(Enum):
     """Types of improvements that can be learned."""
+
     TASK_DECOMPOSITION = "task_decomposition"
     TOOL_SELECTION = "tool_selection"
     REASONING_PATTERN = "reasoning_pattern"
@@ -32,6 +34,7 @@ class ImprovementType(Enum):
 @dataclass
 class Experience:
     """Represents a single agent experience."""
+
     experience_id: str
     task_description: str
     context: Dict[str, Any]
@@ -47,6 +50,7 @@ class Experience:
 @dataclass
 class LearningInsight:
     """Insight learned from experiences."""
+
     insight_id: str
     improvement_type: ImprovementType
     pattern: str
@@ -62,6 +66,7 @@ class LearningInsight:
 @dataclass
 class PerformanceMetrics:
     """Performance metrics for tracking improvement."""
+
     total_tasks: int = 0
     successful_tasks: int = 0
     failed_tasks: int = 0
@@ -140,23 +145,28 @@ class ExperienceStore:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO experiences
                 (experience_id, task_description, context, actions_taken, outcome,
                  outcome_details, duration_seconds, timestamp, agent_state, metadata)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                experience.experience_id,
-                experience.task_description,
-                json.dumps(experience.context),
-                json.dumps(experience.actions_taken),
-                experience.outcome.value,
-                json.dumps(experience.outcome_details),
-                experience.duration_seconds,
-                experience.timestamp.isoformat(),
-                json.dumps(experience.agent_state) if experience.agent_state else None,
-                json.dumps(experience.metadata)
-            ))
+            """,
+                (
+                    experience.experience_id,
+                    experience.task_description,
+                    json.dumps(experience.context),
+                    json.dumps(experience.actions_taken),
+                    experience.outcome.value,
+                    json.dumps(experience.outcome_details),
+                    experience.duration_seconds,
+                    experience.timestamp.isoformat(),
+                    json.dumps(experience.agent_state)
+                    if experience.agent_state
+                    else None,
+                    json.dumps(experience.metadata),
+                ),
+            )
 
             conn.commit()
 
@@ -164,7 +174,7 @@ class ExperienceStore:
         self,
         outcome: Optional[OutcomeType] = None,
         limit: int = 100,
-        task_pattern: Optional[str] = None
+        task_pattern: Optional[str] = None,
     ) -> List[Experience]:
         """
         Retrieve experiences with optional filters.
@@ -201,18 +211,20 @@ class ExperienceStore:
                 experiences = []
                 for row in rows:
                     try:
-                        experiences.append(Experience(
-                            experience_id=row[0],
-                            task_description=row[1],
-                            context=json.loads(row[2]) if row[2] else {},
-                            actions_taken=json.loads(row[3]) if row[3] else [],
-                            outcome=OutcomeType(row[4]),
-                            outcome_details=json.loads(row[5]) if row[5] else {},
-                            duration_seconds=row[6],
-                            timestamp=datetime.fromisoformat(row[7]),
-                            agent_state=json.loads(row[8]) if row[8] else None,
-                            metadata=json.loads(row[9]) if row[9] else {}
-                        ))
+                        experiences.append(
+                            Experience(
+                                experience_id=row[0],
+                                task_description=row[1],
+                                context=json.loads(row[2]) if row[2] else {},
+                                actions_taken=json.loads(row[3]) if row[3] else [],
+                                outcome=OutcomeType(row[4]),
+                                outcome_details=json.loads(row[5]) if row[5] else {},
+                                duration_seconds=row[6],
+                                timestamp=datetime.fromisoformat(row[7]),
+                                agent_state=json.loads(row[8]) if row[8] else None,
+                                metadata=json.loads(row[9]) if row[9] else {},
+                            )
+                        )
                     except (json.JSONDecodeError, ValueError, KeyError):
                         # Skip malformed rows
                         continue
@@ -226,30 +238,33 @@ class ExperienceStore:
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT OR REPLACE INTO insights
                 (insight_id, improvement_type, pattern, confidence, evidence_count,
                  success_rate, context_conditions, recommendation, created_at, last_updated)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                insight.insight_id,
-                insight.improvement_type.value,
-                insight.pattern,
-                insight.confidence,
-                insight.evidence_count,
-                insight.success_rate,
-                json.dumps(insight.context_conditions),
-                insight.recommendation,
-                insight.created_at.isoformat(),
-                insight.last_updated.isoformat()
-            ))
+            """,
+                (
+                    insight.insight_id,
+                    insight.improvement_type.value,
+                    insight.pattern,
+                    insight.confidence,
+                    insight.evidence_count,
+                    insight.success_rate,
+                    json.dumps(insight.context_conditions),
+                    insight.recommendation,
+                    insight.created_at.isoformat(),
+                    insight.last_updated.isoformat(),
+                ),
+            )
 
             conn.commit()
 
     def get_insights(
         self,
         improvement_type: Optional[ImprovementType] = None,
-        min_confidence: float = 0.5
+        min_confidence: float = 0.5,
     ) -> List[LearningInsight]:
         """
         Retrieve learning insights.
@@ -280,18 +295,20 @@ class ExperienceStore:
                 insights = []
                 for row in rows:
                     try:
-                        insights.append(LearningInsight(
-                            insight_id=row[0],
-                            improvement_type=ImprovementType(row[1]),
-                            pattern=row[2],
-                            confidence=row[3],
-                            evidence_count=row[4],
-                            success_rate=row[5],
-                            context_conditions=json.loads(row[6]) if row[6] else {},
-                            recommendation=row[7],
-                            created_at=datetime.fromisoformat(row[8]),
-                            last_updated=datetime.fromisoformat(row[9])
-                        ))
+                        insights.append(
+                            LearningInsight(
+                                insight_id=row[0],
+                                improvement_type=ImprovementType(row[1]),
+                                pattern=row[2],
+                                confidence=row[3],
+                                evidence_count=row[4],
+                                success_rate=row[5],
+                                context_conditions=json.loads(row[6]) if row[6] else {},
+                                recommendation=row[7],
+                                created_at=datetime.fromisoformat(row[8]),
+                                last_updated=datetime.fromisoformat(row[9]),
+                            )
+                        )
                     except (json.JSONDecodeError, ValueError, KeyError):
                         # Skip malformed rows
                         continue
@@ -316,8 +333,7 @@ class PatternAnalyzer:
         self.logger = logger or logging.getLogger(__name__)
 
     def analyze_success_patterns(
-        self,
-        experiences: List[Experience]
+        self, experiences: List[Experience]
     ) -> List[Dict[str, Any]]:
         """
         Analyze successful experiences to identify patterns.
@@ -337,7 +353,11 @@ class PatternAnalyzer:
         task_groups = defaultdict(list)
         for exp in successful:
             # Simple grouping by first word in task description
-            task_type = exp.task_description.split()[0].lower() if exp.task_description else "general"
+            task_type = (
+                exp.task_description.split()[0].lower()
+                if exp.task_description
+                else "general"
+            )
             task_groups[task_type].append(exp)
 
         patterns = []
@@ -349,7 +369,9 @@ class PatternAnalyzer:
             # Analyze common action sequences
             action_sequences = []
             for exp in group_experiences:
-                action_seq = [a.get("action_type", "unknown") for a in exp.actions_taken]
+                action_seq = [
+                    a.get("action_type", "unknown") for a in exp.actions_taken
+                ]
                 action_sequences.append(action_seq)
 
             # Find most common sequence
@@ -362,20 +384,21 @@ class PatternAnalyzer:
                 most_common_seq = max(seq_counts.items(), key=lambda x: x[1])
 
                 if most_common_seq[1] >= 2:  # Appears at least twice
-                    patterns.append({
-                        "task_type": task_type,
-                        "pattern_type": "action_sequence",
-                        "sequence": list(most_common_seq[0]),
-                        "frequency": most_common_seq[1],
-                        "total_examples": len(group_experiences),
-                        "confidence": most_common_seq[1] / len(group_experiences)
-                    })
+                    patterns.append(
+                        {
+                            "task_type": task_type,
+                            "pattern_type": "action_sequence",
+                            "sequence": list(most_common_seq[0]),
+                            "frequency": most_common_seq[1],
+                            "total_examples": len(group_experiences),
+                            "confidence": most_common_seq[1] / len(group_experiences),
+                        }
+                    )
 
         return patterns
 
     def analyze_failure_patterns(
-        self,
-        experiences: List[Experience]
+        self, experiences: List[Experience]
     ) -> List[Dict[str, Any]]:
         """
         Analyze failed experiences to identify common failure modes.
@@ -386,7 +409,11 @@ class PatternAnalyzer:
         Returns:
             List of identified failure patterns
         """
-        failed = [e for e in experiences if e.outcome in [OutcomeType.FAILURE, OutcomeType.ERROR]]
+        failed = [
+            e
+            for e in experiences
+            if e.outcome in [OutcomeType.FAILURE, OutcomeType.ERROR]
+        ]
 
         if not failed:
             return []
@@ -406,19 +433,23 @@ class PatternAnalyzer:
                 for key in exp.context.keys():
                     context_keys[key] += 1
 
-            patterns.append({
-                "error_type": error_type,
-                "frequency": len(group_experiences),
-                "common_context": dict(context_keys),
-                "example_actions": group_experiences[0].actions_taken[:3] if group_experiences else []
-            })
+            patterns.append(
+                {
+                    "error_type": error_type,
+                    "frequency": len(group_experiences),
+                    "common_context": dict(context_keys),
+                    "example_actions": group_experiences[0].actions_taken[:3]
+                    if group_experiences
+                    else [],
+                }
+            )
 
         return patterns
 
     def generate_insights_from_patterns(
         self,
         success_patterns: List[Dict[str, Any]],
-        failure_patterns: List[Dict[str, Any]]
+        failure_patterns: List[Dict[str, Any]],
     ) -> List[LearningInsight]:
         """
         Generate actionable insights from identified patterns.
@@ -443,7 +474,7 @@ class PatternAnalyzer:
                     evidence_count=pattern["frequency"],
                     success_rate=pattern["confidence"],
                     context_conditions={"task_type": pattern["task_type"]},
-                    recommendation=f"When handling {pattern['task_type']} tasks, follow the action sequence: {' -> '.join(pattern['sequence'])}"
+                    recommendation=f"When handling {pattern['task_type']} tasks, follow the action sequence: {' -> '.join(pattern['sequence'])}",
                 )
                 insights.append(insight)
 
@@ -465,7 +496,7 @@ class PatternAnalyzer:
                     evidence_count=pattern["frequency"],
                     success_rate=0.0,  # Failure pattern
                     context_conditions=pattern["common_context"],
-                    recommendation=f"Implement error recovery for {pattern['error_type']}. Common context: {list(pattern['common_context'].keys())[:3]}"
+                    recommendation=f"Implement error recovery for {pattern['error_type']}. Common context: {list(pattern['common_context'].keys())[:3]}",
                 )
                 insights.append(insight)
 
@@ -483,7 +514,7 @@ class LearningSystem:
         self,
         llm,
         storage_path: str = "agent_learning.db",
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         """
         Initialize learning system.
@@ -510,7 +541,7 @@ class LearningSystem:
         outcome_details: Dict[str, Any],
         duration: float,
         context: Optional[Dict[str, Any]] = None,
-        agent_state: Optional[Dict[str, Any]] = None
+        agent_state: Optional[Dict[str, Any]] = None,
     ) -> Experience:
         """
         Record a new experience.
@@ -535,11 +566,13 @@ class LearningSystem:
             outcome=outcome,
             outcome_details=outcome_details,
             duration_seconds=duration,
-            agent_state=agent_state
+            agent_state=agent_state,
         )
 
         self.experience_store.store_experience(experience)
-        self.logger.info(f"Recorded experience: {experience.experience_id} ({outcome.value})")
+        self.logger.info(
+            f"Recorded experience: {experience.experience_id} ({outcome.value})"
+        )
 
         # Update metrics
         self._update_metrics(experience)
@@ -558,15 +591,19 @@ class LearningSystem:
         # Update success rate
         if self.performance_metrics.total_tasks > 0:
             self.performance_metrics.success_rate = (
-                self.performance_metrics.successful_tasks / self.performance_metrics.total_tasks
+                self.performance_metrics.successful_tasks
+                / self.performance_metrics.total_tasks
             )
 
         # Update average duration
         total_duration = (
-            self.performance_metrics.average_duration * (self.performance_metrics.total_tasks - 1)
+            self.performance_metrics.average_duration
+            * (self.performance_metrics.total_tasks - 1)
             + experience.duration_seconds
         )
-        self.performance_metrics.average_duration = total_duration / self.performance_metrics.total_tasks
+        self.performance_metrics.average_duration = (
+            total_duration / self.performance_metrics.total_tasks
+        )
 
         # Track improvement over time
         self.performance_metrics.improvement_over_time.append(
@@ -587,7 +624,9 @@ class LearningSystem:
         experiences = self.experience_store.get_experiences(limit=100)
 
         if len(experiences) < min_experiences:
-            self.logger.info(f"Not enough experiences for analysis: {len(experiences)}/{min_experiences}")
+            self.logger.info(
+                f"Not enough experiences for analysis: {len(experiences)}/{min_experiences}"
+            )
             return []
 
         self.logger.info(f"Analyzing {len(experiences)} experiences...")
@@ -598,8 +637,7 @@ class LearningSystem:
 
         # Generate insights
         insights = self.pattern_analyzer.generate_insights_from_patterns(
-            success_patterns,
-            failure_patterns
+            success_patterns, failure_patterns
         )
 
         # Store insights
@@ -612,9 +650,7 @@ class LearningSystem:
         return insights
 
     def get_recommendations(
-        self,
-        task_description: str,
-        context: Optional[Dict[str, Any]] = None
+        self, task_description: str, context: Optional[Dict[str, Any]] = None
     ) -> List[str]:
         """
         Get recommendations for a task based on learned insights.
@@ -639,7 +675,9 @@ class LearningSystem:
             pattern_words = set(insight.pattern.lower().split())
             overlap = task_words & pattern_words
 
-            if overlap or not task_words:  # If no overlap, still consider general insights
+            if (
+                overlap or not task_words
+            ):  # If no overlap, still consider general insights
                 recommendations.append(insight.recommendation)
 
         # Limit to top recommendations
@@ -668,13 +706,15 @@ class LearningSystem:
                 {
                     "type": i.improvement_type.value,
                     "pattern": i.pattern,
-                    "confidence": i.confidence
+                    "confidence": i.confidence,
                 }
                 for i in insights[:5]
-            ]
+            ],
         }
 
-    def _count_insights_by_type(self, insights: List[LearningInsight]) -> Dict[str, int]:
+    def _count_insights_by_type(
+        self, insights: List[LearningInsight]
+    ) -> Dict[str, int]:
         """Count insights by improvement type."""
         counts = defaultdict(int)
         for insight in insights:
@@ -706,18 +746,20 @@ class LearningSystem:
                         "pattern": i.pattern,
                         "confidence": i.confidence,
                         "evidence_count": i.evidence_count,
-                        "recommendation": i.recommendation
+                        "recommendation": i.recommendation,
                     }
                     for i in insights
-                ]
+                ],
             }
 
-            with open(output_path, 'w') as f:
+            with open(output_path, "w") as f:
                 json.dump(knowledge, f, indent=2)
 
             self.logger.info(f"Exported knowledge to {output_path}")
         except (IOError, OSError) as e:
-            raise RuntimeError(f"Failed to export knowledge to {output_path}: {e}") from e
+            raise RuntimeError(
+                f"Failed to export knowledge to {output_path}: {e}"
+            ) from e
         except Exception as e:
             raise RuntimeError(f"Unexpected error during knowledge export: {e}") from e
 
@@ -732,7 +774,7 @@ class LearningSystem:
             RuntimeError: If import fails
         """
         try:
-            with open(input_path, 'r') as f:
+            with open(input_path, "r") as f:
                 knowledge = json.load(f)
 
             for insight_data in knowledge.get("insights", []):
@@ -748,7 +790,7 @@ class LearningSystem:
                         evidence_count=insight_data["evidence_count"],
                         success_rate=0.0,  # Reset on import, recalculated by analyze_and_learn()
                         context_conditions={},
-                        recommendation=insight_data["recommendation"]
+                        recommendation=insight_data["recommendation"],
                     )
                     self.experience_store.store_insight(insight)
                 except (KeyError, ValueError) as e:
@@ -758,8 +800,12 @@ class LearningSystem:
 
             self.logger.info(f"Imported knowledge from {input_path}")
         except (IOError, OSError) as e:
-            raise RuntimeError(f"Failed to read knowledge file {input_path}: {e}") from e
+            raise RuntimeError(
+                f"Failed to read knowledge file {input_path}: {e}"
+            ) from e
         except json.JSONDecodeError as e:
-            raise RuntimeError(f"Invalid JSON in knowledge file {input_path}: {e}") from e
+            raise RuntimeError(
+                f"Invalid JSON in knowledge file {input_path}: {e}"
+            ) from e
         except Exception as e:
             raise RuntimeError(f"Unexpected error during knowledge import: {e}") from e

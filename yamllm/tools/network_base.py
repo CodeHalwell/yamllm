@@ -51,7 +51,9 @@ class NetworkTool(Tool, ABC):
         kwargs.setdefault("timeout", self.timeout)
         # Disallow insecure TLS
         if kwargs.get("verify") is False:
-            raise NetworkError("Insecure TLS configuration: verify=False is not allowed")
+            raise NetworkError(
+                "Insecure TLS configuration: verify=False is not allowed"
+            )
         # Security check
         try:
             if self.security:
@@ -68,7 +70,11 @@ class NetworkTool(Tool, ABC):
                     raise requests.HTTPError("429 rate limited", response=resp)
                 resp.raise_for_status()
                 return resp
-            except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as e:
+            except (
+                requests.Timeout,
+                requests.ConnectionError,
+                requests.HTTPError,
+            ) as e:
                 last_error = e
                 attempt += 1
                 if attempt >= self.max_retries:
@@ -79,4 +85,6 @@ class NetworkTool(Tool, ABC):
                     time.sleep(sleep_time)
                 except Exception:
                     pass
-        raise NetworkError(f"Request failed after {self.max_retries} attempts: {last_error}")
+        raise NetworkError(
+            f"Request failed after {self.max_retries} attempts: {last_error}"
+        )

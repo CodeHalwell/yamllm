@@ -18,6 +18,7 @@ from yamllm.core.exceptions import YAMLLMException
 
 class MCPError(YAMLLMException):
     """MCP-related errors."""
+
     pass
 
 
@@ -29,13 +30,23 @@ class MCPTransportType(Enum):
 
 class MCPConnector:
     """Connector for MCP servers."""
-    
-    def __init__(self, name, url, authentication=None, description=None, tool_prefix=None, transport="http"):
+
+    def __init__(
+        self,
+        name,
+        url,
+        authentication=None,
+        description=None,
+        tool_prefix=None,
+        transport="http",
+    ):
         self.name = name
         self.url = url.rstrip("/") if transport == "http" else url
         self.description = description or f"MCP connector for {name}"
         self.tool_prefix = tool_prefix
-        self.transport = MCPTransportType(transport) if isinstance(transport, str) else transport
+        self.transport = (
+            MCPTransportType(transport) if isinstance(transport, str) else transport
+        )
         self.auth_token = self._process_auth(authentication)
         self.logger = logging.getLogger(__name__)
         self._cached_tools = None
@@ -49,7 +60,9 @@ class MCPConnector:
         # them on the floor.
         self._stdio_leftover: bytes = b""
         # Enable HTTP/2 and connection reuse for lower overhead on repeated calls
-        self._http_client = httpx.AsyncClient(headers=self._get_headers(), timeout=10, http2=True)
+        self._http_client = httpx.AsyncClient(
+            headers=self._get_headers(), timeout=10, http2=True
+        )
         # Reconnection/backoff settings
         self._max_reconnect_attempts = 3
         self._base_backoff = 0.5
@@ -58,7 +71,7 @@ class MCPConnector:
         """Process authentication string, resolving environment variables."""
         if not auth_str:
             return None
-            
+
         env_var_match = re.match(r"\$\{(.+)\}", auth_str)
         if env_var_match:
             env_var_name = env_var_match.group(1)
@@ -93,7 +106,9 @@ class MCPConnector:
                     else:
                         raise MCPError(f"Unsupported transport: {self.transport}")
                     self._connected = True
-                    self.logger.info(f"Connected to MCP server {self.name} via {self.transport.value}")
+                    self.logger.info(
+                        f"Connected to MCP server {self.name} via {self.transport.value}"
+                    )
                     return
                 except Exception as e:
                     attempts += 1
@@ -106,20 +121,17 @@ class MCPConnector:
                     await asyncio.sleep(backoff)
         except Exception as e:
             raise MCPError(f"Failed to connect to {self.name}: {e}") from e
-    
+
     async def _connect_websocket(self) -> None:
         """Connect via WebSocket."""
         headers = {}
         if self.auth_token:
             headers["Authorization"] = f"Bearer {self.auth_token}"
-        
+
         self._connection = await websockets.connect(
-            self.url,
-            extra_headers=headers,
-            ping_interval=30,
-            ping_timeout=10
+            self.url, extra_headers=headers, ping_interval=30, ping_timeout=10
         )
-    
+
     async def _connect_http(self) -> None:
         """Connect via HTTP (no persistent connection needed)."""
         # Test connection
@@ -129,20 +141,20 @@ class MCPConnector:
                 raise MCPError(f"Server error: {response.status_code}")
         except httpx.RequestError as e:
             self.logger.warning(f"Health check failed for {self.name}: {e}")
-    
+
     async def _connect_stdio(self) -> None:
         """Connect via stdio subprocess."""
         cmd_parts = self.url.split()
         if not cmd_parts:
             raise MCPError("Empty stdio command")
-        
+
         self._process = await asyncio.create_subprocess_exec(
             *cmd_parts,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+            stderr=asyncio.subprocess.PIPE,
         )
-    
+
     async def disconnect(self) -> None:
         """Disconnect from MCP server."""
         try:
@@ -151,7 +163,7 @@ class MCPConnector:
             elif self.transport == MCPTransportType.STDIO and self._process:
                 self._process.terminate()
                 await self._process.wait()
-            
+
             await self._http_client.aclose()
             self._connected = False
             self.logger.info(f"Disconnected from MCP server {self.name}")
@@ -168,33 +180,39 @@ class MCPConnector:
         """
         if self._cached_tools is not None and not force_refresh:
             return self._cached_tools
-        
+
         if not self._connected:
             await self.connect()
-        
+
         try:
             if self.transport == MCPTransportType.HTTP:
                 endpoint = f"{self.url}/tools"
                 resp = await self._http_client.get(endpoint)
                 data = resp.json() or []
             elif self.transport == MCPTransportType.WEBSOCKET:
-                data = await self._send_websocket_message({
-                    "jsonrpc": "2.0",
-                    "id": "discover_tools",
-                    "method": "tools/list",
-                    "params": {}
-                })
+                data = await self._send_websocket_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "discover_tools",
+                        "method": "tools/list",
+                        "params": {},
+                    }
+                )
                 data = data.get("result", {}).get("tools", []) if data else []
             elif self.transport == MCPTransportType.STDIO:
-                data = await self._send_stdio_message({
-                    "jsonrpc": "2.0",
-                    "id": "discover_tools",
-                    "method": "tools/list",
-                    "params": {}
-                })
+                data = await self._send_stdio_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": "discover_tools",
+                        "method": "tools/list",
+                        "params": {},
+                    }
+                )
                 data = data.get("result", {}).get("tools", []) if data else []
             else:
-                raise MCPError(f"Unsupported transport for tool discovery: {self.transport}")
+                raise MCPError(
+                    f"Unsupported transport for tool discovery: {self.transport}"
+                )
         except Exception as e:
             self.logger.error(f"Tool discovery failed for {self.name}: {e}")
             return []
@@ -203,7 +221,9 @@ class MCPConnector:
         self._id_map.clear()
         for item in data:
             remote_name = item.get("name") or item.get("id") or "tool"
-            display_name = f"{self.tool_prefix}_{remote_name}" if self.tool_prefix else remote_name
+            display_name = (
+                f"{self.tool_prefix}_{remote_name}" if self.tool_prefix else remote_name
+            )
             # Track mapping for later execution routing
             self._id_map[display_name] = remote_name
             tools.append(
@@ -211,7 +231,8 @@ class MCPConnector:
                     "id": remote_name,
                     "name": display_name,
                     "description": item.get("description") or f"Tool {remote_name}",
-                    "parameters": item.get("parameters") or {"type": "object", "properties": {}},
+                    "parameters": item.get("parameters")
+                    or {"type": "object", "properties": {}},
                 }
             )
 
@@ -237,7 +258,9 @@ class MCPConnector:
                 )
         return json.loads(payload)
 
-    async def _send_websocket_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _send_websocket_message(
+        self, message: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Send message via WebSocket and return response."""
         if not self._connection:
             raise MCPError("WebSocket not connected")
@@ -248,16 +271,22 @@ class MCPConnector:
             return self._decode_response(response)
         except (ConnectionClosed, asyncio.TimeoutError) as e:
             # Try to reconnect once and resend
-            self.logger.warning(f"WebSocket communication error for {self.name}: {e}; attempting reconnect")
+            self.logger.warning(
+                f"WebSocket communication error for {self.name}: {e}; attempting reconnect"
+            )
             await self._reconnect_ws()
             try:
                 await self._connection.send(json.dumps(message))
                 response = await asyncio.wait_for(self._connection.recv(), timeout=30)
                 return self._decode_response(response)
             except Exception as e2:
-                raise MCPError(f"WebSocket communication failed after reconnect: {e2}") from e2
+                raise MCPError(
+                    f"WebSocket communication failed after reconnect: {e2}"
+                ) from e2
 
-    async def _send_stdio_message(self, message: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    async def _send_stdio_message(
+        self, message: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
         """Send message via stdio and return response."""
         if not self._process:
             raise MCPError("Stdio process not connected")
@@ -309,7 +338,9 @@ class MCPConnector:
             return self._decode_response(response_line)
         except (asyncio.TimeoutError, json.JSONDecodeError) as e:
             # Try to reconnect once and resend
-            self.logger.warning(f"Stdio communication error for {self.name}: {e}; attempting reconnect")
+            self.logger.warning(
+                f"Stdio communication error for {self.name}: {e}; attempting reconnect"
+            )
             await self._reconnect_stdio()
             try:
                 message_str = json.dumps(message) + "\n"
@@ -318,7 +349,9 @@ class MCPConnector:
                 response_line = await _read_bounded_line()
                 return self._decode_response(response_line)
             except Exception as e2:
-                raise MCPError(f"Stdio communication failed after reconnect: {e2}") from e2
+                raise MCPError(
+                    f"Stdio communication failed after reconnect: {e2}"
+                ) from e2
 
     # Execution ------------------------------------------------------------
     async def execute_tool(self, tool_id: str, parameters: Dict[str, Any]) -> Any:
@@ -329,15 +362,19 @@ class MCPConnector:
         """
         if not self._connected:
             await self.connect()
-        
+
         # Resolve mapping; fall back to stripping prefix if necessary
         remote_id: Optional[str] = self._id_map.get(tool_id)
-        if remote_id is None and self.tool_prefix and tool_id.startswith(f"{self.tool_prefix}_"):
+        if (
+            remote_id is None
+            and self.tool_prefix
+            and tool_id.startswith(f"{self.tool_prefix}_")
+        ):
             remote_id = tool_id[len(self.tool_prefix) + 1 :]
         if remote_id is None:
             # As a last resort, assume tool_id is already the remote id
             remote_id = tool_id
-        
+
         try:
             if self.transport == MCPTransportType.HTTP:
                 endpoint = f"{self.url}/tools/{remote_id}/execute"
@@ -347,15 +384,14 @@ class MCPConnector:
                 )
                 return resp.json()
             elif self.transport == MCPTransportType.WEBSOCKET:
-                response = await self._send_websocket_message({
-                    "jsonrpc": "2.0",
-                    "id": f"exec_{remote_id}",
-                    "method": "tools/call",
-                    "params": {
-                        "name": remote_id,
-                        "arguments": parameters
+                response = await self._send_websocket_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": f"exec_{remote_id}",
+                        "method": "tools/call",
+                        "params": {"name": remote_id, "arguments": parameters},
                     }
-                })
+                )
                 if response and "result" in response:
                     return response["result"]
                 elif response and "error" in response:
@@ -363,15 +399,14 @@ class MCPConnector:
                 else:
                     raise MCPError("Invalid response from MCP server")
             elif self.transport == MCPTransportType.STDIO:
-                response = await self._send_stdio_message({
-                    "jsonrpc": "2.0",
-                    "id": f"exec_{remote_id}",
-                    "method": "tools/call",
-                    "params": {
-                        "name": remote_id,
-                        "arguments": parameters
+                response = await self._send_stdio_message(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": f"exec_{remote_id}",
+                        "method": "tools/call",
+                        "params": {"name": remote_id, "arguments": parameters},
                     }
-                })
+                )
                 if response and "result" in response:
                     return response["result"]
                 elif response and "error" in response:
@@ -379,7 +414,9 @@ class MCPConnector:
                 else:
                     raise MCPError("Invalid response from MCP server")
             else:
-                raise MCPError(f"Unsupported transport for tool execution: {self.transport}")
+                raise MCPError(
+                    f"Unsupported transport for tool execution: {self.transport}"
+                )
         except Exception as e:
             raise MCPError(f"Tool execution failed: {e}") from e
 
@@ -424,11 +461,11 @@ class MCPConnector:
                 )
                 await asyncio.sleep(backoff)
         raise MCPError("Failed to reconnect stdio process")
-    
+
     async def __aenter__(self):
         await self.connect()
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.disconnect()
         return False

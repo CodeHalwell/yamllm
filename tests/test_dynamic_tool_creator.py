@@ -5,7 +5,7 @@ from yamllm.tools.dynamic_tool_creator import (
     ToolCreator,
     ToolValidator,
     DynamicTool,
-    ToolSpecification
+    ToolSpecification,
 )
 
 
@@ -59,19 +59,15 @@ def test_tool_validator_syntax_error():
 
 def test_dynamic_tool_creation():
     """Test dynamic tool creation."""
+
     def test_func(**kwargs):
         return {"result": kwargs.get("value", 0) * 2}
 
     tool = DynamicTool(
         name="test_tool",
         description="Test tool",
-        parameters={
-            "type": "object",
-            "properties": {
-                "value": {"type": "number"}
-            }
-        },
-        execute_func=test_func
+        parameters={"type": "object", "properties": {"value": {"type": "number"}}},
+        execute_func=test_func,
     )
 
     assert tool.name == "test_tool"
@@ -84,19 +80,15 @@ def test_dynamic_tool_creation():
 
 def test_dynamic_tool_get_schema():
     """Test tool schema generation."""
+
     def test_func(**kwargs):
         return {}
 
     tool = DynamicTool(
         name="test_tool",
         description="Test description",
-        parameters={
-            "type": "object",
-            "properties": {
-                "param": {"type": "string"}
-            }
-        },
-        execute_func=test_func
+        parameters={"type": "object", "properties": {"param": {"type": "string"}}},
+        execute_func=test_func,
     )
 
     schema = tool.get_schema()
@@ -109,6 +101,7 @@ def test_dynamic_tool_get_schema():
 
 def test_dynamic_tool_execution_error():
     """Test handling of execution errors."""
+
     def failing_func(**kwargs):
         raise ValueError("Test error")
 
@@ -116,7 +109,7 @@ def test_dynamic_tool_execution_error():
         name="failing_tool",
         description="Test",
         parameters={},
-        execute_func=failing_func
+        execute_func=failing_func,
     )
 
     result = tool.execute()
@@ -139,7 +132,7 @@ def test_tool_spec_dataclass():
         name="test",
         description="Test tool",
         parameters={},
-        code="def execute(**kwargs): return {}"
+        code="def execute(**kwargs): return {}",
     )
 
     assert spec.name == "test"

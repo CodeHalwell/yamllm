@@ -97,10 +97,10 @@ Based on the YAMLLM Manifesto:
 # Check performance after operations
 summary = llm.get_metrics_summary()
 
-if summary['latency']['avg_first_token_ms'] > 350:
+if summary["latency"]["avg_first_token_ms"] > 350:
     print("⚠ Latency above target!")
 
-if summary['cache']['embedding_hit_rate_percent'] < 80:
+if summary["cache"]["embedding_hit_rate_percent"] < 80:
     print("⚠ Cache hit rate below target!")
 ```
 
@@ -110,14 +110,13 @@ Export metrics to Prometheus for monitoring:
 
 ```python
 from flask import Flask, Response
+
 app = Flask(__name__)
 
-@app.route('/metrics')
+
+@app.route("/metrics")
 def metrics():
-    return Response(
-        llm.get_prometheus_metrics(),
-        mimetype='text/plain'
-    )
+    return Response(llm.get_prometheus_metrics(), mimetype="text/plain")
 ```
 
 ### 3. Continuous Benchmarking
@@ -336,11 +335,11 @@ print(f"Tokens used: {metrics['tokens']['total']}")
 print(f"Cache hit rate: {metrics['cache']['embedding_hit_rate_percent']:.1f}%")
 
 # Alert on performance issues
-if metrics['latency']['avg_first_token_ms'] > 350:
+if metrics["latency"]["avg_first_token_ms"] > 350:
     print("⚠ Performance degradation detected!")
-    
+
 # Export for monitoring
-with open('/var/metrics/yamllm.prom', 'w') as f:
+with open("/var/metrics/yamllm.prom", "w") as f:
     f.write(llm.get_prometheus_metrics())
 ```
 

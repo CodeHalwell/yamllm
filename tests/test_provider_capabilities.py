@@ -101,4 +101,6 @@ def test_llm_prepare_tools_disabled_if_provider_lacks_tool_support(tmp_path):
 
 def test_every_factory_provider_has_capabilities_entry():
     for name in ProviderFactory._MAP.keys():  # type: ignore[attr-defined]
-        assert name in PROVIDER_CAPABILITIES, f"Missing capabilities for provider '{name}'"
+        assert name in PROVIDER_CAPABILITIES, (
+            f"Missing capabilities for provider '{name}'"
+        )

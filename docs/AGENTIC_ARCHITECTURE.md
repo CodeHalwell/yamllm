@@ -1,8 +1,13 @@
 # Agentic Loop Architecture Design
 
 **Version:** 1.0
-**Status:** Design Document
+**Status:** Design Document (historical)
 **Target Release:** v1.0
+
+> **2026 update:** the implementation has since been modernised around an
+> event-driven engine with budgets, cancellation, approvals, checkpointing,
+> and a Textual TUI. See [agent_harness.md](agent_harness.md) for the
+> current architecture; this document describes the original design.
 
 ---
 
@@ -83,12 +88,14 @@ from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
 from enum import Enum
 
+
 class TaskStatus(Enum):
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     FAILED = "failed"
     BLOCKED = "blocked"
+
 
 @dataclass
 class Task:
@@ -100,9 +107,11 @@ class Task:
     error: Optional[str] = None
     metadata: Dict[str, Any] = None
 
+
 @dataclass
 class AgentState:
     """Current state of the agent execution."""
+
     goal: str
     tasks: List[Task]
     current_task_id: Optional[str]
@@ -132,7 +141,7 @@ class Agent:
         max_iterations: int = 10,
         enable_planning: bool = True,
         enable_reflection: bool = True,
-        logger = None
+        logger=None,
     ):
         self.llm = llm
         self.max_iterations = max_iterations
@@ -167,7 +176,7 @@ class Agent:
             thought_history=[],
             action_history=[],
             completed=False,
-            success=False
+            success=False,
         )
 
         # Phase 1: Planning
@@ -220,10 +229,7 @@ class TaskPlanner:
         self.llm = llm
 
     async def decompose_goal(
-        self,
-        goal: str,
-        context: Optional[Dict],
-        state: AgentState
+        self, goal: str, context: Optional[Dict], state: AgentState
     ) -> AgentState:
         """
         Decompose goal into subtasks.
@@ -294,20 +300,22 @@ Respond in JSON format:
                     dependencies=task_data.get("dependencies", []),
                     metadata={
                         "tools": task_data.get("required_tools", []),
-                        "complexity": task_data.get("estimated_complexity", "medium")
-                    }
+                        "complexity": task_data.get("estimated_complexity", "medium"),
+                    },
                 )
                 tasks.append(task)
 
             return tasks
         except Exception as e:
             # Fallback: create single task from goal
-            return [Task(
-                id="task_1",
-                description=response,
-                status=TaskStatus.PENDING,
-                dependencies=[]
-            )]
+            return [
+                Task(
+                    id="task_1",
+                    description=response,
+                    status=TaskStatus.PENDING,
+                    dependencies=[],
+                )
+            ]
 ```
 
 ---
@@ -355,7 +363,9 @@ class Reasoner:
         thought, selected_task_id = self._parse_reasoning(response)
 
         # Get the actual task
-        next_task = next((t for t in available_tasks if t.id == selected_task_id), available_tasks[0])
+        next_task = next(
+            (t for t in available_tasks if t.id == selected_task_id), available_tasks[0]
+        )
 
         return thought, next_task
 
@@ -378,7 +388,9 @@ class Reasoner:
 
         return available
 
-    def _build_reasoning_prompt(self, state: AgentState, available_tasks: List[Task]) -> str:
+    def _build_reasoning_prompt(
+        self, state: AgentState, available_tasks: List[Task]
+    ) -> str:
         """Build prompt for reasoning."""
         return f"""
 You are working on this goal: {state.goal}
@@ -386,8 +398,8 @@ You are working on this goal: {state.goal}
 Progress so far:
 - Iteration: {state.iteration}/{state.max_iterations}
 - Completed tasks: {self._count_completed(state.tasks)}/{len(state.tasks)}
-- Recent thoughts: {state.thought_history[-3:] if state.thought_history else 'None'}
-- Recent actions: {state.action_history[-3:] if state.action_history else 'None'}
+- Recent thoughts: {state.thought_history[-3:] if state.thought_history else "None"}
+- Recent actions: {state.action_history[-3:] if state.action_history else "None"}
 
 Available tasks to work on:
 {self._format_tasks(available_tasks)}
@@ -452,7 +464,7 @@ class Actor:
                 "response": response.get("content"),
                 "tool_calls": response.get("tool_calls", []),
                 "tool_results": response.get("tool_results", []),
-                "error": None
+                "error": None,
             }
 
             # Update task
@@ -466,7 +478,7 @@ class Actor:
                 "response": None,
                 "tool_calls": [],
                 "tool_results": [],
-                "error": str(e)
+                "error": str(e),
             }
 
             task.status = TaskStatus.FAILED
@@ -510,7 +522,9 @@ class Observer:
     def __init__(self, llm):
         self.llm = llm
 
-    async def observe(self, action_result: Dict[str, Any], state: AgentState) -> AgentState:
+    async def observe(
+        self, action_result: Dict[str, Any], state: AgentState
+    ) -> AgentState:
         """
         Observe action result and update state.
 
@@ -543,10 +557,10 @@ Goal: {state.goal}
 Action taken: {self._describe_action(action_result)}
 
 Result:
-- Success: {action_result['success']}
-- Tools used: {[tc['function']['name'] for tc in action_result.get('tool_calls', [])]}
-- Output: {action_result.get('response', 'N/A')}
-- Error: {action_result.get('error', 'None')}
+- Success: {action_result["success"]}
+- Tools used: {[tc["function"]["name"] for tc in action_result.get("tool_calls", [])]}
+- Output: {action_result.get("response", "N/A")}
+- Error: {action_result.get("error", "None")}
 
 Questions:
 1. Was this action successful?
@@ -566,10 +580,7 @@ Respond in JSON:
 """
 
     def _update_state(
-        self,
-        observations: Dict,
-        state: AgentState,
-        action_result: Dict
+        self, observations: Dict, state: AgentState, action_result: Dict
     ) -> AgentState:
         """Update state based on observations."""
 
@@ -620,8 +631,8 @@ class WorkflowManager:
                 "Propose fix",
                 "Implement fix",
                 "Test fix",
-                "Commit changes"
-            ]
+                "Commit changes",
+            ],
         },
         "implement_feature": {
             "name": "Implement Feature",
@@ -634,8 +645,8 @@ class WorkflowManager:
                 "Add error handling",
                 "Write tests",
                 "Update documentation",
-                "Commit changes"
-            ]
+                "Commit changes",
+            ],
         },
         "refactor_code": {
             "name": "Refactor Code",
@@ -646,18 +657,16 @@ class WorkflowManager:
                 "Plan refactoring steps",
                 "Execute refactoring",
                 "Run tests to verify behavior",
-                "Commit changes"
-            ]
-        }
+                "Commit changes",
+            ],
+        },
     }
 
     def __init__(self, agent: Agent):
         self.agent = agent
 
     async def execute_workflow(
-        self,
-        workflow_name: str,
-        context: Dict[str, Any]
+        self, workflow_name: str, context: Dict[str, Any]
     ) -> AgentState:
         """Execute a named workflow."""
 
@@ -676,7 +685,7 @@ class WorkflowManager:
         """Create a goal string from workflow template."""
         goal = f"{workflow['description']}\n\n"
         goal += "Follow these steps:\n"
-        for i, step in enumerate(workflow['steps'], 1):
+        for i, step in enumerate(workflow["steps"], 1):
             goal += f"{i}. {step}\n"
         goal += f"\nContext: {context}"
         return goal
@@ -697,6 +706,7 @@ async def query_async(self, prompt: str, **kwargs) -> str:
     """Async version of query for agent use."""
     # Implementation using existing async provider if available
     pass
+
 
 async def get_completion_with_tools_async(self, prompt: str) -> Dict[str, Any]:
     """Async tool completion for agent."""
@@ -762,15 +772,14 @@ agent = Agent(llm, max_iterations=15)
 # Execute autonomous task
 state = await agent.execute(
     goal="Fix the login bug in auth.py - users can't log in with special characters in password",
-    context={
-        "repo_path": "/path/to/repo",
-        "files": ["auth.py", "test_auth.py"]
-    }
+    context={"repo_path": "/path/to/repo", "files": ["auth.py", "test_auth.py"]},
 )
 
 # Check results
 print(f"Success: {state.success}")
-print(f"Tasks completed: {len([t for t in state.tasks if t.status == TaskStatus.COMPLETED])}")
+print(
+    f"Tasks completed: {len([t for t in state.tasks if t.status == TaskStatus.COMPLETED])}"
+)
 ```
 
 ### CLI
@@ -822,11 +831,7 @@ yamllm agent workflow debug_bug --context '{"file": "auth.py", "error": "..."}'
 class RetryStrategy:
     """Handle tool execution failures."""
 
-    async def retry_with_backoff(
-        self,
-        action: Callable,
-        max_retries: int = 3
-    ) -> Any:
+    async def retry_with_backoff(self, action: Callable, max_retries: int = 3) -> Any:
         """Retry action with exponential backoff."""
         for attempt in range(max_retries):
             try:
@@ -834,7 +839,7 @@ class RetryStrategy:
             except Exception as e:
                 if attempt == max_retries - 1:
                     raise
-                wait_time = 2 ** attempt
+                wait_time = 2**attempt
                 await asyncio.sleep(wait_time)
 ```
 
@@ -919,10 +924,10 @@ class AgentSecurityManager:
     """Manage permissions for agent tool use."""
 
     REQUIRE_CONFIRMATION = [
-        "git_push",      # Pushes to remote
-        "git_commit",    # Creates commits
-        "file_write",    # Writes files
-        "shell_exec"     # Executes commands
+        "git_push",  # Pushes to remote
+        "git_commit",  # Creates commits
+        "file_write",  # Writes files
+        "shell_exec",  # Executes commands
     ]
 
     async def confirm_action(self, tool_name: str, args: Dict) -> bool:

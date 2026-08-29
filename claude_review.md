@@ -92,6 +92,7 @@ class ProviderError(Exception):
         self.original_error = original_error
         super().__init__(f"{provider} {operation} failed: {original_error}")
 
+
 # Use structured error handling
 try:
     result = await provider.get_completion(...)
@@ -148,6 +149,7 @@ class EmbeddingCache:
             return None
         return self.cache.get(text)
 
+
 # Cache tool definitions
 @lru_cache(maxsize=32)
 def get_cached_tool_definitions(tool_config_hash):
@@ -181,12 +183,13 @@ class RateLimiter:
 
         self.requests.append(now)
 
+
 # Add input validation for tools
 class ToolInputValidator:
     def validate_web_search_query(self, query):
         if len(query) > 500:
             raise ValueError("Query too long")
-        if any(char in query for char in ['<', '>', 'script']):
+        if any(char in query for char in ["<", ">", "script"]):
             raise ValueError("Potentially malicious query")
 ```
 
@@ -203,11 +206,12 @@ class ToolInputValidator:
 class ConfigV2(BaseConfig):
     version: str = "2.0"
 
-    @validator('version')
+    @validator("version")
     def validate_version(cls, v):
         if v not in SUPPORTED_VERSIONS:
             raise ValueError(f"Unsupported config version: {v}")
         return v
+
 
 # Add runtime config updates
 class ConfigManager:

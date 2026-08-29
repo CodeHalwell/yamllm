@@ -13,6 +13,7 @@ from enum import Enum
 
 class SymbolType(Enum):
     """Type of code symbol."""
+
     CLASS = "class"
     FUNCTION = "function"
     METHOD = "method"
@@ -24,6 +25,7 @@ class SymbolType(Enum):
 @dataclass
 class CodeSymbol:
     """Represents a code symbol (class, function, etc.)."""
+
     name: str
     type: SymbolType
     file_path: str
@@ -40,6 +42,7 @@ class CodeSymbol:
 @dataclass
 class FileContext:
     """Context information for a code file."""
+
     path: str
     language: str
     symbols: List[CodeSymbol]
@@ -53,6 +56,7 @@ class FileContext:
 @dataclass
 class ProjectContext:
     """Context information for entire project."""
+
     root_path: str
     files: Dict[str, FileContext]
     symbol_index: Dict[str, CodeSymbol]
@@ -67,7 +71,7 @@ class PythonAnalyzer:
     @staticmethod
     def analyze_file(filepath: str) -> FileContext:
         """Analyze a Python file."""
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
 
         try:
@@ -81,7 +85,7 @@ class PythonAnalyzer:
                 imports=[],
                 dependencies=set(),
                 lines_of_code=len(content.splitlines()),
-                complexity_score=0
+                complexity_score=0,
             )
 
         symbols = []
@@ -93,12 +97,12 @@ class PythonAnalyzer:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     imports.append(alias.name)
-                    dependencies.add(alias.name.split('.')[0])
+                    dependencies.add(alias.name.split(".")[0])
 
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imports.append(node.module)
-                    dependencies.add(node.module.split('.')[0])
+                    dependencies.add(node.module.split(".")[0])
 
         # Analyze top-level symbols
         for node in ast.iter_child_nodes(tree):
@@ -114,13 +118,17 @@ class PythonAnalyzer:
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         is_constant = target.id.isupper()
-                        symbols.append(CodeSymbol(
-                            name=target.id,
-                            type=SymbolType.CONSTANT if is_constant else SymbolType.VARIABLE,
-                            file_path=filepath,
-                            line_number=node.lineno,
-                            is_public=not target.id.startswith('_')
-                        ))
+                        symbols.append(
+                            CodeSymbol(
+                                name=target.id,
+                                type=SymbolType.CONSTANT
+                                if is_constant
+                                else SymbolType.VARIABLE,
+                                file_path=filepath,
+                                line_number=node.lineno,
+                                is_public=not target.id.startswith("_"),
+                            )
+                        )
 
         complexity = sum(s.complexity for s in symbols)
 
@@ -131,7 +139,7 @@ class PythonAnalyzer:
             imports=imports,
             dependencies=dependencies,
             lines_of_code=len(content.splitlines()),
-            complexity_score=complexity
+            complexity_score=complexity,
         )
 
     @staticmethod
@@ -142,7 +150,9 @@ class PythonAnalyzer:
         # Class itself
         docstring = ast.get_docstring(node)
         bases = [PythonAnalyzer._get_name(base) for base in node.bases]
-        signature = f"class {node.name}({', '.join(bases)})" if bases else f"class {node.name}"
+        signature = (
+            f"class {node.name}({', '.join(bases)})" if bases else f"class {node.name}"
+        )
 
         class_symbol = CodeSymbol(
             name=node.name,
@@ -152,23 +162,23 @@ class PythonAnalyzer:
             end_line=node.end_lineno,
             docstring=docstring,
             signature=signature,
-            is_public=not node.name.startswith('_')
+            is_public=not node.name.startswith("_"),
         )
         symbols.append(class_symbol)
 
         # Methods
         for item in node.body:
             if isinstance(item, ast.FunctionDef):
-                method = PythonAnalyzer._analyze_function(item, filepath, parent=node.name)
+                method = PythonAnalyzer._analyze_function(
+                    item, filepath, parent=node.name
+                )
                 symbols.append(method)
 
         return symbols
 
     @staticmethod
     def _analyze_function(
-        node: ast.FunctionDef,
-        filepath: str,
-        parent: Optional[str] = None
+        node: ast.FunctionDef, filepath: str, parent: Optional[str] = None
     ) -> CodeSymbol:
         """Analyze a function/method definition."""
         docstring = ast.get_docstring(node)
@@ -198,7 +208,7 @@ class PythonAnalyzer:
             signature=signature,
             parent=parent,
             complexity=complexity,
-            is_public=not node.name.startswith('_')
+            is_public=not node.name.startswith("_"),
         )
 
     @staticmethod
@@ -227,7 +237,9 @@ class CodeContextIntelligence:
         self.logger = logger or logging.getLogger(__name__)
         self.project_context: Optional[ProjectContext] = None
 
-    def analyze_project(self, root_path: str, extensions: Optional[List[str]] = None) -> ProjectContext:
+    def analyze_project(
+        self, root_path: str, extensions: Optional[List[str]] = None
+    ) -> ProjectContext:
         """
         Analyze entire project for context.
 
@@ -238,7 +250,7 @@ class CodeContextIntelligence:
         Returns:
             ProjectContext with complete analysis
         """
-        extensions = extensions or ['.py']
+        extensions = extensions or [".py"]
         root = Path(root_path)
 
         self.logger.info(f"Analyzing project at: {root_path}")
@@ -249,7 +261,7 @@ class CodeContextIntelligence:
 
         # Find and analyze all code files
         for ext in extensions:
-            for filepath in root.rglob(f'*{ext}'):
+            for filepath in root.rglob(f"*{ext}"):
                 if self._should_skip(filepath):
                     continue
 
@@ -259,7 +271,11 @@ class CodeContextIntelligence:
 
                     # Index symbols
                     for symbol in file_context.symbols:
-                        full_name = f"{symbol.parent}.{symbol.name}" if symbol.parent else symbol.name
+                        full_name = (
+                            f"{symbol.parent}.{symbol.name}"
+                            if symbol.parent
+                            else symbol.name
+                        )
                         symbol_index[full_name] = symbol
 
                     # Build dependency graph
@@ -277,24 +293,28 @@ class CodeContextIntelligence:
             files=files,
             symbol_index=symbol_index,
             dependency_graph=dependency_graph,
-            entry_points=entry_points
+            entry_points=entry_points,
         )
 
         # Generate architecture summary if LLM available
         if self.llm:
-            self.project_context.architecture_summary = self._generate_architecture_summary()
+            self.project_context.architecture_summary = (
+                self._generate_architecture_summary()
+            )
 
-        self.logger.info(f"Analyzed {len(files)} files, found {len(symbol_index)} symbols")
+        self.logger.info(
+            f"Analyzed {len(files)} files, found {len(symbol_index)} symbols"
+        )
 
         return self.project_context
 
     def _analyze_file(self, filepath: str, extension: str) -> FileContext:
         """Analyze a single file based on language."""
-        if extension == '.py':
+        if extension == ".py":
             return PythonAnalyzer.analyze_file(filepath)
         else:
             # Basic analysis for other languages
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, "r", encoding="utf-8") as f:
                 content = f.read()
 
             return FileContext(
@@ -304,12 +324,21 @@ class CodeContextIntelligence:
                 imports=[],
                 dependencies=set(),
                 lines_of_code=len(content.splitlines()),
-                complexity_score=0
+                complexity_score=0,
             )
 
     def _should_skip(self, filepath: Path) -> bool:
         """Check if file should be skipped."""
-        skip_dirs = {'.git', '.venv', 'venv', '__pycache__', 'node_modules', '.tox', 'build', 'dist'}
+        skip_dirs = {
+            ".git",
+            ".venv",
+            "venv",
+            "__pycache__",
+            "node_modules",
+            ".tox",
+            "build",
+            "dist",
+        }
         return any(part in skip_dirs for part in filepath.parts)
 
     def _identify_entry_points(self, files: Dict[str, FileContext]) -> List[str]:
@@ -318,21 +347,18 @@ class CodeContextIntelligence:
 
         for filepath, context in files.items():
             # Check for main execution
-            if any(s.name == '__main__' for s in context.symbols):
+            if any(s.name == "__main__" for s in context.symbols):
                 entry_points.append(filepath)
 
             # Check for setup.py, __init__.py, etc.
             filename = os.path.basename(filepath)
-            if filename in ['setup.py', '__main__.py', 'app.py', 'main.py']:
+            if filename in ["setup.py", "__main__.py", "app.py", "main.py"]:
                 entry_points.append(filepath)
 
         return entry_points
 
     def get_relevant_context(
-        self,
-        query: str,
-        max_symbols: int = 10,
-        include_dependencies: bool = True
+        self, query: str, max_symbols: int = 10, include_dependencies: bool = True
     ) -> str:
         """
         Get relevant code context for a query.
@@ -387,7 +413,7 @@ class CodeContextIntelligence:
         scored_symbols = []
 
         query_lower = query.lower()
-        query_words = set(re.findall(r'\w+', query_lower))
+        query_words = set(re.findall(r"\w+", query_lower))
 
         for symbol in self.project_context.symbol_index.values():
             score = 0
@@ -397,13 +423,13 @@ class CodeContextIntelligence:
                 score += 10
 
             # Word overlap
-            symbol_words = set(re.findall(r'\w+', symbol.name.lower()))
+            symbol_words = set(re.findall(r"\w+", symbol.name.lower()))
             overlap = len(query_words & symbol_words)
             score += overlap * 3
 
             # Docstring match
             if symbol.docstring:
-                doc_words = set(re.findall(r'\w+', symbol.docstring.lower()))
+                doc_words = set(re.findall(r"\w+", symbol.docstring.lower()))
                 doc_overlap = len(query_words & doc_words)
                 score += doc_overlap
 
@@ -435,19 +461,23 @@ class CodeContextIntelligence:
             "top_files": sorted(
                 self.project_context.files.items(),
                 key=lambda x: x[1].complexity_score,
-                reverse=True
-            )[:5]
+                reverse=True,
+            )[:5],
         }
 
         prompt = f"""Analyze this codebase structure and provide a brief architecture summary (3-4 sentences):
 
-Total Files: {stats['total_files']}
-Total Symbols: {stats['total_symbols']}
-Entry Points: {', '.join(os.path.basename(p) for p in stats['entry_points'])}
+Total Files: {stats["total_files"]}
+Total Symbols: {stats["total_symbols"]}
+Entry Points: {", ".join(os.path.basename(p) for p in stats["entry_points"])}
 
 Most Complex Files:
-{chr(10).join(f"- {os.path.basename(path)}: {ctx.complexity_score} complexity, {len(ctx.symbols)} symbols"
-for path, ctx in stats['top_files'])}
+{
+            chr(10).join(
+                f"- {os.path.basename(path)}: {ctx.complexity_score} complexity, {len(ctx.symbols)} symbols"
+                for path, ctx in stats["top_files"]
+            )
+        }
 
 Provide a concise summary of the project architecture and organization:"""
 

@@ -4,7 +4,6 @@ from typing import Dict, Any, List
 import os
 
 
-
 class ConfigValidator:
     """Validate parsed YAML configuration and mask sensitive values for logs."""
 
@@ -21,7 +20,7 @@ class ConfigValidator:
         """Return a list of validation error strings (empty if valid)."""
         errors: List[str] = []
 
-        provider = (config.get("provider") or {})
+        provider = config.get("provider") or {}
         if not provider:
             errors.append("Missing 'provider' section")
         else:
@@ -43,7 +42,7 @@ class ConfigValidator:
 
         # Validate memory directories if enabled
         context = config.get("context") or {}
-        memory = (context.get("memory") or {})
+        memory = context.get("memory") or {}
         if memory.get("enabled"):
             conv_db = memory.get("conversation_db")
             if conv_db:
@@ -63,7 +62,9 @@ class ConfigValidator:
                         try:
                             os.makedirs(pdir, exist_ok=True)
                         except PermissionError:
-                            errors.append(f"Cannot create vector_store directory: {pdir}")
+                            errors.append(
+                                f"Cannot create vector_store directory: {pdir}"
+                            )
 
         return errors
 
@@ -91,7 +92,9 @@ class ConfigValidator:
         def recurse(obj: Any):
             if isinstance(obj, dict):
                 for k, v in list(obj.items()):
-                    if any(t in k.lower() for t in ("key", "secret", "password", "token")):
+                    if any(
+                        t in k.lower() for t in ("key", "secret", "password", "token")
+                    ):
                         obj[k] = mask_value(v) if isinstance(v, str) else v
                     else:
                         recurse(v)

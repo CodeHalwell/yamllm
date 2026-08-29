@@ -23,7 +23,7 @@ def _get_llm(config: str = None, model: str = "gpt-4"):
 
     Returns:
         LLM instance
-    
+
     Raises:
         ValueError: If no config file is provided or found at default locations
     """
@@ -37,12 +37,12 @@ def _get_llm(config: str = None, model: str = "gpt-4"):
         default_configs = [
             "config/openai.yaml",
             ".config_examples/openai_example.yaml",
-            os.path.expanduser("~/.yamllm/config.yaml")
+            os.path.expanduser("~/.yamllm/config.yaml"),
         ]
         for default_config in default_configs:
             if os.path.exists(default_config):
                 return LLM(default_config)
-        
+
         raise ValueError(
             "No config file provided or found. Please specify a config file path "
             "or create one at one of these locations:\n"
@@ -61,10 +61,16 @@ def multi_agent_group():
 @multi_agent_group.command(name="execute")
 @click.argument("goal")
 @click.option("--config", "-c", type=click.Path(exists=True), help="LLM config file")
-@click.option("--roles", "-r", multiple=True, help="Agent roles to use (e.g., coder, reviewer)")
-@click.option("--max-iterations", "-m", default=10, help="Maximum coordination iterations")
+@click.option(
+    "--roles", "-r", multiple=True, help="Agent roles to use (e.g., coder, reviewer)"
+)
+@click.option(
+    "--max-iterations", "-m", default=10, help="Maximum coordination iterations"
+)
 @click.option("--verbose", "-v", is_flag=True, help="Verbose output")
-def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: int, verbose: bool):
+def multi_agent_execute(
+    goal: str, config: str, roles: tuple, max_iterations: int, verbose: bool
+):
     """
     Execute a goal using collaborative multi-agent system.
 
@@ -73,7 +79,10 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
     """
     try:
         from yamllm.agent.multi_agent import (
-            AgentCoordinator, CollaborativeAgent, AgentCapability, AgentRole
+            AgentCoordinator,
+            CollaborativeAgent,
+            AgentCapability,
+            AgentRole,
         )
 
         console.print("[bold cyan]Multi-Agent Collaborative Execution[/bold cyan]\n")
@@ -82,7 +91,9 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
         # Load LLM
         llm = _get_llm(config)
         if not config:
-            console.print("[yellow]No config provided, using default OpenAI GPT-4[/yellow]")
+            console.print(
+                "[yellow]No config provided, using default OpenAI GPT-4[/yellow]"
+            )
 
         # Create coordinator
         coordinator = AgentCoordinator(coordinator_llm=llm)
@@ -111,10 +122,8 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
                     agent_id=f"{role_name}_{i}",
                     llm=llm,
                     capability=AgentCapability(
-                        role=role,
-                        skills=[role_name],
-                        max_concurrent_tasks=2
-                    )
+                        role=role, skills=[role_name], max_concurrent_tasks=2
+                    ),
                 )
                 coordinator.register_agent(agent)
         else:
@@ -130,16 +139,16 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
                     agent_id=f"{role.value}_agent",
                     llm=llm,
                     capability=AgentCapability(
-                        role=role,
-                        skills=skills,
-                        max_concurrent_tasks=2
-                    )
+                        role=role, skills=skills, max_concurrent_tasks=2
+                    ),
                 )
                 coordinator.register_agent(agent)
 
         # Show registered agents
         status = coordinator.get_status()
-        console.print(f"[green]Registered {status['registered_agents']} agents[/green]\n")
+        console.print(
+            f"[green]Registered {status['registered_agents']} agents[/green]\n"
+        )
 
         if verbose:
             for agent_id, agent_info in status["agents"].items():
@@ -147,25 +156,30 @@ def multi_agent_execute(goal: str, config: str, roles: tuple, max_iterations: in
 
         # Execute collaborative task
         with console.status("[bold green]Executing collaborative task...[/bold green]"):
-            result = coordinator.execute_collaborative_task(goal, max_iterations=max_iterations)
+            result = coordinator.execute_collaborative_task(
+                goal, max_iterations=max_iterations
+            )
 
         # Display results
         console.print("\n[bold cyan]═══ Results ═══[/bold cyan]\n")
-        console.print(f"[green]✓ Completed {result['tasks_completed']} tasks in {result['iterations']} iterations[/green]\n")
+        console.print(
+            f"[green]✓ Completed {result['tasks_completed']} tasks in {result['iterations']} iterations[/green]\n"
+        )
 
         # Show task results
         if verbose and result.get("results"):
             for task_id, task_result in result["results"].items():
-                console.print(Panel(
-                    str(task_result),
-                    title=f"Task: {task_id}",
-                    border_style="blue"
-                ))
+                console.print(
+                    Panel(
+                        str(task_result), title=f"Task: {task_id}", border_style="blue"
+                    )
+                )
 
     except Exception as e:
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
         if verbose:
             import traceback
+
             console.print(traceback.format_exc())
         raise click.Abort()
 
@@ -186,12 +200,31 @@ def learning_group():
 
 @learning_group.command(name="record")
 @click.argument("task_description")
-@click.option("--outcome", "-o", type=click.Choice(["success", "failure", "partial", "timeout", "error"]), required=True)
-@click.option("--duration", "-d", type=float, required=True, help="Task duration in seconds")
+@click.option(
+    "--outcome",
+    "-o",
+    type=click.Choice(["success", "failure", "partial", "timeout", "error"]),
+    required=True,
+)
+@click.option(
+    "--duration", "-d", type=float, required=True, help="Task duration in seconds"
+)
 @click.option("--actions", "-a", type=str, help="JSON string of actions taken")
 @click.option("--details", type=str, help="JSON string of outcome details")
-@click.option("--db", type=click.Path(), default="agent_learning.db", help="Learning database path")
-def record_experience(task_description: str, outcome: str, duration: float, actions: str, details: str, db: str):
+@click.option(
+    "--db",
+    type=click.Path(),
+    default="agent_learning.db",
+    help="Learning database path",
+)
+def record_experience(
+    task_description: str,
+    outcome: str,
+    duration: float,
+    actions: str,
+    details: str,
+    db: str,
+):
     """
     Record an agent experience for learning.
 
@@ -216,10 +249,12 @@ def record_experience(task_description: str, outcome: str, duration: float, acti
             actions=actions_list,
             outcome=outcome_type,
             outcome_details=details_dict,
-            duration=duration
+            duration=duration,
         )
 
-        console.print(f"[green]✓ Recorded experience: {experience.experience_id}[/green]")
+        console.print(
+            f"[green]✓ Recorded experience: {experience.experience_id}[/green]"
+        )
         console.print(f"  Task: {task_description}")
         console.print(f"  Outcome: {outcome}")
         console.print(f"  Duration: {duration:.1f}s")
@@ -231,7 +266,12 @@ def record_experience(task_description: str, outcome: str, duration: float, acti
 
 @learning_group.command(name="analyze")
 @click.option("--config", "-c", type=click.Path(exists=True), help="LLM config file")
-@click.option("--db", type=click.Path(), default="agent_learning.db", help="Learning database path")
+@click.option(
+    "--db",
+    type=click.Path(),
+    default="agent_learning.db",
+    help="Learning database path",
+)
 @click.option("--min-experiences", "-m", default=10, help="Minimum experiences needed")
 @click.option("--verbose", "-v", is_flag=True, help="Show detailed analysis")
 def analyze_learning(config: str, db: str, min_experiences: int, verbose: bool):
@@ -257,7 +297,9 @@ def analyze_learning(config: str, db: str, min_experiences: int, verbose: bool):
             insights = learning.analyze_and_learn(min_experiences=min_experiences)
 
         if not insights:
-            console.print("[yellow]Not enough experiences to generate insights[/yellow]")
+            console.print(
+                "[yellow]Not enough experiences to generate insights[/yellow]"
+            )
             return
 
         console.print(f"[green]✓ Generated {len(insights)} new insights[/green]\n")
@@ -273,8 +315,10 @@ def analyze_learning(config: str, db: str, min_experiences: int, verbose: bool):
             table.add_row(
                 str(i),
                 insight.improvement_type.value,
-                insight.pattern[:50] + "..." if len(insight.pattern) > 50 else insight.pattern,
-                f"{insight.confidence:.1%}"
+                insight.pattern[:50] + "..."
+                if len(insight.pattern) > 50
+                else insight.pattern,
+                f"{insight.confidence:.1%}",
             )
 
         console.print(table)
@@ -288,6 +332,7 @@ def analyze_learning(config: str, db: str, min_experiences: int, verbose: bool):
         console.print(f"[bold red]Error:[/bold red] {str(e)}")
         if verbose:
             import traceback
+
             console.print(traceback.format_exc())
         raise click.Abort()
 
@@ -295,7 +340,12 @@ def analyze_learning(config: str, db: str, min_experiences: int, verbose: bool):
 @learning_group.command(name="recommend")
 @click.argument("task_description")
 @click.option("--config", "-c", type=click.Path(exists=True), help="LLM config file")
-@click.option("--db", type=click.Path(), default="agent_learning.db", help="Learning database path")
+@click.option(
+    "--db",
+    type=click.Path(),
+    default="agent_learning.db",
+    help="Learning database path",
+)
 def get_recommendations(task_description: str, config: str, db: str):
     """
     Get recommendations for a task based on learning.
@@ -306,7 +356,9 @@ def get_recommendations(task_description: str, config: str, db: str):
     try:
         from yamllm.agent.learning_system import LearningSystem
 
-        console.print(f"[bold cyan]Recommendations for:[/bold cyan] {task_description}\n")
+        console.print(
+            f"[bold cyan]Recommendations for:[/bold cyan] {task_description}\n"
+        )
 
         # Load LLM
         llm = _get_llm(config)
@@ -318,7 +370,9 @@ def get_recommendations(task_description: str, config: str, db: str):
         recommendations = learning.get_recommendations(task_description)
 
         if not recommendations:
-            console.print("[yellow]No recommendations available yet. Record more experiences![/yellow]")
+            console.print(
+                "[yellow]No recommendations available yet. Record more experiences![/yellow]"
+            )
             return
 
         console.print(f"[green]Found {len(recommendations)} recommendations:[/green]\n")
@@ -332,7 +386,12 @@ def get_recommendations(task_description: str, config: str, db: str):
 
 
 @learning_group.command(name="metrics")
-@click.option("--db", type=click.Path(), default="agent_learning.db", help="Learning database path")
+@click.option(
+    "--db",
+    type=click.Path(),
+    default="agent_learning.db",
+    help="Learning database path",
+)
 @click.option("--export", "-e", type=click.Path(), help="Export metrics to JSON file")
 def show_metrics(db: str, export: str):
     """
@@ -382,17 +441,21 @@ def show_metrics(db: str, export: str):
 
         # Export if requested
         if export:
-            with open(export, 'w') as f:
-                json.dump({
-                    "metrics": {
-                        "total_tasks": metrics.total_tasks,
-                        "successful_tasks": metrics.successful_tasks,
-                        "failed_tasks": metrics.failed_tasks,
-                        "success_rate": metrics.success_rate,
-                        "average_duration": metrics.average_duration
+            with open(export, "w") as f:
+                json.dump(
+                    {
+                        "metrics": {
+                            "total_tasks": metrics.total_tasks,
+                            "successful_tasks": metrics.successful_tasks,
+                            "failed_tasks": metrics.failed_tasks,
+                            "success_rate": metrics.success_rate,
+                            "average_duration": metrics.average_duration,
+                        },
+                        "summary": summary,
                     },
-                    "summary": summary
-                }, f, indent=2)
+                    f,
+                    indent=2,
+                )
             console.print(f"\n[green]✓ Metrics exported to {export}[/green]")
 
     except Exception as e:
@@ -403,7 +466,12 @@ def show_metrics(db: str, export: str):
 @learning_group.command(name="export")
 @click.argument("output_path", type=click.Path())
 @click.option("--config", "-c", type=click.Path(exists=True), help="LLM config file")
-@click.option("--db", type=click.Path(), default="agent_learning.db", help="Learning database path")
+@click.option(
+    "--db",
+    type=click.Path(),
+    default="agent_learning.db",
+    help="Learning database path",
+)
 def export_knowledge(output_path: str, config: str, db: str):
     """
     Export learned knowledge to a file.
@@ -433,7 +501,12 @@ def export_knowledge(output_path: str, config: str, db: str):
 @learning_group.command(name="import")
 @click.argument("input_path", type=click.Path(exists=True))
 @click.option("--config", "-c", type=click.Path(exists=True), help="LLM config file")
-@click.option("--db", type=click.Path(), default="agent_learning.db", help="Learning database path")
+@click.option(
+    "--db",
+    type=click.Path(),
+    default="agent_learning.db",
+    help="Learning database path",
+)
 def import_knowledge(input_path: str, config: str, db: str):
     """
     Import learned knowledge from a file.

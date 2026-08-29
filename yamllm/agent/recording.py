@@ -26,12 +26,13 @@ class SessionRecorder:
             "goal": agent_state.goal,
             "start_time": datetime.now().isoformat(),
             "iterations": [],
-            "metadata": agent_state.metadata.copy()
+            "metadata": agent_state.metadata.copy(),
         }
 
     def _generate_session_id(self) -> str:
         """Generate unique session ID."""
         from uuid import uuid4
+
         return str(uuid4())[:8]
 
     def record_iteration(
@@ -39,7 +40,7 @@ class SessionRecorder:
         iteration: int,
         thought: str,
         action: Dict[str, Any],
-        observation: Optional[str] = None
+        observation: Optional[str] = None,
     ) -> None:
         """
         Record an iteration.
@@ -59,8 +60,8 @@ class SessionRecorder:
             "state_snapshot": {
                 "completed_tasks": len(self.state.get_completed_tasks()),
                 "pending_tasks": len(self.state.get_pending_tasks()),
-                "progress": self.state.get_progress()
-            }
+                "progress": self.state.get_progress(),
+            },
         }
 
         self.recording["iterations"].append(iteration_data)
@@ -85,10 +86,10 @@ class SessionRecorder:
                     "description": t.description,
                     "status": t.status.value,
                     "result": t.result,
-                    "error": t.error
+                    "error": t.error,
                 }
                 for t in self.state.tasks
-            ]
+            ],
         }
 
     def save(self, filepath: str, format: Optional[str] = None) -> None:
@@ -180,7 +181,7 @@ class SessionPlayer:
         self,
         speed: float = 1.0,
         until_iteration: Optional[int] = None,
-        callback: Optional[Callable[[Dict], None]] = None
+        callback: Optional[Callable[[Dict], None]] = None,
     ) -> None:
         """
         Replay the session.
@@ -197,13 +198,15 @@ class SessionPlayer:
         console = Console()
 
         # Show session header
-        console.print(Panel(
-            f"[bold]Session: {self.recording['session_id']}[/bold]\n"
-            f"Goal: {self.recording['goal']}\n"
-            f"Start: {self.recording['start_time']}",
-            title="📼 Replay",
-            border_style="cyan"
-        ))
+        console.print(
+            Panel(
+                f"[bold]Session: {self.recording['session_id']}[/bold]\n"
+                f"Goal: {self.recording['goal']}\n"
+                f"Start: {self.recording['start_time']}",
+                title="📼 Replay",
+                border_style="cyan",
+            )
+        )
 
         iterations = self.recording.get("iterations", [])
 
@@ -220,11 +223,13 @@ class SessionPlayer:
 
             # Show thought
             if iter_data.get("thought"):
-                console.print(Panel(
-                    f"[italic]{iter_data['thought']}[/italic]",
-                    title="💭 Thought",
-                    border_style="magenta"
-                ))
+                console.print(
+                    Panel(
+                        f"[italic]{iter_data['thought']}[/italic]",
+                        title="💭 Thought",
+                        border_style="magenta",
+                    )
+                )
 
             # Show action
             action = iter_data.get("action", {})
@@ -259,7 +264,11 @@ class SessionPlayer:
             final = self.recording["final_state"]
             success = self.recording.get("success", False)
 
-            status_text = "[bold green]✓ Success[/bold green]" if success else "[bold red]✗ Failed[/bold red]"
+            status_text = (
+                "[bold green]✓ Success[/bold green]"
+                if success
+                else "[bold red]✗ Failed[/bold red]"
+            )
             console.print(f"\n\n{status_text}")
             console.print(f"Total iterations: {final.get('total_iterations', 0)}")
 
@@ -305,9 +314,7 @@ class SessionPlayer:
         differences: List[str] = []
         iter_diff = my_summary["total_iterations"] - other_summary["total_iterations"]
         if iter_diff != 0:
-            differences.append(
-                f"Iteration count differs by {iter_diff:+d}"
-            )
+            differences.append(f"Iteration count differs by {iter_diff:+d}")
         if my_summary["goal"] != other_summary["goal"]:
             differences.append("Goals differ")
         if bool(my_summary.get("success")) != bool(other_summary.get("success")):
@@ -330,7 +337,8 @@ class SessionPlayer:
             },
             "comparison": {
                 "iteration_diff": iter_diff,
-                "both_succeeded": bool(my_summary["success"]) and bool(other_summary["success"]),
+                "both_succeeded": bool(my_summary["success"])
+                and bool(other_summary["success"]),
                 "same_goal": my_summary["goal"] == other_summary["goal"],
             },
             "differences": differences,
@@ -351,9 +359,7 @@ class RecordingManager:
         self.recordings_dir.mkdir(parents=True, exist_ok=True)
 
     def save_recording(
-        self,
-        recording: Dict[str, Any],
-        name: Optional[str] = None
+        self, recording: Dict[str, Any], name: Optional[str] = None
     ) -> Path:
         """
         Save a recording.
@@ -370,7 +376,7 @@ class RecordingManager:
 
         filepath = self.recordings_dir / f"{name}.yaml"
 
-        with open(filepath, 'w') as f:
+        with open(filepath, "w") as f:
             yaml.dump(recording, f, default_flow_style=False, sort_keys=False)
 
         return filepath
@@ -381,16 +387,18 @@ class RecordingManager:
 
         for filepath in self.recordings_dir.glob("*.yaml"):
             try:
-                with open(filepath, 'r') as f:
+                with open(filepath, "r") as f:
                     recording = yaml.safe_load(f)
 
-                recordings.append({
-                    "filename": filepath.name,
-                    "session_id": recording.get("session_id"),
-                    "goal": recording.get("goal"),
-                    "start_time": recording.get("start_time"),
-                    "success": recording.get("success")
-                })
+                recordings.append(
+                    {
+                        "filename": filepath.name,
+                        "session_id": recording.get("session_id"),
+                        "goal": recording.get("goal"),
+                        "start_time": recording.get("start_time"),
+                        "success": recording.get("success"),
+                    }
+                )
             except Exception:
                 # Skip invalid recording files
                 pass
@@ -407,7 +415,7 @@ class RecordingManager:
         Returns:
             SessionPlayer instance
         """
-        if not name.endswith('.yaml'):
+        if not name.endswith(".yaml"):
             name = f"{name}.yaml"
 
         filepath = self.recordings_dir / name
@@ -433,7 +441,7 @@ class RecordingManager:
         Returns:
             True if deleted, False if not found
         """
-        if not name.endswith('.yaml'):
+        if not name.endswith(".yaml"):
             name = f"{name}.yaml"
 
         filepath = self.recordings_dir / name

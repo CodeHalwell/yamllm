@@ -5,6 +5,7 @@ import logging
 from typing import List, Dict, Any, Optional
 
 from .models import Task, AgentState, TaskStatus
+from .parsing import parse_json_response
 
 
 class TaskPlanner:
@@ -26,10 +27,7 @@ class TaskPlanner:
         self.logger = logger or logging.getLogger(__name__)
 
     def decompose_goal(
-        self,
-        goal: str,
-        context: Optional[Dict[str, Any]],
-        state: AgentState
+        self, goal: str, context: Optional[Dict[str, Any]], state: AgentState
     ) -> AgentState:
         """
         Decompose goal into subtasks.
@@ -67,9 +65,15 @@ class TaskPlanner:
 
         return state
 
-    def _build_planning_prompt(self, goal: str, context: Optional[Dict[str, Any]]) -> str:
+    def _build_planning_prompt(
+        self, goal: str, context: Optional[Dict[str, Any]]
+    ) -> str:
         """Build prompt for task decomposition."""
-        context_str = self._format_context(context) if context else "No additional context provided."
+        context_str = (
+            self._format_context(context)
+            if context
+            else "No additional context provided."
+        )
 
         return f"""You are a task planning assistant. Break down the following goal into concrete, actionable subtasks.
 
@@ -128,21 +132,19 @@ Important: Ensure the JSON is valid and well-formed."""
             List of Task objects
         """
         try:
-            # Try to extract JSON from response
-            json_str = self._extract_json(response)
-            data = json.loads(json_str)
+            data = parse_json_response(response)
 
             tasks = []
             for i, task_data in enumerate(data.get("tasks", [])):
                 task = Task(
-                    id=task_data.get("id", f"task_{i+1}"),
+                    id=task_data.get("id", f"task_{i + 1}"),
                     description=task_data["description"],
                     status=TaskStatus.PENDING,
                     dependencies=task_data.get("dependencies", []),
                     metadata={
                         "tools": task_data.get("required_tools", []),
-                        "complexity": task_data.get("estimated_complexity", "medium")
-                    }
+                        "complexity": task_data.get("estimated_complexity", "medium"),
+                    },
                 )
                 tasks.append(task)
 
@@ -152,23 +154,6 @@ Important: Ensure the JSON is valid and well-formed."""
             self.logger.warning(f"Failed to parse tasks: {e}. Creating single task.")
             # Fallback: create single task from goal
             return [Task.create(goal)]
-
-    def _extract_json(self, text: str) -> str:
-        """Extract JSON from text that might contain markdown or other content."""
-        # Try to find JSON block in markdown
-        if "```json" in text:
-            start = text.find("```json") + 7
-            end = text.find("```", start)
-            if end > start:
-                return text[start:end].strip()
-
-        # Try to find JSON object
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        if start >= 0 and end > start:
-            return text[start:end]
-
-        return text
 
     def _validate_dependencies(self, tasks: List[Task]) -> List[Task]:
         """
@@ -187,7 +172,9 @@ Important: Ensure the JSON is valid and well-formed."""
 
         # Check for circular dependencies
         if self._has_circular_dependency(tasks):
-            self.logger.warning("Circular dependency detected, removing problematic dependencies")
+            self.logger.warning(
+                "Circular dependency detected, removing problematic dependencies"
+            )
             tasks = self._remove_circular_dependencies(tasks)
 
         return tasks

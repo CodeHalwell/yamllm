@@ -8,6 +8,7 @@ from contextlib import contextmanager
 
 from yamllm.core.exceptions import MemoryStoreError
 
+
 class ConversationStore:
     """
     A class to manage conversation history stored in a SQLite database.
@@ -37,6 +38,7 @@ class ConversationStore:
         __repr__() -> str:
             Returns a detailed string representation.
     """
+
     def __init__(self, db_path: str):
         self.db_path = db_path
 
@@ -71,7 +73,7 @@ class ConversationStore:
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
-            cursor.execute('''
+            cursor.execute("""
                 CREATE TABLE IF NOT EXISTS messages (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     session_id TEXT NOT NULL,
@@ -79,7 +81,7 @@ class ConversationStore:
                     content TEXT NOT NULL,
                     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
                 )
-            ''')
+            """)
             conn.commit()
         finally:
             conn.close()
@@ -100,19 +102,21 @@ class ConversationStore:
         try:
             cursor = conn.cursor()
             cursor.execute(
-                'INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)',
-                (session_id, role, content)
+                "INSERT INTO messages (session_id, role, content) VALUES (?, ?, ?)",
+                (session_id, role, content),
             )
             message_id = cursor.lastrowid
             conn.commit()
             return message_id
         except Exception as e:
-            logging.getLogger('yamllm').error(f"Error adding message: {e}")
+            logging.getLogger("yamllm").error(f"Error adding message: {e}")
             return None
         finally:
             conn.close()
 
-    def get_messages(self, session_id: Optional[str] = None, limit: Optional[int] = None) -> List[Dict[str, str]]:
+    def get_messages(
+        self, session_id: Optional[str] = None, limit: Optional[int] = None
+    ) -> List[Dict[str, str]]:
         """
         Retrieve messages from the database.
         Args:
@@ -126,26 +130,52 @@ class ConversationStore:
         try:
             cursor = conn.cursor()
             # Remove embedding from SELECT statement since it's not in the schema
-            query = 'SELECT role, content FROM messages'
+            query = "SELECT role, content FROM messages"
             params = []
-            
+
             if session_id:
-                query += ' WHERE session_id = ?'
+                query += " WHERE session_id = ?"
                 params.append(session_id)
-            
-            query += ' ORDER BY timestamp DESC'
-            
+
+            query += " ORDER BY timestamp DESC"
+
             if limit:
-                query += ' LIMIT ?'
+                query += " LIMIT ?"
                 params.append(str(limit))
 
             cursor.execute(query, params)
             results = cursor.fetchall()
-            
+
             # Update dictionary creation to match selected columns
-            messages = [{"role": role, "content": content} 
-                    for role, content in results]
+            messages = [{"role": role, "content": content} for role, content in results]
             return messages[::-1]
+        finally:
+            conn.close()
+
+    def list_conversations(self) -> List[Dict[str, Any]]:
+        """
+        Summarise stored conversations.
+
+        Returns:
+            List[Dict[str, Any]]: One entry per session with its id, message
+            count, and first/last message timestamps, newest first.
+        """
+        conn = sqlite3.connect(self.db_path)
+        try:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT session_id, COUNT(*), MIN(timestamp), MAX(timestamp) "
+                "FROM messages GROUP BY session_id ORDER BY MAX(timestamp) DESC"
+            )
+            return [
+                {
+                    "id": session_id,
+                    "messages": count,
+                    "created_at": first,
+                    "updated_at": last,
+                }
+                for session_id, count, first, last in cursor.fetchall()
+            ]
         finally:
             conn.close()
 
@@ -158,7 +188,7 @@ class ConversationStore:
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
-            cursor.execute('SELECT DISTINCT session_id FROM messages')
+            cursor.execute("SELECT DISTINCT session_id FROM messages")
             results = cursor.fetchall()
             return [row[0] for row in results]
         finally:
@@ -173,7 +203,7 @@ class ConversationStore:
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
-            cursor.execute('DELETE FROM messages WHERE session_id = ?', (session_id,))
+            cursor.execute("DELETE FROM messages WHERE session_id = ?", (session_id,))
             conn.commit()
         finally:
             conn.close()
@@ -182,26 +212,25 @@ class ConversationStore:
         """Delete the entire database file."""
         os.remove(self.db_path)
 
-
     def __repr__(self) -> str:
         """Returns a detailed string representation of the ConversationStore object."""
         return f"ConversationStore(db_path='{self.db_path}')"
-    
+
     def __str__(self) -> str:
         """Returns a human-readable string representation of the ConversationStore object."""
         session_count = len(self.get_session_ids())
         return f"ConversationStore with {session_count} sessions at {self.db_path}"
-    
+
     def __len__(self) -> int:
         """Returns the total number of messages in the store."""
         conn = sqlite3.connect(self.db_path)
         try:
             cursor = conn.cursor()
-            cursor.execute('SELECT COUNT(*) FROM messages')
+            cursor.execute("SELECT COUNT(*) FROM messages")
             return cursor.fetchone()[0]
         finally:
             conn.close()
-    
+
     def close(self) -> None:
         """Close any open database connections."""
         # SQLite connections are opened/closed per operation in this implementation
@@ -230,13 +259,13 @@ class VectorStore:
         self.index_path = os.path.join(store_path, "faiss_index.idx")
         self.metadata_path = os.path.join(store_path, "metadata.json")
         self.metadata_db = os.path.join(store_path, "metadata.db")
-        
+
         # Create directory if it doesn't exist
         os.makedirs(store_path, exist_ok=True)
-        
+
         # Initialize metadata database
         self._init_metadata_db()
-        
+
         # Initialize or load the index with dimension validation
         if os.path.exists(self.index_path):
             self.index = faiss.read_index(self.index_path)
@@ -252,7 +281,9 @@ class VectorStore:
             # Load metadata from database instead of pickle
             self.metadata = self._load_metadata()
         else:
-            self.index = faiss.IndexFlatIP(vector_dim)  # Inner product for cosine similarity
+            self.index = faiss.IndexFlatIP(
+                vector_dim
+            )  # Inner product for cosine similarity
             self.metadata = []  # List to store message metadata
 
     def _init_metadata_db(self) -> None:
@@ -299,18 +330,22 @@ class VectorStore:
                     ORDER BY vector_index
                 """)
                 for row in cursor.fetchall():
-                    metadata.append({
-                        'id': row['message_id'],
-                        'content': row['content'],
-                        'role': row['role']
-                    })
+                    metadata.append(
+                        {
+                            "id": row["message_id"],
+                            "content": row["content"],
+                            "role": row["role"],
+                        }
+                    )
         except Exception as e:
-            logging.getLogger('yamllm').warning(f"Failed to load vector metadata: {e}")
+            logging.getLogger("yamllm").warning(f"Failed to load vector metadata: {e}")
             # Fall back to empty metadata if database read fails
             metadata = []
         return metadata
 
-    def add_vector(self, vector: List[float], message_id: int, content: str, role: str) -> None:
+    def add_vector(
+        self, vector: List[float], message_id: int, content: str, role: str
+    ) -> None:
         """
         Add a vector to the index with its associated metadata.
 
@@ -328,34 +363,33 @@ class VectorStore:
             raise MemoryStoreError(
                 f"Vector dimension mismatch: expected {self.vector_dim}, got {len(vector)}"
             )
-        vector_np = np.array([vector]).astype('float32')
+        vector_np = np.array([vector]).astype("float32")
         faiss.normalize_L2(vector_np)
-        
+
         self.index.add(vector_np)
         vector_index = self.index.ntotal - 1  # Index of the newly added vector
-        
+
         # Store metadata in database
         with self._get_db_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("""
+            cursor.execute(
+                """
                 INSERT INTO vector_metadata (vector_index, message_id, content, role, dimension)
                 VALUES (?, ?, ?, ?, ?)
-            """, (vector_index, message_id, content, role, self.vector_dim))
+            """,
+                (vector_index, message_id, content, role, self.vector_dim),
+            )
             conn.commit()
-        
+
         # Update in-memory metadata
-        self.metadata.append({
-            'id': message_id,
-            'content': content,
-            'role': role
-        })
+        self.metadata.append({"id": message_id, "content": content, "role": role})
         self._save_store()
 
     def _save_store(self) -> None:
         """
         Saves the current state of the conversation store to disk.
 
-        This method writes the FAISS index to the specified index path and 
+        This method writes the FAISS index to the specified index path and
         serializes the metadata to a file at the specified metadata path.
 
         Raises:
@@ -388,23 +422,20 @@ class VectorStore:
             )
         if self.index.ntotal == 0:
             return []
-        query_np = np.array([query_vector]).astype('float32')
+        query_np = np.array([query_vector]).astype("float32")
         faiss.normalize_L2(query_np)
-        
+
         distances, indices = self.index.search(query_np, k)
-        
+
         # Return message metadata and similarity scores
         results = [
-            {
-                **self.metadata[idx],
-                'similarity': float(score)
-            }
+            {**self.metadata[idx], "similarity": float(score)}
             for idx, score in zip(indices[0], distances[0])
             if idx != -1
         ]
-        
+
         return results[:k]
-    
+
     def get_vec_and_text(self) -> Tuple[np.ndarray, List[Dict[str, Any]]]:
         """
         Retrieve all vectors and their associated metadata.
@@ -420,29 +451,31 @@ class VectorStore:
         """
         if self.index.ntotal == 0:
             return np.array([]), []
-        
+
         # Initialize array to store vectors
         vectors = np.empty((self.index.ntotal, self.vector_dim), dtype=np.float32)
-        
+
         # Reconstruct vectors one by one
         for i in range(self.index.ntotal):
             vectors[i] = self.index.reconstruct(i)
-        
+
         return vectors, self.metadata
-    
+
     def __repr__(self) -> str:
         """Returns a detailed string representation of the VectorStore object."""
-        return f"VectorStore(vector_dim={self.vector_dim}, store_path='{self.store_path}')"
-    
+        return (
+            f"VectorStore(vector_dim={self.vector_dim}, store_path='{self.store_path}')"
+        )
+
     def __str__(self) -> str:
         """Returns a human-readable string representation of the VectorStore object."""
         vector_count = self.index.ntotal
         return f"VectorStore with {vector_count} vectors of dimension {self.vector_dim}"
-    
+
     def __len__(self) -> int:
         """Returns the total number of vectors in the store."""
         return self.index.ntotal
-    
+
     def close(self) -> None:
         """Save the index and close resources."""
         try:

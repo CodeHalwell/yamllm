@@ -85,10 +85,7 @@ import dotenv
 dotenv.load_dotenv()
 
 # Initialize LLM
-llm = MistralAI(
-    config_path="config.yaml",
-    api_key=os.environ.get("MISTRAL_API_KEY")
-)
+llm = MistralAI(config_path="config.yaml", api_key=os.environ.get("MISTRAL_API_KEY"))
 
 # Test query
 response = llm.query("Hello, how are you?")
