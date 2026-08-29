@@ -165,8 +165,9 @@ class TestCLIErrorHandling:
         """Test handling of keyboard interrupt."""
         from yamllm.cli.main import main
 
-        # Simulate Ctrl+C
-        with patch("yamllm.cli.main.argparse.ArgumentParser.parse_args") as mock_parse:
+        # Simulate Ctrl+C (patch the argparse class directly; dotted targets
+        # through yamllm.cli.main resolve differently between 3.10 and 3.11)
+        with patch("argparse.ArgumentParser.parse_args") as mock_parse:
             mock_parse.side_effect = KeyboardInterrupt()
 
             # Should exit gracefully with the conventional SIGINT exit code
