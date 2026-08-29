@@ -1,8 +1,9 @@
-"""Argument-parsing regression tests for the agent CLI."""
+"""Argument-parsing and log-sink regression tests for the agent CLI."""
 
 import argparse
 
-from yamllm.cli.agent import setup_agent_commands
+from yamllm.agent.events import AgentEvent, EventKind
+from yamllm.cli.agent import _event_for_log, setup_agent_commands
 
 
 def parse(argv):
@@ -50,3 +51,37 @@ def test_run_accepts_harness_flags():
     assert args.events_jsonl == "events.jsonl"
     assert args.interactive is True
     assert args.auto_approve is True
+
+
+def test_run_accepts_log_thoughts_flag():
+    args = parse(["agent", "run", "goal", "--config", "c.yaml", "--log-thoughts"])
+    assert args.log_thoughts is True
+
+
+def test_event_log_redacts_thoughts_by_default():
+    event = AgentEvent(kind=EventKind.THOUGHT, payload={"thought": "secret plan"})
+    redacted = _event_for_log(event, log_thoughts=False)
+    assert redacted.payload["thought"] == "[redacted]"
+    # Original event untouched (live UI still sees the thought)
+    assert event.payload["thought"] == "secret plan"
+
+
+def test_event_log_redacts_approval_thought():
+    event = AgentEvent(
+        kind=EventKind.APPROVAL_REQUESTED,
+        payload={"thought": "secret", "planned_action": {"task_id": "t1"}},
+    )
+    redacted = _event_for_log(event, log_thoughts=False)
+    assert redacted.payload["thought"] == "[redacted]"
+    assert redacted.payload["planned_action"] == {"task_id": "t1"}
+
+
+def test_event_log_keeps_thoughts_when_opted_in():
+    event = AgentEvent(kind=EventKind.THOUGHT, payload={"thought": "secret plan"})
+    kept = _event_for_log(event, log_thoughts=True)
+    assert kept.payload["thought"] == "secret plan"
+
+
+def test_event_log_passes_other_events_through():
+    event = AgentEvent(kind=EventKind.RUN_FINISHED, payload={"success": True})
+    assert _event_for_log(event, log_thoughts=False) is event

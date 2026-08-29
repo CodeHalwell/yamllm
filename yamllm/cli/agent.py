@@ -72,6 +72,11 @@ def setup_agent_commands(subparsers):
     run_parser.add_argument(
         "--events-jsonl", help="Append the run's event stream to a JSONL file"
     )
+    run_parser.add_argument(
+        "--log-thoughts",
+        action="store_true",
+        help="Include agent reasoning verbatim in --events-jsonl (redacted by default)",
+    )
     run_parser.set_defaults(func=run_agent)
 
     # yamllm agent workflow
@@ -157,6 +162,19 @@ def _console_event_renderer(event: AgentEvent) -> None:
         console.print(f"[bold red]Error: {payload.get('error')}[/bold red]")
 
 
+def _event_for_log(event: AgentEvent, log_thoughts: bool) -> AgentEvent:
+    """Redact agent reasoning from persisted events unless opted in.
+
+    The repo's working agreement is that internal reasoning is redacted in
+    logs; the live TUI/console transcript is unaffected.
+    """
+    if log_thoughts or "thought" not in event.payload:
+        return event
+    payload = dict(event.payload)
+    payload["thought"] = "[redacted]"
+    return AgentEvent(kind=event.kind, payload=payload, timestamp=event.timestamp)
+
+
 def _build_harness(
     llm, args: argparse.Namespace, approval_policy: ApprovalPolicy
 ) -> AgentHarness:
@@ -215,7 +233,12 @@ def run_agent(args: argparse.Namespace) -> int:
         jsonl_file = None
         if getattr(args, "events_jsonl", None):
             jsonl_file = open(args.events_jsonl, "a", buffering=1)
-            harness.add_listener(lambda ev: jsonl_file.write(ev.to_json() + "\n"))
+            log_thoughts = getattr(args, "log_thoughts", False)
+            harness.add_listener(
+                lambda ev: jsonl_file.write(
+                    _event_for_log(ev, log_thoughts).to_json() + "\n"
+                )
+            )
 
         goal = initial_state.goal if initial_state else args.goal
 

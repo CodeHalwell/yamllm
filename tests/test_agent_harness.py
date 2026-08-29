@@ -274,6 +274,27 @@ def test_state_roundtrip():
     assert restored.thought_history == ["thinking"]
 
 
+def test_skip_decision_still_checkpoints(tmp_path):
+    def skip(point):
+        return SteeringDecision(action=SteeringAction.SKIP)
+
+    harness = AgentHarness(
+        make_llm(
+            plan_tasks=[{"id": "task_1", "description": "Only", "dependencies": []}]
+        ),
+        max_iterations=2,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=skip,
+        checkpoint_dir=str(tmp_path),
+    )
+
+    state = harness.run("Do the thing")
+
+    assert state.iteration >= 1
+    checkpoints = list(tmp_path.glob("*.json"))
+    assert checkpoints, "skipped iterations should still write a checkpoint"
+
+
 def test_pending_stop_skips_decision_provider():
     calls = []
 

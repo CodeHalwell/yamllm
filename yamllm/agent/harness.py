@@ -272,6 +272,7 @@ class AgentHarness:
                         break
                     if outcome == "skip":
                         state = self._check_goal_completion(state)
+                        self._save_checkpoint(state)
                         continue
 
                 # ACT
