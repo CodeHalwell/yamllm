@@ -277,9 +277,16 @@ class TestCLISetupWizard:
     """Test CLI setup wizard."""
 
     @patch("yamllm.core.setup_wizard.SetupWizard")
-    @patch("yamllm.cli.main.Console")
-    def test_setup_wizard_invocation(self, mock_console, mock_wizard_class):
+    def test_setup_wizard_invocation(self, mock_wizard_class):
         """Test invoking setup wizard."""
+        # Patch the console on the module object rather than via the string
+        # "yamllm.cli.main.console": yamllm.cli re-exports the main() function,
+        # which shadows the main submodule under getattr-based resolution
+        # (mock's dotted patch targets on Python 3.10, and `import ... as`
+        # binding on every version). importlib returns the real module.
+        import importlib
+
+        cli_main = importlib.import_module("yamllm.cli.main")
         from yamllm.cli.main import run_setup
         import argparse
 
@@ -289,7 +296,8 @@ class TestCLISetupWizard:
         mock_wizard_class.return_value = mock_wizard
 
         args = argparse.Namespace()
-        result = run_setup(args)
+        with patch.object(cli_main, "console"):
+            result = run_setup(args)
 
         # Wizard should be called
         mock_wizard.run.assert_called_once()

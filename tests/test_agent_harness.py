@@ -789,6 +789,47 @@ def test_empty_plan_fails_cleanly():
     assert len(state.tasks) == 1
 
 
+def test_max_iterations_terminal_state_is_checkpointed(tmp_path):
+    harness = AgentHarness(make_llm(), max_iterations=1, checkpoint_dir=str(tmp_path))
+
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert state.error == "Maximum iterations reached"
+    checkpoint = load_checkpoint(state.metadata["checkpoint_path"])
+    assert checkpoint.completed
+    assert checkpoint.error == "Maximum iterations reached"
+
+
+def test_empty_plan_terminal_state_is_checkpointed(tmp_path):
+    # A customised planner may legitimately return no tasks; the built-in
+    # TaskPlanner always falls back to a single task.
+    class EmptyPlanner:
+        def decompose_goal(self, goal, context, state):
+            state.tasks = []
+            return state
+
+    harness = AgentHarness(
+        make_llm(),
+        max_iterations=5,
+        planner=EmptyPlanner(),
+        checkpoint_dir=str(tmp_path),
+    )
+
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert state.error == "Could not decompose goal into tasks"
+    checkpoint = load_checkpoint(state.metadata["checkpoint_path"])
+    assert checkpoint.completed
+    assert checkpoint.error == "Could not decompose goal into tasks"
+    # The taskless snapshot is the resumable shape run() reopens
+    resumed = AgentHarness(make_llm(), max_iterations=5).run(
+        "ignored", initial_state=checkpoint
+    )
+    assert resumed.completed and resumed.success
+
+
 # ----------------------------------------------------------------------
 # parsing helpers
 # ----------------------------------------------------------------------

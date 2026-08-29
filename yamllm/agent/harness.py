@@ -273,6 +273,9 @@ class AgentHarness:
                     state.completed = True
                     state.success = False
                     state.error = "Could not decompose goal into tasks"
+                    # Persist the taskless terminal state: run() explicitly
+                    # reopens it on resume, so it must be loadable.
+                    self._save_checkpoint(state)
                     self._finish(state)
                     return state
             elif not state.tasks:
@@ -407,6 +410,9 @@ class AgentHarness:
                 state.completed = True
                 state.success = False
                 state.error = "Maximum iterations reached"
+                # The last in-loop checkpoint predates this transition;
+                # re-save so the snapshot reflects the terminal state.
+                self._save_checkpoint(state)
 
             self._finish(state)
 
