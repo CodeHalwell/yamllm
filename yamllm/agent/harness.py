@@ -368,6 +368,11 @@ class AgentHarness:
         if self.approval_policy == ApprovalPolicy.NEVER or self._auto_approve:
             return None
 
+        # A pending stop should unwind the loop, not enter a (possibly
+        # blocking) approval flow.
+        if self._stop_event.is_set():
+            return SteeringDecision(action=SteeringAction.STOP)
+
         point = SteeringPoint(
             iteration=state.iteration,
             thought=thought,

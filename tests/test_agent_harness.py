@@ -274,6 +274,32 @@ def test_state_roundtrip():
     assert restored.thought_history == ["thinking"]
 
 
+def test_pending_stop_skips_decision_provider():
+    calls = []
+
+    def provider(point):
+        calls.append(point)
+        return SteeringDecision(action=SteeringAction.APPROVE)
+
+    harness = AgentHarness(
+        make_llm(),
+        max_iterations=5,
+        approval_policy=ApprovalPolicy.ALWAYS,
+        decision_provider=provider,
+    )
+
+    # Request a stop before the approval gate is reached
+    def stop_on_thought(event: AgentEvent) -> None:
+        if event.kind == EventKind.THOUGHT:
+            harness.request_stop()
+
+    harness.add_listener(stop_on_thought)
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert calls == []  # provider never consulted once a stop is pending
+
+
 def test_missing_decision_provider_auto_approves():
     harness = AgentHarness(
         make_llm(),

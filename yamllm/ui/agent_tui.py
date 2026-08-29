@@ -235,7 +235,12 @@ class AgentTUI(App[Optional[AgentState]]):
         table = self.query_one("#tasks", DataTable)
         self._column_keys = table.add_columns(" ", "id", "task")
 
-        if self.harness.approval_policy != ApprovalPolicy.NEVER:
+        # Install the modal approval flow only when the caller has not
+        # supplied their own provider (e.g. CLI --auto-approve).
+        if (
+            self.harness.approval_policy != ApprovalPolicy.NEVER
+            and self.harness.decision_provider is None
+        ):
             self.harness.decision_provider = self._blocking_decision_provider
         self.harness.add_listener(self._event_from_worker)
         self.run_worker(self._run_agent, thread=True, exclusive=True)

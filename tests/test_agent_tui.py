@@ -85,6 +85,28 @@ def test_tui_approval_modal_approve():
     asyncio.run(scenario())
 
 
+def test_tui_respects_preconfigured_decision_provider():
+    from yamllm.agent.interactive_steering import SteeringAction, SteeringDecision
+
+    async def scenario():
+        harness = AgentHarness(
+            make_llm(), max_iterations=5, approval_policy=ApprovalPolicy.ALWAYS
+        )
+        harness.decision_provider = lambda point: SteeringDecision(
+            action=SteeringAction.AUTO
+        )
+        app = AgentTUI(harness, "Goal")
+        async with app.run_test(size=(120, 40)) as pilot:
+            finished = await wait_for(pilot, lambda: app.final_state is not None)
+            assert finished, "run did not finish"
+            # No modal ever shown; the preset provider auto-approved
+            assert not isinstance(app.screen, ApprovalScreen)
+            assert app.final_state.success
+            await pilot.press("q")
+
+    asyncio.run(scenario())
+
+
 def test_tui_stop_binding_cancels_run():
     async def scenario():
         harness = AgentHarness(
