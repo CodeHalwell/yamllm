@@ -8,9 +8,6 @@ These tests verify that YAMLLM meets performance targets:
 """
 
 import time
-import pytest
-from unittest.mock import Mock, patch, MagicMock
-from yamllm.core.llm import LLM
 from yamllm.core.metrics import MetricsTracker
 
 

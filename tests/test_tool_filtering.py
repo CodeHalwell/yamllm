@@ -6,7 +6,7 @@ functions that were identified as having no test coverage.
 """
 
 import pytest
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 from yamllm.core.llm import LLM
 
 

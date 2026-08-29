@@ -8,8 +8,7 @@ and config validation.
 import pytest
 import tempfile
 import os
-from unittest.mock import Mock, patch, MagicMock
-from io import StringIO
+from unittest.mock import patch, MagicMock
 import sys
 
 

@@ -10,7 +10,6 @@ This module provides performance monitoring capabilities including:
 
 import time
 from typing import Dict, Optional, Any, List
-from collections import defaultdict
 from dataclasses import dataclass, field
 import threading
 

@@ -4,9 +4,12 @@ import argparse
 import json
 
 from rich.console import Console
+from rich.text import Text
 
 from yamllm import LLM
 from yamllm.agent import Agent, WorkflowManager, SimpleAgent
+from yamllm.agent.events import AgentEvent, EventKind
+from yamllm.agent.harness import AgentHarness, ApprovalPolicy, load_checkpoint
 from yamllm.ui.agent_ui import AgentUI
 
 console = Console()
@@ -31,10 +34,26 @@ def setup_agent_commands(subparsers):
     run_parser.add_argument("--config", required=True, help="Config file path")
     run_parser.add_argument("--context", help="JSON context file")
     run_parser.add_argument("--max-iterations", type=int, default=10, help="Max iterations")
+    run_parser.add_argument("--max-wall-time", type=float, help="Wall-clock budget in seconds")
     run_parser.add_argument("--simple", action="store_true", help="Use simple agent (no planning)")
-    run_parser.add_argument("--interactive", "-i", action="store_true", help="Enable interactive steering")
+    run_parser.add_argument(
+        "--interactive", "-i", action="store_true",
+        help="Approve each action before it runs (Textual TUI unless --plain)"
+    )
+    run_parser.add_argument(
+        "--tui", action="store_true",
+        help="Show the live Textual dashboard even without approval gating"
+    )
+    run_parser.add_argument(
+        "--plain", action="store_true",
+        help="Plain console output; with --interactive, prompt-based approvals"
+    )
     run_parser.add_argument("--auto-approve", action="store_true", help="Auto-approve all actions (with interactive)")
-    run_parser.add_argument("--output", "-o", help="Save result to file")
+    run_parser.add_argument("--checkpoint-dir", help="Save a state checkpoint after each iteration")
+    run_parser.add_argument("--resume", help="Resume from a checkpoint file")
+    run_parser.add_argument("--record", action="store_true", help="Record the session for replay")
+    run_parser.add_argument("--recording-dir", help="Directory for session recordings")
+    run_parser.add_argument("--events-jsonl", help="Append the run's event stream to a JSONL file")
     run_parser.set_defaults(func=run_agent)
 
     # yamllm agent workflow
@@ -76,6 +95,56 @@ def setup_agent_commands(subparsers):
     return agent_parser
 
 
+def _console_event_renderer(event: AgentEvent) -> None:
+    """Render a harness event as an incremental console line."""
+    payload = event.payload
+
+    if event.kind == EventKind.PLAN_CREATED:
+        console.print(f"[cyan]Plan created: {len(payload.get('tasks', []))} tasks[/cyan]")
+        for task in payload.get("tasks", []):
+            console.print(f"  [dim]{task.get('id')}[/dim] {task.get('description')}")
+    elif event.kind == EventKind.ITERATION_STARTED:
+        console.rule(
+            f"[dim]iteration {payload.get('iteration')}/{payload.get('max_iterations')}[/dim]"
+        )
+    elif event.kind == EventKind.THOUGHT:
+        console.print(Text(f"💭 {payload.get('thought', '')}", style="italic dim"))
+    elif event.kind == EventKind.ACTION_STARTED:
+        task = payload.get("task", {})
+        console.print(f"[yellow]⚡ {task.get('description', '')}[/yellow]")
+    elif event.kind == EventKind.ACTION_FINISHED:
+        result = payload.get("result", {})
+        if result.get("success"):
+            response = (result.get("response") or "").strip()
+            if len(response) > 300:
+                response = response[:300] + "…"
+            if response:
+                console.print(Text(response))
+        else:
+            console.print(f"[red]✗ {result.get('error', 'failed')}[/red]")
+    elif event.kind == EventKind.OBSERVATION:
+        learned = payload.get("learned")
+        if learned:
+            console.print(f"[green]👁 {learned}[/green]")
+    elif event.kind == EventKind.BUDGET_EXCEEDED:
+        console.print(f"[bold red]⛔ {payload.get('detail', 'budget exceeded')}[/bold red]")
+    elif event.kind == EventKind.ERROR:
+        console.print(f"[bold red]Error: {payload.get('error')}[/bold red]")
+
+
+def _build_harness(llm, args: argparse.Namespace, approval_policy: ApprovalPolicy) -> AgentHarness:
+    """Create an AgentHarness from CLI arguments."""
+    return AgentHarness(
+        llm,
+        max_iterations=args.max_iterations,
+        max_wall_time=getattr(args, "max_wall_time", None),
+        approval_policy=approval_policy,
+        checkpoint_dir=getattr(args, "checkpoint_dir", None),
+        enable_recording=getattr(args, "record", False),
+        recording_dir=getattr(args, "recording_dir", None),
+    )
+
+
 def run_agent(args: argparse.Namespace) -> int:
     """Run agent with specified goal."""
     try:
@@ -89,67 +158,93 @@ def run_agent(args: argparse.Namespace) -> int:
             with open(args.context, 'r') as f:
                 context = json.load(f)
 
-        # Create agent
+        # Simple agent: single task, no planning, no steering
         if args.simple:
-            agent = SimpleAgent(llm)
             console.print("[yellow]Using SimpleAgent (no planning)[/yellow]")
-        else:
-            agent = Agent(llm, max_iterations=args.max_iterations)
-            console.print(f"[cyan]Using full Agent (max {args.max_iterations} iterations)[/cyan]")
+            agent = SimpleAgent(llm)
+            state = agent.execute(args.goal, context)
+            return _report_result(state, args)
 
-        # Check for interactive mode
-        if args.interactive:
-            from yamllm.agent.interactive_steering import InteractiveAgent, InteractiveSteering
-
-            console.print("[bold cyan]Interactive mode enabled![/bold cyan]")
-            console.print("[dim]You will be able to review and approve each action.[/dim]\n")
-
-            # Create steering controller
-            steering = InteractiveSteering(
-                console=console,
-                auto_approve=args.auto_approve,
-                pause_before_action=True
+        # Resume support
+        initial_state = None
+        if getattr(args, "resume", None):
+            initial_state = load_checkpoint(args.resume)
+            console.print(
+                f"[cyan]Resuming from {args.resume} "
+                f"(iteration {initial_state.iteration})[/cyan]"
             )
 
-            # Wrap agent with interactive control
-            interactive_agent = InteractiveAgent(agent, steering=steering)
+        interactive = args.interactive and not args.auto_approve
+        approval_policy = ApprovalPolicy.ALWAYS if interactive else ApprovalPolicy.NEVER
+        harness = _build_harness(llm, args, approval_policy)
 
-            # Execute with interactive control
-            console.print("\n[bold green]Starting interactive agent execution...[/bold green]\n")
-            console.print(f"[bold]Goal:[/bold] {args.goal}\n")
+        jsonl_file = None
+        if getattr(args, "events_jsonl", None):
+            jsonl_file = open(args.events_jsonl, "a", buffering=1)
+            harness.add_listener(lambda ev: jsonl_file.write(ev.to_json() + "\n"))
 
-            state = interactive_agent.execute(args.goal, context)
-        else:
-            # Create UI
-            ui = AgentUI(console)
+        goal = initial_state.goal if initial_state else args.goal
 
-            # Setup progress callback
-            def progress_callback(state):
-                ui.render_full_state(state)
+        try:
+            use_tui = (args.interactive or args.tui) and not args.plain
+            if use_tui:
+                try:
+                    from yamllm.ui.agent_tui import run_agent_tui
+                except ImportError:
+                    console.print(
+                        "[yellow]Textual is not installed "
+                        "(pip install textual); falling back to plain output.[/yellow]"
+                    )
+                    use_tui = False
 
-            agent.progress_callback = progress_callback
+            if use_tui:
+                state = run_agent_tui(harness, goal, context, initial_state=initial_state)
+                if state is None:
+                    console.print("[red]Run did not produce a final state[/red]")
+                    return 1
+            else:
+                if interactive:
+                    # Legacy prompt-based approvals on the plain console
+                    from yamllm.agent.interactive_steering import InteractiveSteering
 
-            # Execute
-            console.print("\n[bold green]Starting agent execution...[/bold green]\n")
-            console.print(f"[bold]Goal:[/bold] {args.goal}\n")
+                    steering = InteractiveSteering(console=console)
+                    harness.decision_provider = steering.request_decision
+                    console.print(
+                        "[bold cyan]Interactive mode:[/bold cyan] "
+                        "[dim]you will review each action before it runs.[/dim]"
+                    )
 
-            state = agent.execute(args.goal, context)
+                harness.add_listener(_console_event_renderer)
+                console.print("\n[bold green]Starting agent execution...[/bold green]\n")
+                console.print(f"[bold]Goal:[/bold] {goal}\n")
+                state = harness.run(goal, context, initial_state=initial_state)
+        finally:
+            if jsonl_file:
+                jsonl_file.close()
 
-        # Show completion
-        console.print("\n")
-        ui = AgentUI(console)
-        ui.render_completion(state)
-
-        # Save output if requested
-        if args.output:
-            save_agent_result(state, args.output)
-            console.print(f"\n[green]Result saved to {args.output}[/green]")
-
-        return 0 if state.success else 1
+        return _report_result(state, args)
 
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
         return 1
+
+
+def _report_result(state, args: argparse.Namespace) -> int:
+    """Render the completion summary and persist output if requested."""
+    console.print("\n")
+    ui = AgentUI(console)
+    ui.render_completion(state)
+
+    if getattr(state, "metadata", {}).get("checkpoint_path"):
+        console.print(f"[dim]Checkpoint: {state.metadata['checkpoint_path']}[/dim]")
+    if getattr(state, "metadata", {}).get("recording_path"):
+        console.print(f"[dim]Recording: {state.metadata['recording_path']}[/dim]")
+
+    if args.output:
+        save_agent_result(state, args.output)
+        console.print(f"\n[green]Result saved to {args.output}[/green]")
+
+    return 0 if state.success else 1
 
 
 def run_workflow(args: argparse.Namespace) -> int:

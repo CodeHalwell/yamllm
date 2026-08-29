@@ -1,10 +1,11 @@
 """Reasoning component for deciding next actions."""
 
-import json
 import logging
+import re
 from typing import Tuple, List, Optional
 
 from .models import Task, AgentState
+from .parsing import parse_json_response
 
 
 class Reasoner:
@@ -154,9 +155,7 @@ Important: Ensure the JSON is valid."""
             (thought, selected_task_id)
         """
         try:
-            # Extract JSON
-            json_str = self._extract_json(response)
-            data = json.loads(json_str)
+            data = parse_json_response(response)
 
             thought = data.get("thought", "No thought provided")
             rationale = data.get("rationale", "")
@@ -173,26 +172,8 @@ Important: Ensure the JSON is valid."""
             task_id = self._extract_task_id_fallback(response)
             return response[:200], task_id
 
-    def _extract_json(self, text: str) -> str:
-        """Extract JSON from text."""
-        # Try to find JSON block in markdown
-        if "```json" in text:
-            start = text.find("```json") + 7
-            end = text.find("```", start)
-            if end > start:
-                return text[start:end].strip()
-
-        # Try to find JSON object
-        start = text.find("{")
-        end = text.rfind("}") + 1
-        if start >= 0 and end > start:
-            return text[start:end]
-
-        return text
-
     def _extract_task_id_fallback(self, text: str) -> str:
         """Extract task_id from text as fallback."""
         # Look for patterns like "task_1", "task_2", etc.
-        import re
         match = re.search(r'task_\d+', text)
         return match.group(0) if match else ""

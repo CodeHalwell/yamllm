@@ -37,6 +37,31 @@ class Task:
             metadata=metadata
         )
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to a JSON-serialisable dictionary."""
+        return {
+            "id": self.id,
+            "description": self.description,
+            "status": self.status.value,
+            "dependencies": list(self.dependencies),
+            "result": self.result,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Task":
+        """Recreate a task from :meth:`to_dict` output."""
+        return cls(
+            id=data["id"],
+            description=data["description"],
+            status=TaskStatus(data.get("status", TaskStatus.PENDING.value)),
+            dependencies=list(data.get("dependencies", [])),
+            result=data.get("result"),
+            error=data.get("error"),
+            metadata=data.get("metadata", {}),
+        )
+
 
 @dataclass
 class AgentState:
@@ -97,6 +122,39 @@ class AgentState:
     def add_action(self, action: Dict[str, Any]) -> None:
         """Add an action to the history."""
         self.action_history.append(action)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to a JSON-serialisable dictionary (used for checkpoints)."""
+        return {
+            "goal": self.goal,
+            "tasks": [t.to_dict() for t in self.tasks],
+            "current_task_id": self.current_task_id,
+            "iteration": self.iteration,
+            "max_iterations": self.max_iterations,
+            "thought_history": list(self.thought_history),
+            "action_history": list(self.action_history),
+            "completed": self.completed,
+            "success": self.success,
+            "error": self.error,
+            "metadata": self.metadata,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AgentState":
+        """Recreate state from :meth:`to_dict` output (checkpoint resume)."""
+        return cls(
+            goal=data["goal"],
+            tasks=[Task.from_dict(t) for t in data.get("tasks", [])],
+            current_task_id=data.get("current_task_id"),
+            iteration=data.get("iteration", 0),
+            max_iterations=data.get("max_iterations", 10),
+            thought_history=list(data.get("thought_history", [])),
+            action_history=list(data.get("action_history", [])),
+            completed=data.get("completed", False),
+            success=data.get("success", False),
+            error=data.get("error"),
+            metadata=data.get("metadata", {}),
+        )
 
 
 @dataclass

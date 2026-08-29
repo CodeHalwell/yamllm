@@ -31,8 +31,8 @@ dependencies = [
     "pyyaml>=6.0.2",
     "requests>=2.32.3",
     "rich>=13.9.4",
-    "ruff>=0.9.6",
     "tabulate>=0.9.0",
+    "textual>=1.0.0",
     "websockets>=12.0",
 ]
 
@@ -42,6 +42,7 @@ dev = [
     "black>=24.1.1",
     "isort>=5.13.2",
     "mypy>=1.8.0",
+    "ruff>=0.9.6",
 ]
 viz = [
     "pandas>=2.2.3",

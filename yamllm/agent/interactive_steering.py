@@ -1,4 +1,10 @@
-"""Interactive agent steering with human-in-the-loop control."""
+"""Interactive agent steering with human-in-the-loop control.
+
+This module is the legacy, prompt-based steering interface. New code should
+prefer :class:`yamllm.agent.harness.AgentHarness` together with the Textual
+TUI in :mod:`yamllm.ui.agent_tui`, which provide the same approval flow with
+live progress rendering.
+"""
 
 import logging
 from typing import Optional, Dict, Any, Callable, List
@@ -8,6 +14,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.prompt import Prompt, Confirm
 from rich.table import Table
+
+from .models import AgentState, TaskStatus
 
 
 class SteeringAction(Enum):
@@ -321,8 +329,6 @@ class InteractiveAgent:
         Returns:
             Final agent state
         """
-        from ..models import AgentState
-
         # Initialize state
         state = AgentState(
             goal=goal,
@@ -387,7 +393,7 @@ class InteractiveAgent:
 
             elif decision.action == SteeringAction.REJECT:
                 # Mark task as failed
-                next_task.status = "failed"
+                next_task.status = TaskStatus.FAILED
                 next_task.error = decision.feedback or "Rejected by user"
                 self.steering.console.print(f"[red]Task rejected: {next_task.description}[/red]")
 

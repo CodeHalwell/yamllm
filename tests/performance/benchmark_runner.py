@@ -9,8 +9,7 @@ This script runs performance benchmarks and generates a report showing:
 """
 
 import time
-import statistics
-from typing import Dict, List, Any
+from typing import Dict, Any
 from yamllm.core.metrics import MetricsTracker
 
 

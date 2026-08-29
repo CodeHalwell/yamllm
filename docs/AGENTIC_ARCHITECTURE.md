@@ -1,8 +1,13 @@
 # Agentic Loop Architecture Design
 
 **Version:** 1.0
-**Status:** Design Document
+**Status:** Design Document (historical)
 **Target Release:** v1.0
+
+> **2026 update:** the implementation has since been modernised around an
+> event-driven engine with budgets, cancellation, approvals, checkpointing,
+> and a Textual TUI. See [agent_harness.md](agent_harness.md) for the
+> current architecture; this document describes the original design.
 
 ---
 

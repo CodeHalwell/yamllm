@@ -11,9 +11,7 @@ import json
 import logging
 import asyncio
 import time
-import re
 import dotenv
-from functools import lru_cache
 from collections import OrderedDict
 
 from yamllm.core.parser import parse_yaml_config, YamlLMConfig

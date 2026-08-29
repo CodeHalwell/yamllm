@@ -6,6 +6,8 @@ This module provides autonomous agent functionality with the ReAct
 
 from .models import AgentState, Task, TaskStatus, ActionResult, Observation
 from .core import Agent, SimpleAgent
+from .events import AgentEvent, EventKind
+from .harness import AgentHarness, ApprovalPolicy, load_checkpoint
 from .planner import TaskPlanner
 from .reasoner import Reasoner
 from .actor import Actor
@@ -16,6 +18,13 @@ __all__ = [
     # Core classes
     "Agent",
     "SimpleAgent",
+    "AgentHarness",
+    "ApprovalPolicy",
+    "load_checkpoint",
+
+    # Events
+    "AgentEvent",
+    "EventKind",
 
     # Components
     "TaskPlanner",

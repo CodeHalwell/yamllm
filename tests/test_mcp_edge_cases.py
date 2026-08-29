@@ -6,7 +6,6 @@ identified as missing coverage.
 """
 
 import pytest
-from unittest.mock import Mock, AsyncMock, patch
 from yamllm.mcp.client import MCPClient
 
 
