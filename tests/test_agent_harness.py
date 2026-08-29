@@ -414,6 +414,23 @@ def test_budget_stop_saves_checkpoint(tmp_path):
     assert list(tmp_path.glob("*.json")), "budget stop should leave a checkpoint"
 
 
+def test_stop_during_reasoning_prevents_action():
+    """A stop arriving mid-reason must not let the action execute (NEVER policy)."""
+    llm = make_llm()
+    harness = AgentHarness(llm, max_iterations=5)  # ApprovalPolicy.NEVER
+
+    def stop_on_thought(event: AgentEvent) -> None:
+        if event.kind == EventKind.THOUGHT:
+            harness.request_stop()
+
+    harness.add_listener(stop_on_thought)
+    state = harness.run("Do the thing")
+
+    assert state.completed and not state.success
+    assert state.error == "Stopped by user"
+    assert not llm.get_completion_with_tools.called
+
+
 def test_stop_requested_before_run_cancels_it():
     llm = make_llm()
     harness = AgentHarness(llm, max_iterations=5)

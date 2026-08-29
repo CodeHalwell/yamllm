@@ -310,6 +310,15 @@ class AgentHarness:
                         self._save_checkpoint(state)
                         continue
 
+                # A stop may have arrived while reasoning (or a decision)
+                # was in flight; recheck before starting the action.
+                if self._stop_event.is_set():
+                    state.completed = True
+                    state.success = False
+                    state.error = "Stopped by user"
+                    self._save_checkpoint(state)
+                    break
+
                 # ACT
                 self._emit(EventKind.ACTION_STARTED, {"task": next_task.to_dict()})
                 action_result = self.actor.act(next_task, state)
